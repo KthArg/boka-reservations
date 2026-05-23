@@ -66,15 +66,13 @@ describe('auth — usuario desactivado', () => {
       email_confirm: true,
     });
     inactiveUserId = data.user!.id;
-    await admin
-      .from('users')
-      .insert({
-        id: inactiveUserId,
-        email: INACTIVE_EMAIL,
-        role: 'staff',
-        full_name: 'Inactivo Test',
-        active: false,
-      });
+    await admin.from('users').insert({
+      id: inactiveUserId,
+      email: INACTIVE_EMAIL,
+      role: 'staff',
+      full_name: 'Inactivo Test',
+      active: false,
+    });
   });
 
   it('puede obtener sesión aunque active=false (el guard se aplica en requireAuth)', async () => {
