@@ -15,14 +15,19 @@
     "db:seed": "echo 'TODO: cargar seed data'"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.53.1",
     "@supabase/supabase-js": "^2.50.0",
     "next": "^15.3.0",
+    "next-intl": "^4.12.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.24.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@sentry/cli",
+      "@swc/core",
       "esbuild",
       "msw",
       "sharp"
@@ -33,12 +38,14 @@
     "@faker-js/faker": "^9.8.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.5.2",
     "eslint": "^9",
     "eslint-config-next": "^15.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "msw": "^2.7.5",
     "typescript": "^5",
     "vitest": "^3.2.3"

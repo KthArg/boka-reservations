@@ -26,8 +26,12 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
           cache-dependency-path: |
+            pnpm-lock.yaml
             web/pnpm-lock.yaml
             worker/pnpm-lock.yaml
+
+      - name: Instalar dependencias root
+        run: HUSKY=0 pnpm install --frozen-lockfile
 
       - name: Instalar dependencias web
         run: pnpm --dir web install --frozen-lockfile
@@ -37,6 +41,9 @@ jobs:
 
       - name: Instalar dependencias shared
         run: pnpm --dir shared install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm exec prettier --check .
 
       - name: Lint (web)
         run: pnpm --dir web lint

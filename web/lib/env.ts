@@ -9,6 +9,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1),
   APP_URL: z.string().url(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 });
 
 function parseEnv() {
