@@ -29,6 +29,7 @@ jobs:
             pnpm-lock.yaml
             web/pnpm-lock.yaml
             worker/pnpm-lock.yaml
+            shared/pnpm-lock.yaml
 
       - name: Instalar dependencias root
         run: HUSKY=0 pnpm install --frozen-lockfile
