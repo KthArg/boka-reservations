@@ -144,6 +144,12 @@ Si hay ajustes, hacerlos ahora. Después de este checkpoint, modificar tooling s
 
 ### Etapa 4 — Autenticación de usuarios internos
 
+> **⚠ Antes de empezar esta etapa:**
+>
+> - Los usuarios del seed (`supabase/seed.sql`) tienen UUIDs fijos en `public.users` pero no tienen filas en `auth.users`. Al crear los auth users en Etapa 4, hacerlo con esos mismos UUIDs (`id = '00000000-0000-0000-0000-000000000001'`, etc.) para que el JWT `auth.uid()` coincida con `public.users.id` y la política RLS `users_update_self` funcione correctamente.
+> - El claim `user_role` en el JWT todavía no existe. Crearlo como custom claim en Supabase (via hook de auth o función `set_claim`) para que las políticas RLS que leen `auth.jwt() ->> 'user_role'` funcionen.
+> - El middleware de Next.js actualmente solo maneja i18n. Al agregar auth, componer ambas lógicas en el mismo `middleware.ts` o usar el patrón de middleware chain.
+
 **Objetivo**: un usuario interno (admin, staff o guía) puede hacer login y entrar al panel admin (que por ahora muestra una pantalla vacía protegida según su rol).
 
 **Spec asociado**: `0002-autenticacion-usuarios-internos`.
@@ -206,6 +212,11 @@ Aquí es el último momento barato para hacer cambios estructurales al schema o 
 - [ ] El changelog refleja decisiones tomadas durante la implementación.
 
 ### Etapa 6 — Portal público de listado de tours
+
+> **⚠ Antes de empezar esta etapa:**
+>
+> - Agregar política RLS `tours_select_anon` para que usuarios no autenticados puedan leer la tabla `tours` (actualmente solo `authenticated` puede leer). Mismo patrón para `tour_pricing` y `tour_schedules` si el portal los expone directamente.
+> - El seed de precios de Cerro Chompipe cubre hasta nov 2026. Agregar filas de pricing para 2027+ antes de hacer demos o pruebas en fechas posteriores, o el portal mostrará tours sin precio disponible.
 
 **Objetivo**: cualquier visitante puede ver los tours disponibles, filtrar por fecha, y ver el detalle de cada uno.
 

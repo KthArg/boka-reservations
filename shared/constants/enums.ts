@@ -4,6 +4,23 @@ export enum UserRole {
   Guide = 'guide',
 }
 
+export enum TourStatus {
+  Active = 'active',
+  Archived = 'archived',
+}
+
+export enum TicketType {
+  Adult = 'adult',
+  Child = 'child',
+  Student = 'student',
+}
+
+export enum TourDifficulty {
+  Easy = 'easy',
+  Moderate = 'moderate',
+  Hard = 'hard',
+}
+
 export enum Currency {
   USD = 'USD',
   CRC = 'CRC',

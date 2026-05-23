@@ -12,8 +12,10 @@
     "typecheck": "pnpm --dir web typecheck && pnpm --dir worker typecheck",
     "test": "pnpm --dir web test && pnpm --dir worker test",
     "test:integration": "pnpm --dir web test:integration && pnpm --dir worker test:integration",
-    "db:migrate": "pnpm --dir web db:migrate",
-    "db:seed": "pnpm --dir web db:seed",
+    "db:migrate": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:seed": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > web/types/database.ts",
     "prepare": "husky"
   },
   "lint-staged": {
