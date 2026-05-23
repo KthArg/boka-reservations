@@ -5,8 +5,10 @@ import { getLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
+const MIN_PASSWORD_LENGTH = 8;
+
 const UpdatePasswordSchema = z.object({
-  password: z.string().min(8),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
 });
 
 export async function updatePassword(formData: FormData) {
