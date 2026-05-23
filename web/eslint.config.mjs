@@ -47,8 +47,8 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // Locales i18n: son datos puros, excluir límite de líneas
-    files: ['locales/**'],
+    // Locales i18n y tipos generados: datos puros o código auto-generado, excluir límite de líneas
+    files: ['locales/**', 'types/**'],
     rules: {
       'max-lines': 'off',
     },
