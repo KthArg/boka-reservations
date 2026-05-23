@@ -24,11 +24,19 @@ CREATE POLICY "users_insert_admin" ON users
   FOR INSERT TO authenticated
   WITH CHECK ((auth.jwt() ->> 'user_role') = 'admin');
 
-CREATE POLICY "users_update_admin_or_self" ON users
+-- Admin puede actualizar cualquier fila a cualquier valor
+CREATE POLICY "users_update_admin" ON users
   FOR UPDATE TO authenticated
-  USING (
-    (auth.jwt() ->> 'user_role') = 'admin'
-    OR id = auth.uid()
+  USING ((auth.jwt() ->> 'user_role') = 'admin')
+  WITH CHECK ((auth.jwt() ->> 'user_role') = 'admin');
+
+-- Usuario puede actualizar su propia fila pero NO puede cambiar su rol
+CREATE POLICY "users_update_self" ON users
+  FOR UPDATE TO authenticated
+  USING (id = auth.uid())
+  WITH CHECK (
+    id = auth.uid()
+    AND role = (auth.jwt() ->> 'user_role')::user_role
   );
 
 CREATE POLICY "users_delete_admin" ON users
