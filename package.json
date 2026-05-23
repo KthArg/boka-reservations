@@ -1,0 +1,38 @@
+{
+  "name": "booking-platform",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev:web": "pnpm --dir web dev",
+    "dev:worker": "pnpm --dir worker dev",
+    "lint": "pnpm --dir web lint",
+    "typecheck": "pnpm --dir web typecheck && pnpm --dir worker typecheck",
+    "test": "pnpm --dir web test && pnpm --dir worker test",
+    "db:migrate": "pnpm --dir web db:migrate",
+    "db:seed": "pnpm --dir web db:seed",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "web/**/*.{ts,tsx,mjs}": [
+      "pnpm --dir web lint --fix",
+      "prettier --write"
+    ],
+    "worker/**/*.ts": [
+      "prettier --write"
+    ],
+    "shared/**/*.ts": [
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.5.3"
+  }
+}
