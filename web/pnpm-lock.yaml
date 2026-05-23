@@ -11,6 +11,9 @@ importers:
       '@sentry/nextjs':
         specifier: ^10.53.1
         version: 10.53.1(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(next@15.5.18(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(webpack@5.107.1)
+      '@supabase/ssr':
+        specifier: ^0.10.3
+        version: 0.10.3(@supabase/supabase-js@2.106.1)
       '@supabase/supabase-js':
         specifier: ^2.50.0
         version: 2.106.1
@@ -1313,6 +1316,11 @@ packages:
   '@supabase/realtime-js@2.106.1':
     resolution: {integrity: sha512-eQCYri5E8KsjpDgC7g28cOOS2britjUWdNSJluFMainqrMRepzjOnaxqXc3RoAz7H0dxmBrfLUNF6NGP8C+YaA==}
     engines: {node: '>=20.0.0'}
+
+  '@supabase/ssr@0.10.3':
+    resolution: {integrity: sha512-ux2CJgX89h0Fz2lY7ZNafNG2SkXpyRc5dz77K9eKeBLPdtywQixKwIuetDeIViAJBp/buOUVmgj8PVesOklNpw==}
+    peerDependencies:
+      '@supabase/supabase-js': ^2.105.3
 
   '@supabase/storage-js@2.106.1':
     resolution: {integrity: sha512-HWcLIhqinhWKpOQ3WzglR2unjW0eh9J7yOu3IZrZNIEkraK4La/HDvTqndljGsNw0itPtyHhuKBxRoPG1VUARw==}
@@ -4728,6 +4736,11 @@ snapshots:
     dependencies:
       '@supabase/phoenix': 0.4.2
       tslib: 2.8.1
+
+  '@supabase/ssr@0.10.3(@supabase/supabase-js@2.106.1)':
+    dependencies:
+      '@supabase/supabase-js': 2.106.1
+      cookie: 1.1.1
 
   '@supabase/storage-js@2.106.1':
     dependencies:

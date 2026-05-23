@@ -18,6 +18,20 @@
     "login": "Iniciar sesión",
     "logout": "Cerrar sesión",
     "email": "Correo electrónico",
-    "password": "Contraseña"
+    "password": "Contraseña",
+    "submit-login": "Entrar",
+    "forgot-password-link": "¿Olvidaste tu contraseña?",
+    "error-invalid-credentials": "Email o contraseña incorrectos",
+    "forgot-password-title": "Recuperar contraseña",
+    "forgot-password-description": "Ingresá tu email y te enviamos instrucciones para restablecer tu contraseña.",
+    "send-instructions": "Enviar instrucciones",
+    "check-email": "Si el email existe, recibirás instrucciones en los próximos minutos.",
+    "back-to-login": "Volver al inicio de sesión",
+    "reset-password-title": "Nueva contraseña",
+    "new-password-label": "Nueva contraseña (mínimo 8 caracteres)",
+    "save-password": "Guardar contraseña",
+    "link-expired": "El enlace expiró o ya fue usado. Solicitá uno nuevo.",
+    "admin-panel-title": "Panel de administración",
+    "panel-under-construction": "Las funciones del panel estarán disponibles en las próximas etapas."
   }
 }
