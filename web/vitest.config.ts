@@ -7,11 +7,13 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['**/*.test.ts', '**/*.test.tsx'],
-    exclude: ['node_modules', '.next', 'tests/e2e'],
+    exclude: ['node_modules', '.next', 'tests/e2e', 'tests/integration'],
+    setupFiles: ['./tests/setup.ts'],
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
+      '@shared': path.resolve(__dirname, '../shared'),
     },
   },
 });
