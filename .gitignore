@@ -44,3 +44,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Claude Code memory (estado interno, no debe ser público)
+.claude/memory/

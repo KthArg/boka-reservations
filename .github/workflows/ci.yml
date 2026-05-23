@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Lint, typecheck y tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            web/pnpm-lock.yaml
+            worker/pnpm-lock.yaml
+            shared/pnpm-lock.yaml
+
+      - name: Instalar dependencias root
+        run: HUSKY=0 pnpm install --frozen-lockfile
+
+      - name: Instalar dependencias web
+        run: pnpm --dir web install --frozen-lockfile
+
+      - name: Instalar dependencias worker
+        run: pnpm --dir worker install --frozen-lockfile
+
+      - name: Instalar dependencias shared
+        run: pnpm --dir shared install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm exec prettier --check .
+
+      - name: Lint (web)
+        run: pnpm --dir web lint
+
+      - name: Lint (worker)
+        run: pnpm --dir worker lint
+
+      - name: Typecheck (web)
+        run: pnpm --dir web typecheck
+
+      - name: Typecheck (worker)
+        run: pnpm --dir worker typecheck
+
+      - name: Tests (web)
+        run: pnpm --dir web test
+
+      - name: Tests (worker)
+        run: pnpm --dir worker test

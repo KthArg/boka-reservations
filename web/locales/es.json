@@ -1,0 +1,23 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Algo salió mal. Intenta de nuevo.",
+    "back": "Volver",
+    "under-construction": "Sistema de reservas — en construcción."
+  },
+  "tour": {
+    "book-now": "Reservar ahora",
+    "capacity-full": "Cupo lleno",
+    "duration-minutes": "{n} minutos"
+  },
+  "booking": {
+    "confirmation-sent": "Confirmación enviada a tu correo",
+    "access-link-sent": "Te enviamos un enlace de acceso a tu correo"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña"
+  }
+}

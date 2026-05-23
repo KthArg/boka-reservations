@@ -15,15 +15,15 @@
 
 <!-- 2 a 5 objetivos concretos y medibles. Cada uno una oración que empieza con verbo en infinitivo y describe un resultado. -->
 
-- 
-- 
+-
+-
 
 ## 3. Fuera de alcance
 
 <!-- Lista explícita de lo que NO incluye. Más importante que los objetivos. -->
 
-- 
-- 
+-
+-
 
 ## 4. Historias de usuario
 
@@ -31,8 +31,8 @@
 
 Criterios de aceptación:
 
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
 
 ## 5. Diseño técnico
 
@@ -50,20 +50,20 @@ Criterios de aceptación:
 
 <!-- Eventos inesperados, precondiciones no cumplidas, concurrencia. -->
 
-- 
-- 
+-
+-
 
 ## 9. Impacto en otras áreas
 
 <!-- Panel admin, emails, worker, reportes, políticas, i18n. -->
 
-- 
-- 
+-
+-
 
 ## 10. Plan de tests
 
-- 
-- 
+-
+-
 
 ## 11. Plan de rollout
 
@@ -73,9 +73,9 @@ Criterios de aceptación:
 
 <!-- 1 a 3 métricas concretas observables. -->
 
-- 
-- 
+-
+-
 
 ## 13. Preguntas abiertas
 
-- [ ] **Pregunta**: ¿…?  **Dueño**: <nombre>  **Antes de**: <fecha>
+- [ ] **Pregunta**: ¿…? **Dueño**: <nombre> **Antes de**: <fecha>

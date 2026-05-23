@@ -1,0 +1,23 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong. Please try again.",
+    "back": "Back",
+    "under-construction": "Booking system — under construction."
+  },
+  "tour": {
+    "book-now": "Book now",
+    "capacity-full": "Fully booked",
+    "duration-minutes": "{n} minutes"
+  },
+  "booking": {
+    "confirmation-sent": "Confirmation sent to your email",
+    "access-link-sent": "We sent an access link to your email"
+  },
+  "auth": {
+    "login": "Sign in",
+    "logout": "Sign out",
+    "email": "Email address",
+    "password": "Password"
+  }
+}
