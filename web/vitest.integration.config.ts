@@ -4,11 +4,15 @@ import path from 'path';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['**/*.test.ts'],
-    exclude: ['node_modules', 'dist'],
+    include: ['tests/integration/**/*.test.ts'],
+    exclude: ['node_modules'],
+    env: {
+      TEST_DB: 'true',
+    },
   },
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, '.'),
       '@shared': path.resolve(__dirname, '../shared'),
     },
   },

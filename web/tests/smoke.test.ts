@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { UserRole, Currency } from '../../shared/constants/enums';
-import { TourSchema } from '../../shared/schemas';
+import { UserRole, Currency } from '@shared/constants/enums';
+import { TourSchema } from '@shared/schemas';
 
 describe('smoke test — shared types y schemas', () => {
   it('UserRole tiene los tres roles del sistema', () => {

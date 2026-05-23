@@ -8,9 +8,10 @@
   "scripts": {
     "dev:web": "pnpm --dir web dev",
     "dev:worker": "pnpm --dir worker dev",
-    "lint": "pnpm --dir web lint",
+    "lint": "pnpm --dir web lint && pnpm --dir worker lint",
     "typecheck": "pnpm --dir web typecheck && pnpm --dir worker typecheck",
     "test": "pnpm --dir web test && pnpm --dir worker test",
+    "test:integration": "pnpm --dir web test:integration && pnpm --dir worker test:integration",
     "db:migrate": "pnpm --dir web db:migrate",
     "db:seed": "pnpm --dir web db:seed",
     "prepare": "husky"
@@ -21,6 +22,7 @@
       "prettier --write"
     ],
     "worker/**/*.ts": [
+      "pnpm --dir worker lint --fix",
       "prettier --write"
     ],
     "shared/**/*.ts": [
@@ -30,9 +32,18 @@
       "prettier --write"
     ]
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "msw",
+      "sharp",
+      "supabase"
+    ]
+  },
   "devDependencies": {
     "husky": "^9.1.7",
     "lint-staged": "^15.3.0",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "supabase": "^2.23.0"
   }
 }
