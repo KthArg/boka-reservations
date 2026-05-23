@@ -29,6 +29,7 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 **Objetivo**: tener las cuentas externas listas y configuradas antes de tocar código.
 
 **Entregables**:
+
 - Cuenta de GitHub con el repo creado (privado al inicio).
 - Cuenta de Supabase con un proyecto creado para desarrollo (`booking-dev`).
 - Cuenta de OnvoPay del cliente con claves de sandbox obtenidas. Producción se activa más adelante cuando se vaya a hacer go-live.
@@ -38,6 +39,7 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 - Dominio comprado (puede esperar a etapa final si todavía no se eligió).
 
 **Criterios de done**:
+
 - [ ] Repo de GitHub existe y está clonable.
 - [ ] Variables/keys de cada servicio guardadas localmente en un gestor de secretos.
 - [ ] No hay claves commiteadas a ningún lado.
@@ -50,6 +52,7 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 **Objetivo**: tener el repo con el scaffold inicial (README, docs/, .claude/) committeado en `main`.
 
 **Entregables**:
+
 - Contenido del scaffold inicial extraído al repo.
 - Carpetas vacías `web/`, `worker/`, `shared/`, `migrations/` con `.gitkeep`.
 - `.gitignore` para Node.js + Next.js + ambientes.
@@ -57,6 +60,7 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 - `CONTRIBUTING.md` corto apuntando a `.claude/skills/`.
 
 **Criterios de done**:
+
 - [ ] `main` tiene el scaffold completo.
 - [ ] El README abre y se ve bien.
 - [ ] Las skills y la memoria están en su carpeta correcta.
@@ -69,6 +73,7 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 **Objetivo**: dejar el entorno técnico listo para empezar a desarrollar, con tooling instalado y configurado para enforzar las convenciones.
 
 **Entregables**:
+
 - `web/` inicializado con Next.js 15 (App Router, TypeScript, ESLint).
 - `worker/` inicializado con TypeScript y `tsx` para desarrollo, `node` para producción.
 - `shared/` con `package.json` y `tsconfig.json` base.
@@ -85,6 +90,7 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 - Script `pnpm db:migrate` (placeholder) y `pnpm db:seed` (placeholder).
 
 **Criterios de done**:
+
 - [ ] `cd web && pnpm dev` levanta Next.js en `localhost:3000` mostrando una página por defecto.
 - [ ] `cd worker && pnpm dev` arranca un loop básico que loggea cada 30s "alive".
 - [ ] `pnpm lint && pnpm typecheck && pnpm test` pasa en raíz.
@@ -118,6 +124,7 @@ Si hay ajustes, hacerlos ahora. Después de este checkpoint, modificar tooling s
 **Spec asociado**: `0001-modelo-de-datos-base`.
 
 **Entregables**:
+
 - Spec 0001 escrito, revisado y aprobado.
 - Migraciones SQL en `migrations/` para: `users` (con roles `admin`, `staff`, `guide`), `tours`, `tour_pricing`, `tour_schedules`. Con índices, constraints, RLS, enums.
 - Tipos TypeScript generados desde el schema (Supabase types).
@@ -126,6 +133,7 @@ Si hay ajustes, hacerlos ahora. Después de este checkpoint, modificar tooling s
 - Tests de integración básicos: crear un tour, leer, RLS funciona (un staff no puede modificar configuración de admin).
 
 **Criterios de done**:
+
 - [ ] Spec aprobado, changelog iniciado.
 - [ ] `pnpm db:migrate` aplica todas las migraciones desde cero sin error.
 - [ ] `pnpm db:seed` puebla datos demo.
@@ -141,6 +149,7 @@ Si hay ajustes, hacerlos ahora. Después de este checkpoint, modificar tooling s
 **Spec asociado**: `0002-autenticacion-usuarios-internos`.
 
 **Entregables**:
+
 - Spec 0002 aprobado.
 - Páginas `/login`, `/forgot-password` en `web/app/(auth)/`.
 - Layout `(admin)` que requiere sesión autenticada y carga datos del usuario y rol.
@@ -150,6 +159,7 @@ Si hay ajustes, hacerlos ahora. Después de este checkpoint, modificar tooling s
 - Tests de integración del flujo de auth.
 
 **Criterios de done**:
+
 - [ ] Spec aprobado, changelog iniciado.
 - [ ] Un admin puede entrar al panel.
 - [ ] Tests cubren happy path + casos de error (credenciales inválidas, sesión expirada).
@@ -180,6 +190,7 @@ Aquí es el último momento barato para hacer cambios estructurales al schema o 
 **Spec asociado**: `0003-gestion-tours-panel-admin`.
 
 **Entregables**:
+
 - Spec 0003 aprobado.
 - Páginas `/admin/tours`, `/admin/tours/new`, `/admin/tours/[id]/edit`.
 - Componentes UI para formulario de tour (bilingüe), gestión de pricing por temporada/tipo, gestión de schedules semanales.
@@ -188,6 +199,7 @@ Aquí es el último momento barato para hacer cambios estructurales al schema o 
 - Tests unit del repo, integration del flujo completo.
 
 **Criterios de done**:
+
 - [ ] Admin puede crear tour completo con pricing y schedules.
 - [ ] Validaciones funcionan (no se puede tener pricing con rangos solapados, no se pueden poner capacidades negativas).
 - [ ] Tests cubren validaciones y casos borde.
@@ -200,6 +212,7 @@ Aquí es el último momento barato para hacer cambios estructurales al schema o 
 **Spec asociado**: `0004-portal-publico-tours`.
 
 **Entregables**:
+
 - Spec 0004 aprobado.
 - Páginas `/`, `/tours`, `/tours/[slug]`.
 - Componentes: TourCard, TourGrid, TourFilter, TourDetail.
@@ -209,6 +222,7 @@ Aquí es el último momento barato para hacer cambios estructurales al schema o 
 - Tests unit + integration.
 
 **Criterios de done**:
+
 - [ ] Un visitante no autenticado ve el grid de tours.
 - [ ] El detalle muestra calendario con disponibilidad real.
 - [ ] Cambio de idioma funciona.
@@ -236,6 +250,7 @@ Después de este bloque tenés un sistema "navegable" pero no transaccional. Es 
 **Spec asociado**: `0005-motor-disponibilidad-holds`.
 
 **Entregables**:
+
 - Spec 0005 aprobado.
 - Funciones en `lib/booking/availability.ts` para verificar disponibilidad y crear holds.
 - Mecanismo de holds con expiración a 15 minutos.
@@ -243,6 +258,7 @@ Después de este bloque tenés un sistema "navegable" pero no transaccional. Es 
 - Tests de concurrencia exhaustivos (esto es **crítico**: ver casos borde obligatorios en testing-practices).
 
 **Criterios de done**:
+
 - [ ] Tests de concurrencia cubren el caso de "dos clientes intentan el último cupo a la vez".
 - [ ] Holds expiran y se liberan correctamente.
 - [ ] `capacity_reserved` nunca excede `capacity_total` bajo ningún escenario.
@@ -255,6 +271,7 @@ Después de este bloque tenés un sistema "navegable" pero no transaccional. Es 
 **Spec asociado**: `0006-checkout-reserva-pago-onvopay`.
 
 **Entregables**:
+
 - Spec 0006 aprobado, incluyendo verificación de OnvoPay con external-services-vetting.
 - Páginas `/checkout` con multi-step (datos del cliente, tickets, pago).
 - Adaptador OnvoPay en `lib/payments/adapters/onvopay.ts` implementando la interfaz `PaymentProvider`.
@@ -268,6 +285,7 @@ Después de este bloque tenés un sistema "navegable" pero no transaccional. Es 
 - Tests de idempotencia de webhooks.
 
 **Criterios de done**:
+
 - [ ] Un turista puede completar una reserva end-to-end con tarjeta de prueba de OnvoPay (sandbox).
 - [ ] La página de confirmación muestra todo correcto.
 - [ ] Webhooks duplicados no causan doble confirmación (test que lo prueba).
@@ -300,6 +318,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0007-notificaciones-recordatorio-24h`.
 
 **Entregables**:
+
 - Spec 0007 aprobado.
 - Tabla `notifications` operativa.
 - Adaptador de email (Resend) en `lib/notifications/adapters/email.ts`.
@@ -309,6 +328,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - Tests de integración del job (incluyendo: cancelar booking debe cancelar la notificación pendiente).
 
 **Criterios de done**:
+
 - [ ] Reservar un tour dispara el email de confirmación inmediato.
 - [ ] El email de recordatorio llega 24h antes (testeado manipulando fechas).
 - [ ] Cancelar una reserva no envía el recordatorio.
@@ -319,6 +339,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0008-panel-reservas-checkin`.
 
 **Entregables**:
+
 - Spec 0008 aprobado.
 - Página `/admin/bookings` con filtros (fecha, tour, estado).
 - Vista de detalle de booking con todos los datos.
@@ -327,6 +348,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - Exportación a CSV.
 
 **Criterios de done**:
+
 - [ ] Staff puede ver y filtrar reservas.
 - [ ] Check-in funciona y se refleja en `booking_tickets.check_in_at`.
 - [ ] CSV se descarga correctamente con todos los campos relevantes.
@@ -336,6 +358,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0009-gestion-asignacion-guias`.
 
 **Entregables**:
+
 - Spec 0009 aprobado.
 - CRUD de guías desde el panel admin.
 - UI para asignar guía a un tour_instance.
@@ -344,6 +367,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - Tests.
 
 **Criterios de done**:
+
 - [ ] Admin puede crear y editar guías.
 - [ ] Asignar un guía dispara email automáticamente.
 - [ ] El guía abre el link y ve sus tours.
@@ -366,6 +390,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0010-cancelaciones-refund-automatico`.
 
 **Entregables**:
+
 - Spec 0010 aprobado.
 - Página `/reserva/[token]/cancelar` con vista clara de "tenés derecho a refund: SI/NO" antes de confirmar.
 - Lógica de refund vía adaptador OnvoPay.
@@ -375,6 +400,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - Tests exhaustivos de los casos límite (cancelación exactamente en el borde de 24h).
 
 **Criterios de done**:
+
 - [ ] Turista puede cancelar y ver refund acreditado.
 - [ ] Cancelación <24h informa claramente "sin reembolso" antes de confirmar.
 - [ ] Staff puede cancelar desde su panel (con auditoría).
@@ -385,6 +411,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0011-reportes-basicos`.
 
 **Entregables**:
+
 - Spec 0011 aprobado.
 - Página `/admin/reportes` con: reservas por mes, ingresos por mes, top tours, tasa de cancelación, tasa de no-show.
 - Queries optimizadas con índices apropiados.
@@ -395,6 +422,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0012-i18n-completo-es-en`.
 
 **Entregables**:
+
 - Spec 0012 aprobado.
 - Diccionarios completos en `web/locales/es.json` y `en.json`.
 - Auditoría: no quedan strings hardcodeados en componentes (linter lo verifica).
@@ -418,6 +446,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0013-rate-limiting-security`.
 
 **Entregables**:
+
 - Rate limiting en endpoints sensibles (crear reserva, validar magic link, login).
 - Headers de seguridad (CSP, HSTS, X-Frame-Options).
 - Auditoría de SQL injection y XSS.
@@ -429,6 +458,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0014-observabilidad-logging-metricas`.
 
 **Entregables**:
+
 - Logging estructurado en producción (consola en formato JSON parseable).
 - Métricas básicas: latencia de endpoints críticos, tasa de errores, jobs procesados/fallidos.
 - Alertas básicas (Slack o email cuando algo falla repetidamente).
@@ -439,6 +469,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Spec asociado**: `0015-tests-e2e-flujos-criticos`.
 
 **Entregables**:
+
 - Playwright instalado y configurado.
 - 5-10 tests e2e cubriendo: reservar tour, cancelar con refund, login de admin, crear tour, asignar guía.
 - E2E corriendo en CI antes de merge a main.
@@ -464,11 +495,13 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 **Objetivo**: el cliente usa el sistema en producción con tráfico real pero acotado.
 
 **Entregables**:
+
 - Onboarding del cliente: training, documentación de uso, contacto directo durante beta.
 - Bitácora de bugs encontrados y resueltos.
 - Iteración basada en feedback real.
 
 **Criterios de done**:
+
 - [ ] El cliente completó al menos 20 reservas reales sin problema crítico.
 - [ ] Los bugs encontrados se resolvieron en máximo 48h.
 - [ ] No hay disputes de tarjeta abiertos.

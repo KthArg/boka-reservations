@@ -2,7 +2,8 @@
   "common": {
     "loading": "Loading...",
     "error": "Something went wrong. Please try again.",
-    "back": "Back"
+    "back": "Back",
+    "under-construction": "Booking system — under construction."
   },
   "tour": {
     "book-now": "Book now",

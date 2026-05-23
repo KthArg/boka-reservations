@@ -33,15 +33,15 @@ El negocio:
 
 ## Stack
 
-| Capa | Tecnología | Por qué |
-|---|---|---|
-| Frontend + API | Next.js 15 (App Router) | Server components, server actions, deploy trivial en Vercel |
-| Base de datos | Supabase (PostgreSQL) | Postgres administrado con RLS, auth para staff, storage para imágenes |
-| Autenticación admin | Supabase Auth | Auth para usuarios internos (admin, staff, guías); turistas usan magic links sin cuenta |
-| Pagos | OnvoPay | Pasarela costarricense con API moderna, tarjetas y SINPE Móvil, sin requerir entidad extranjera |
-| Email | Resend + React Email | Confirmaciones, recordatorios, asignaciones; templates en React |
-| Worker / cron | Node.js en Railway | Procesos largos: recordatorios, refunds, generación de tour_instances |
-| Tipos compartidos | Zod | Schemas reutilizados en `web/` y `worker/` |
+| Capa                | Tecnología              | Por qué                                                                                         |
+| ------------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| Frontend + API      | Next.js 15 (App Router) | Server components, server actions, deploy trivial en Vercel                                     |
+| Base de datos       | Supabase (PostgreSQL)   | Postgres administrado con RLS, auth para staff, storage para imágenes                           |
+| Autenticación admin | Supabase Auth           | Auth para usuarios internos (admin, staff, guías); turistas usan magic links sin cuenta         |
+| Pagos               | OnvoPay                 | Pasarela costarricense con API moderna, tarjetas y SINPE Móvil, sin requerir entidad extranjera |
+| Email               | Resend + React Email    | Confirmaciones, recordatorios, asignaciones; templates en React                                 |
+| Worker / cron       | Node.js en Railway      | Procesos largos: recordatorios, refunds, generación de tour_instances                           |
+| Tipos compartidos   | Zod                     | Schemas reutilizados en `web/` y `worker/`                                                      |
 
 **Pagos post-MVP**: PayPal Business CR como pasarela secundaria para turistas extranjeros que prefieran ese método. La arquitectura de `lib/payments/adapters/` lo soporta desde el día uno; solo falta el adaptador concreto.
 
@@ -116,15 +116,15 @@ cd worker && pnpm dev
 
 Ver `web/.env.example` y `worker/.env.example` para la lista completa. Las críticas:
 
-| Variable | Dónde | Notas |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `web` | URL pública de Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `web` | Key pública (RLS la protege) |
-| `SUPABASE_SERVICE_ROLE_KEY` | `web`, `worker` | **Nunca** exponer al cliente |
-| `ONVOPAY_SECRET_KEY` | `web`, `worker` | Llave secreta de OnvoPay (`onvo_test_*` o `onvo_live_*`) |
-| `ONVOPAY_WEBHOOK_SECRET` | `web` | Para verificar firmas de webhooks de OnvoPay |
-| `RESEND_API_KEY` | `web`, `worker` | Envío de emails |
-| `APP_URL` | `web`, `worker` | URL pública del sitio (para magic links) |
+| Variable                        | Dónde           | Notas                                                    |
+| ------------------------------- | --------------- | -------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | `web`           | URL pública de Supabase                                  |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `web`           | Key pública (RLS la protege)                             |
+| `SUPABASE_SERVICE_ROLE_KEY`     | `web`, `worker` | **Nunca** exponer al cliente                             |
+| `ONVOPAY_SECRET_KEY`            | `web`, `worker` | Llave secreta de OnvoPay (`onvo_test_*` o `onvo_live_*`) |
+| `ONVOPAY_WEBHOOK_SECRET`        | `web`           | Para verificar firmas de webhooks de OnvoPay             |
+| `RESEND_API_KEY`                | `web`, `worker` | Envío de emails                                          |
+| `APP_URL`                       | `web`, `worker` | URL pública del sitio (para magic links)                 |
 
 ## Scripts disponibles
 
