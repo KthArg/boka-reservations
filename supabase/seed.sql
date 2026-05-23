@@ -1,7 +1,38 @@
 -- Seed de desarrollo — nunca ejecutar en producción directamente.
 -- Se aplica automáticamente con: supabase db reset
 
--- Usuarios internos (IDs fijos para facilitar pruebas; en Etapa 4 se crean los auth.users correspondientes)
+-- Usuarios en auth.users (necesarios para login con Supabase Auth)
+-- Contraseñas: admin1234 | guide1234 | staff1234
+-- Los campos *_token y email_change deben ser '' (no NULL); GoTrue los escanea como string no-pointer.
+INSERT INTO auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at,
+  raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token,
+  email_change_token_new, email_change, email_change_token_current,
+  phone_change, phone_change_token, reauthentication_token
+) VALUES
+  ('00000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-000000000000',
+   'authenticated', 'authenticated', 'admin@bokatrails.com',
+   crypt('admin1234', gen_salt('bf')),
+   now(), now(), now(), '{}', '{}',
+   '', '', '', '', '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000002',
+   '00000000-0000-0000-0000-000000000000',
+   'authenticated', 'authenticated', 'carlos@bokatrails.com',
+   crypt('guide1234', gen_salt('bf')),
+   now(), now(), now(), '{}', '{}',
+   '', '', '', '', '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000003',
+   '00000000-0000-0000-0000-000000000000',
+   'authenticated', 'authenticated', 'staff@bokatrails.com',
+   crypt('staff1234', gen_salt('bf')),
+   now(), now(), now(), '{}', '{}',
+   '', '', '', '', '', '', '', '')
+ON CONFLICT (id) DO NOTHING;
+
+-- Usuarios internos (IDs fijos que coinciden con auth.users de arriba)
 INSERT INTO users (id, email, role, full_name, active) VALUES
   ('00000000-0000-0000-0000-000000000001', 'admin@bokatrails.com',  'admin', 'Admin BokaTrails', true),
   ('00000000-0000-0000-0000-000000000003', 'staff@bokatrails.com',  'staff', 'Ana Mora',         true);

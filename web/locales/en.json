@@ -18,6 +18,20 @@
     "login": "Sign in",
     "logout": "Sign out",
     "email": "Email address",
-    "password": "Password"
+    "password": "Password",
+    "submit-login": "Sign in",
+    "forgot-password-link": "Forgot your password?",
+    "error-invalid-credentials": "Invalid email or password",
+    "forgot-password-title": "Reset password",
+    "forgot-password-description": "Enter your email and we'll send you instructions to reset your password.",
+    "send-instructions": "Send instructions",
+    "check-email": "If the email exists, you'll receive instructions in the next few minutes.",
+    "back-to-login": "Back to sign in",
+    "reset-password-title": "New password",
+    "new-password-label": "New password (minimum 8 characters)",
+    "save-password": "Save password",
+    "link-expired": "The link has expired or was already used. Request a new one.",
+    "admin-panel-title": "Admin panel",
+    "panel-under-construction": "Panel features will be available in upcoming stages."
   }
 }
