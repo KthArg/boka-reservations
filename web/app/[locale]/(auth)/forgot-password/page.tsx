@@ -1,13 +1,15 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { requestPasswordReset } from './actions';
+import ForgotPasswordForm from './ForgotPasswordForm';
 import styles from './page.module.css';
 
 type Props = {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ sent?: string; error?: string }>;
 };
 
-export default async function ForgotPasswordPage({ searchParams }: Props) {
+export default async function ForgotPasswordPage({ params, searchParams }: Props) {
+  const { locale } = await params;
   const t = await getTranslations('auth');
   const { sent, error } = await searchParams;
 
@@ -22,23 +24,10 @@ export default async function ForgotPasswordPage({ searchParams }: Props) {
       ) : (
         <>
           <p className={styles.description}>{t('forgot-password-description')}</p>
-
-          <form action={requestPasswordReset} className={styles.form}>
-            <label className={styles.label}>
-              {t('email')}
-              <input
-                type="email"
-                name="email"
-                required
-                autoComplete="email"
-                className={styles.input}
-              />
-            </label>
-
-            <button type="submit" className={styles.submit}>
-              {t('send-instructions')}
-            </button>
-          </form>
+          <ForgotPasswordForm
+            locale={locale}
+            labels={{ email: t('email'), send: t('send-instructions') }}
+          />
         </>
       )}
 
