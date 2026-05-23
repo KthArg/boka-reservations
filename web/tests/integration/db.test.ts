@@ -205,3 +205,15 @@ describe('RLS — anon no puede escribir', () => {
     expect(error).not.toBeNull();
   });
 });
+
+describe('RLS — anon no puede leer', () => {
+  it('anon no puede leer tours', async () => {
+    const { error } = await anon.from('tours').select('slug');
+    expect(error).not.toBeNull();
+  });
+
+  it('anon no puede leer usuarios', async () => {
+    const { error } = await anon.from('users').select('id');
+    expect(error).not.toBeNull();
+  });
+});

@@ -128,6 +128,74 @@ describe('RLS — con sesión autenticada', () => {
   });
 });
 
+// --- admin puede modificar ---
+
+describe('RLS — admin puede modificar tours', () => {
+  it('admin autenticado puede hacer UPDATE en tours', async () => {
+    const client = createClient<Database>(SUPABASE_URL, ANON_KEY);
+    await client.auth.signInWithPassword({
+      email: 'admin@bokatrails.com',
+      password: 'admin1234',
+    });
+
+    const { data: original } = await admin
+      .from('tours')
+      .select('name_es')
+      .eq('slug', 'cerro-chompipe')
+      .single();
+
+    await client
+      .from('tours')
+      .update({ name_es: 'Modificado por admin' })
+      .eq('slug', 'cerro-chompipe');
+
+    const { data: updated } = await admin
+      .from('tours')
+      .select('name_es')
+      .eq('slug', 'cerro-chompipe')
+      .single();
+
+    expect(updated?.name_es).toBe('Modificado por admin');
+
+    await admin.from('tours').update({ name_es: original!.name_es }).eq('slug', 'cerro-chompipe');
+    await client.auth.signOut();
+  });
+});
+
+// --- actualización de perfil propio ---
+
+describe('RLS — actualización de perfil propio', () => {
+  it('usuario autenticado puede actualizar su nombre pero no su rol', async () => {
+    const client = createClient<Database>(SUPABASE_URL, ANON_KEY);
+    const { data: signInData } = await client.auth.signInWithPassword({
+      email: 'staff@bokatrails.com',
+      password: 'staff1234',
+    });
+    const userId = signInData.user!.id;
+
+    const { data: original } = await admin
+      .from('users')
+      .select('full_name')
+      .eq('id', userId)
+      .single();
+
+    const { error: nameError } = await client
+      .from('users')
+      .update({ full_name: 'Staff Actualizado' })
+      .eq('id', userId);
+    expect(nameError).toBeNull();
+
+    const { error: roleError } = await client
+      .from('users')
+      .update({ role: 'admin' })
+      .eq('id', userId);
+    expect(roleError).not.toBeNull();
+
+    await admin.from('users').update({ full_name: original!.full_name }).eq('id', userId);
+    await client.auth.signOut();
+  });
+});
+
 // --- JWT claim user_role (requiere hook registrado) ---
 
 describe('JWT — claim user_role', () => {
