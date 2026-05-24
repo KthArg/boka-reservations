@@ -23,9 +23,18 @@
   flex: 1;
 }
 
-.placeholder {
+.navLink {
+  display: block;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--color-surface);
+  text-decoration: none;
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .footer {
