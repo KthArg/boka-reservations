@@ -11,11 +11,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "db:migrate": "echo 'TODO: aplicar migraciones con supabase'",
-    "db:seed": "echo 'TODO: cargar seed data'"
+    "db:migrate": "supabase db push",
+    "db:seed": "supabase db reset"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.53.1",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.50.0",
     "next": "^15.3.0",
     "next-intl": "^4.12.0",
