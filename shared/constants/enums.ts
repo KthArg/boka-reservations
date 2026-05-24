@@ -26,6 +26,12 @@ export enum Currency {
   CRC = 'CRC',
 }
 
+export enum InstanceStatus {
+  Available = 'available',
+  Full = 'full',
+  Cancelled = 'cancelled',
+}
+
 export enum DayOfWeek {
   Sunday = 0,
   Monday = 1,

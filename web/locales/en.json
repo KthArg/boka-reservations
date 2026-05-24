@@ -100,5 +100,31 @@
     "submit-update": "Save changes",
     "tour-not-found": "Tour not found.",
     "confirm-archive": "Are you sure? The tour will no longer be visible."
+  },
+  "public": {
+    "nav-tours": "Tours",
+    "nav-home": "Home",
+    "hero-title": "Discover Costa Rica",
+    "footer-rights": "All rights reserved",
+    "tours-title": "Our tours",
+    "tours-from-price": "From ${price} USD",
+    "tours-no-price": "Ask for price",
+    "tours-duration": "{n} min",
+    "tours-difficulty-easy": "Easy",
+    "tours-difficulty-moderate": "Moderate",
+    "tours-difficulty-hard": "Hard",
+    "detail-includes": "What's included?",
+    "detail-meeting-point": "Meeting point",
+    "detail-difficulty": "Difficulty",
+    "detail-duration": "Duration",
+    "detail-prices": "Prices",
+    "detail-availability": "Available dates",
+    "detail-no-instances": "No upcoming dates available.",
+    "detail-book-cta": "Book now",
+    "ticket-adult": "Adult",
+    "ticket-child": "Child",
+    "ticket-student": "Student",
+    "not-found-title": "Tour not found",
+    "not-found-back": "Browse all tours"
   }
 }

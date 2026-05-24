@@ -100,5 +100,31 @@
     "submit-update": "Guardar cambios",
     "tour-not-found": "Tour no encontrado.",
     "confirm-archive": "¿Estás seguro? El tour dejará de estar visible."
+  },
+  "public": {
+    "nav-tours": "Tours",
+    "nav-home": "Inicio",
+    "hero-title": "Descubrí Costa Rica",
+    "footer-rights": "Todos los derechos reservados",
+    "tours-title": "Nuestros tours",
+    "tours-from-price": "Desde ${price} USD",
+    "tours-no-price": "Consultar precio",
+    "tours-duration": "{n} min",
+    "tours-difficulty-easy": "Fácil",
+    "tours-difficulty-moderate": "Moderada",
+    "tours-difficulty-hard": "Difícil",
+    "detail-includes": "¿Qué incluye?",
+    "detail-meeting-point": "Punto de encuentro",
+    "detail-difficulty": "Dificultad",
+    "detail-duration": "Duración",
+    "detail-prices": "Precios",
+    "detail-availability": "Fechas disponibles",
+    "detail-no-instances": "No hay fechas disponibles próximamente.",
+    "detail-book-cta": "Reservar",
+    "ticket-adult": "Adulto",
+    "ticket-child": "Niño",
+    "ticket-student": "Estudiante",
+    "not-found-title": "Tour no encontrado",
+    "not-found-back": "Ver todos los tours"
   }
 }

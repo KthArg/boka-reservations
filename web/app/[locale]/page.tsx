@@ -1,11 +1,7 @@
-import { useTranslations } from 'next-intl';
+import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
 
-export default function HomePage() {
-  const t = useTranslations('common');
-  return (
-    <main>
-      <h1>Boka Trails</h1>
-      <p>{t('under-construction')}</p>
-    </main>
-  );
+export default async function HomePage() {
+  const locale = await getLocale();
+  redirect(`/${locale}/tours`);
 }

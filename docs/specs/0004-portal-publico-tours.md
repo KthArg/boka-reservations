@@ -1,6 +1,6 @@
 # 0004 — Portal público de listado y detalle de tours
 
-- **Estado**: draft
+- **Estado**: implemented
 - **Autor**: KthArg
 - **Creado**: 2026-05-24
 - **Última actualización**: 2026-05-24
