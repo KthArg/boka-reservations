@@ -5,10 +5,10 @@ import { PriceList } from '@/components/public/PriceList/PriceList';
 import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/AvailabilityCalendar';
 import styles from './slug.module.css';
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ id: string }> };
 
 export default async function TourDetailPage({ params }: Props) {
-  const { slug } = await params;
+  const { id: slug } = await params;
   const [t, locale, tour] = await Promise.all([
     getTranslations('public'),
     getLocale(),
