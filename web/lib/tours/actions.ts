@@ -97,7 +97,7 @@ export async function createTour(
   }
 
   const locale = await getLocale();
-  redirect(`/${locale}/tours`);
+  redirect(`/${locale}/dashboard/tours`);
 }
 
 export async function updateTour(
@@ -138,7 +138,7 @@ export async function updateTour(
   }
 
   const locale = await getLocale();
-  redirect(`/${locale}/tours`);
+  redirect(`/${locale}/dashboard/tours`);
 }
 
 export async function archiveTour(id: string): Promise<void> {

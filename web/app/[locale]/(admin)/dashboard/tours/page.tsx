@@ -12,7 +12,7 @@ export default async function ToursPage() {
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('page-title')}</h1>
-        <Link href="/tours/new" className={styles.newBtn}>
+        <Link href="/dashboard/tours/new" className={styles.newBtn}>
           {t('new-tour')}
         </Link>
       </div>
@@ -46,7 +46,7 @@ export default async function ToursPage() {
                 <td className={styles.td}>{tour.duration_minutes} min</td>
                 <td className={styles.td}>{tour.activeSchedulesCount}</td>
                 <td className={`${styles.td} ${styles.actions}`}>
-                  <Link href={`/tours/${tour.id}/edit`} className={styles.editBtn}>
+                  <Link href={`/dashboard/tours/${tour.id}/edit`} className={styles.editBtn}>
                     {t('edit')}
                   </Link>
                   {tour.status === TourStatus.Active ? (

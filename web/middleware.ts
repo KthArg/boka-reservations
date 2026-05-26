@@ -5,7 +5,7 @@ import { createSupabaseMiddlewareClient } from './lib/db/supabase-middleware';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const PROTECTED_SEGMENTS = ['/dashboard', '/tours', '/bookings', '/guides', '/settings'];
+const PROTECTED_SEGMENTS = ['/dashboard', '/bookings', '/guides', '/settings'];
 
 function isProtectedPath(pathname: string): boolean {
   const withoutLocale = pathname.replace(/^\/(es|en)/, '');
