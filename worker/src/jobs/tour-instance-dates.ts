@@ -26,7 +26,8 @@ export function buildInstanceDates(
     if (getDayOfWeekInCR(candidate) !== schedule.day_of_week) continue;
 
     const dateStr = formatDateInCR(candidate);
-    const starts_at = `${dateStr}T${schedule.start_time}:00${CR_UTC_OFFSET}`;
+    const timeHHMM = schedule.start_time.slice(0, 5);
+    const starts_at = `${dateStr}T${timeHHMM}:00${CR_UTC_OFFSET}`;
     const ends_at = new Date(
       new Date(starts_at).getTime() + schedule.duration_minutes * MS_PER_MINUTE,
     ).toISOString();

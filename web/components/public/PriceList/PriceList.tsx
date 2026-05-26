@@ -20,7 +20,6 @@ export function PriceList({ pricing }: Props) {
       {pricing.map((p) => (
         <li key={p.id} className={styles.row}>
           <span className={styles.type}>{t(TICKET_KEY_MAP[p.ticket_type] ?? 'ticket-adult')}</span>
-          {p.season_label && <span className={styles.season}>{p.season_label}</span>}
           <span className={styles.price}>${p.price_usd} USD</span>
         </li>
       ))}

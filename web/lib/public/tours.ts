@@ -19,11 +19,13 @@ export async function listActiveTours(): Promise<TourWithMinPrice[]> {
   if (error) throw new Error(`Error al cargar tours: ${error.message}`);
   if (!tours) return [];
 
+  const today = new Date().toISOString().slice(0, 10);
   const { data: pricing } = await db
     .from('tour_pricing')
     .select('tour_id, price_usd, ticket_type, active')
     .eq('ticket_type', 'adult')
-    .eq('active', true);
+    .eq('active', true)
+    .or(`valid_from.is.null,and(valid_from.lte.${today},valid_until.gte.${today})`);
 
   const priceByTour = new Map<string, number>();
   for (const p of pricing ?? []) {
@@ -55,12 +57,14 @@ export async function getTourBySlug(slug: string): Promise<PublicTour | null> {
 
 export async function getTourPricing(tourId: string): Promise<PublicPricing[]> {
   const db = createSupabasePublicClient();
+  const today = new Date().toISOString().slice(0, 10);
 
   const { data } = await db
     .from('tour_pricing')
     .select('*')
     .eq('tour_id', tourId)
     .eq('active', true)
+    .or(`valid_from.is.null,and(valid_from.lte.${today},valid_until.gte.${today})`)
     .order('ticket_type');
 
   return data ?? [];
