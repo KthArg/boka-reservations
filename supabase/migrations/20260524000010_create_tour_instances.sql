@@ -28,7 +28,7 @@ CREATE INDEX tour_instances_available_idx
 -- Trigger updated_at
 CREATE TRIGGER set_tour_instances_updated_at
   BEFORE UPDATE ON public.tour_instances
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
 
 -- RLS
 ALTER TABLE public.tour_instances ENABLE ROW LEVEL SECURITY;
