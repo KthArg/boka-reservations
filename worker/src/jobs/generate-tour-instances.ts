@@ -63,13 +63,11 @@ export async function generateTourInstances(): Promise<void> {
       capacity_total: sch.capacity,
     }));
 
-    const { error, count } = await db
-      .from('tour_instances')
-      .upsert(rows, {
-        onConflict: 'schedule_id,starts_at',
-        ignoreDuplicates: true,
-        count: 'exact',
-      });
+    const { error, count } = await db.from('tour_instances').upsert(rows, {
+      onConflict: 'schedule_id,starts_at',
+      ignoreDuplicates: true,
+      count: 'exact',
+    });
 
     if (error) throw new Error(`Error upsert schedule ${sch.id}: ${error.message}`);
     totalInserted += count ?? 0;
