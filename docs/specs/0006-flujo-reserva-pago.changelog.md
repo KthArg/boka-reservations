@@ -3,6 +3,50 @@
 Spec: [0006-flujo-reserva-pago.md](./0006-flujo-reserva-pago.md)
 Rama: feat/0006-flujo-reserva-pago
 
+## 2026-05-27 — Implementación completa, lista para PR
+
+**Hecho**:
+
+- Migración SQL `20260527000012_create_bookings.sql`: tablas `bookings`, `payments`,
+  `processed_webhook_events` y función `confirm_booking` (SECURITY DEFINER, SELECT FOR UPDATE).
+- `web/types/database.ts` actualizado con todos los tipos nuevos.
+- `PaymentProvider` interface + adaptador OnvoPay (`createOnvopayAdapter`):
+  - `createPaymentSession`: POST a la API de OnvoPay con el bookingId en metadata.
+  - `verifyWebhook`: HMAC SHA-256 con `timingSafeEqual`.
+- `web/lib/booking/create.ts` — orquestador: hold → booking → payment session → payment record.
+  Rollback de hold si falla cualquier paso intermedio.
+- `web/lib/booking/checkout-action.ts` — server action que lee formData, llama `initCheckout`
+  y redirige a OnvoPay.
+- Página `/tours/[id]/checkout` — server component con resumen del tour/instancia.
+- `CheckoutForm` (client component) — selector de cantidades, total en tiempo real,
+  nombre/email, error display, submit deshabilitado si total = 0.
+- Página `/checkout/success` — muestra id corto, nombre del tour, fecha, cliente.
+- Página `/checkout/cancel` — libera hold activo del booking, ofrece reintentar o volver.
+- Webhook handler `POST /api/webhooks/onvopay` — verifica firma, idempotencia con
+  `processed_webhook_events` (ON CONFLICT = ya procesado → 200 sin reprocesar),
+  busca ticket counts en la DB para llamar `confirm_booking` RPC.
+- `AvailabilityCalendar` refactorizado: cada fila ahora incluye un link "Reservar" que
+  apunta a `/tours/[slug]/checkout?instance=[id]`.
+- i18n: namespace `checkout` completo en ES y EN.
+- Tests unitarios: `calculateTotalCents` (6 casos) y `verifyWebhook` (5 casos).
+- Typecheck: pasa sin errores en web y worker.
+
+**Por qué / decisiones**:
+
+- El webhook handler busca los ticket counts en la DB (no en el metadata de OnvoPay) para
+  no ampliar la superficie de metadata enviada a un proveedor externo, y porque los counts
+  están en `bookings` de todas formas.
+- La cancelación libera el hold directamente desde el servidor (server component de la
+  página cancel) sin un endpoint separado. Sencillo y adecuado para el MVP.
+- `AvailabilityCalendar` usa `detail-book-cta` (clave ya existente en i18n) en lugar de
+  agregar `detail-book`, para evitar claves duplicadas.
+- Branching: `feat/0006` fue creada desde `feat/0005` (no desde el branch base) porque
+  spec 0005 aún no fue mergeado, y 0006 depende de `tour_holds`.
+
+**Pendiente**:
+
+- Nada — feature lista para PR.
+
 ## 2026-05-27 — Inicio de implementación
 
 **Hecho**:
