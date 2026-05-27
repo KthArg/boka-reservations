@@ -194,6 +194,60 @@ export type Database = {
           },
         ];
       };
+      tour_instances: {
+        Row: {
+          id: string;
+          tour_id: string;
+          schedule_id: string;
+          starts_at: string;
+          ends_at: string;
+          capacity_total: number;
+          capacity_reserved: number;
+          status: 'available' | 'full' | 'cancelled';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tour_id: string;
+          schedule_id: string;
+          starts_at: string;
+          ends_at: string;
+          capacity_total: number;
+          capacity_reserved?: number;
+          status?: 'available' | 'full' | 'cancelled';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tour_id?: string;
+          schedule_id?: string;
+          starts_at?: string;
+          ends_at?: string;
+          capacity_total?: number;
+          capacity_reserved?: number;
+          status?: 'available' | 'full' | 'cancelled';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tour_instances_tour_id_fkey';
+            columns: ['tour_id'];
+            isOneToOne: false;
+            referencedRelation: 'tours';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tour_instances_schedule_id_fkey';
+            columns: ['schedule_id'];
+            isOneToOne: false;
+            referencedRelation: 'tour_schedules';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: Props) {
         <div className={styles.brand}>Boka Trails</div>
 
         <nav className={styles.nav}>
-          <Link href="/tours" className={styles.navLink}>
+          <Link href="/dashboard/tours" className={styles.navLink}>
             {tTours('nav-label')}
           </Link>
         </nav>
