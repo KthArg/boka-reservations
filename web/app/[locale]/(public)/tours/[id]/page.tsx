@@ -70,7 +70,7 @@ export default async function TourDetailPage({ params }: Props) {
         <aside className={styles.aside}>
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>{t('detail-availability')}</h2>
-            <AvailabilityCalendar instances={instances} />
+            <AvailabilityCalendar instances={instances} tourSlug={slug} />
           </section>
         </aside>
       </div>
