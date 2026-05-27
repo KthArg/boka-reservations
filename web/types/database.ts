@@ -248,9 +248,60 @@ export type Database = {
           },
         ];
       };
+      tour_holds: {
+        Row: {
+          id: string;
+          tour_instance_id: string;
+          session_token: string;
+          held_seats: number;
+          status: 'active' | 'released' | 'expired' | 'converted';
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tour_instance_id: string;
+          session_token: string;
+          held_seats: number;
+          status?: 'active' | 'released' | 'expired' | 'converted';
+          expires_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tour_instance_id?: string;
+          session_token?: string;
+          held_seats?: number;
+          status?: 'active' | 'released' | 'expired' | 'converted';
+          expires_at?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tour_holds_tour_instance_id_fkey';
+            columns: ['tour_instance_id'];
+            isOneToOne: false;
+            referencedRelation: 'tour_instances';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_hold_atomic: {
+        Args: { p_instance_id: string; p_seats: number; p_session: string };
+        Returns: {
+          id: string;
+          tour_instance_id: string;
+          session_token: string;
+          held_seats: number;
+          status: 'active' | 'released' | 'expired' | 'converted';
+          expires_at: string;
+          created_at: string;
+        };
+      };
+    };
     Enums: {
       user_role: 'admin' | 'staff' | 'guide';
       tour_status: 'active' | 'archived';
