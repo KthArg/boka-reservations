@@ -95,3 +95,8 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.widgetContainer {
+  min-height: 400px;
+  width: 100%;
+}

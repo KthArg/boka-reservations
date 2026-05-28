@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useActionState, useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import type { PublicPricing } from '@/lib/public/tours';
 import { checkoutAction } from '@/lib/booking/checkout-action';
 import { calculateTotalCents } from '@/lib/booking/create';
@@ -15,11 +16,13 @@ type Props = {
 };
 
 const TICKET_TYPES = ['adult', 'child', 'student'] as const;
+const ONVO_SDK_URL = 'https://onvo-pay-widget.vercel.app/sdk.js';
 
 export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props) {
   const t = useTranslations('checkout');
+  const locale = useLocale();
+  const router = useRouter();
   const [state, action, pending] = useActionState(checkoutAction, null);
-
   const [quantities, setQuantities] = useState({ adult: 1, child: 0, student: 0 });
 
   const priceMap = new Map(pricing.map((p) => [p.ticket_type, p.price_usd]));
@@ -28,6 +31,40 @@ export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props)
     pricing.map((p) => ({ ticket_type: p.ticket_type, price_usd: p.price_usd })),
   );
   const totalDisplay = (totalCents / 100).toFixed(2);
+
+  const paymentState = state && 'paymentIntentId' in state ? state : null;
+
+  useEffect(() => {
+    if (!paymentState) return;
+
+    const script = document.createElement('script');
+    script.src = ONVO_SDK_URL;
+    script.async = true;
+    script.onload = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).onvo
+        .pay({
+          publicKey: process.env.NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY,
+          paymentIntentId: paymentState.paymentIntentId,
+          paymentType: 'one_time',
+          onSuccess: () => {
+            router.push(`/${locale}/checkout/success?booking=${paymentState.bookingId}`);
+          },
+          onError: () => {
+            router.push(`/${locale}/checkout/cancel?booking=${paymentState.bookingId}`);
+          },
+        })
+        .render('#onvo-payment-container');
+    };
+    document.head.appendChild(script);
+    return () => {
+      if (document.head.contains(script)) document.head.removeChild(script);
+    };
+  }, [paymentState, locale, router]);
+
+  if (paymentState) {
+    return <div id="onvo-payment-container" className={styles.widgetContainer} />;
+  }
 
   return (
     <form action={action} className={styles.form}>
@@ -86,7 +123,7 @@ export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props)
         </div>
       </section>
 
-      {state?.error && (
+      {state && 'error' in state && (
         <p className={styles.error} role="alert">
           {t(state.error as Parameters<typeof t>[0])}
         </p>

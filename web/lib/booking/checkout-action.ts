@@ -1,11 +1,12 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { initCheckout, calculateTotalCents } from '@/lib/booking/create';
 import type { PricingRow } from '@/lib/booking/create';
-import { env } from '@/lib/env';
 
-export type CheckoutFormState = { error: string } | null;
+export type CheckoutFormState =
+  | { error: string }
+  | { paymentIntentId: string; bookingId: string }
+  | null;
 
 export async function checkoutAction(
   _prev: CheckoutFormState,
@@ -33,7 +34,6 @@ export async function checkoutAction(
   const totalCents = calculateTotalCents({ adult, child, student }, pricing);
   if (totalCents === 0) return { error: 'error-generic' };
 
-  let paymentUrl: string;
   try {
     const result = await initCheckout({
       instanceId,
@@ -43,14 +43,12 @@ export async function checkoutAction(
       quantities: { adult, child, student },
       pricing,
       tourName,
-      appUrl: env.APP_URL,
     });
-    paymentUrl = result.paymentUrl;
+    return { paymentIntentId: result.externalPaymentId, bookingId: result.bookingId };
   } catch (err) {
     const msg = err instanceof Error ? err.message : '';
+    console.error('[checkout-action] error:', msg, err);
     if (msg === 'HOLD_NO_CAPACITY') return { error: 'no-availability' };
     return { error: 'error-generic' };
   }
-
-  redirect(paymentUrl);
 }

@@ -21,11 +21,10 @@ export type InitCheckoutParams = {
   quantities: TicketQuantities;
   pricing: PricingRow[];
   tourName: string;
-  appUrl: string;
 };
 
 export type InitCheckoutResult = {
-  paymentUrl: string;
+  externalPaymentId: string;
   bookingId: string;
 };
 
@@ -40,16 +39,8 @@ export function calculateTotalCents(quantities: TicketQuantities, pricing: Prici
 }
 
 export async function initCheckout(params: InitCheckoutParams): Promise<InitCheckoutResult> {
-  const {
-    instanceId,
-    sessionToken,
-    customerName,
-    customerEmail,
-    quantities,
-    pricing,
-    tourName,
-    appUrl,
-  } = params;
+  const { instanceId, sessionToken, customerName, customerEmail, quantities, pricing, tourName } =
+    params;
 
   const totalSeats = quantities.adult + quantities.child + quantities.student;
   if (totalSeats === 0) throw new Error('CHECKOUT_NO_TICKETS');
@@ -79,14 +70,11 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
 
     if (bookingErr || !booking) throw new Error(bookingErr?.message ?? 'Error al crear reserva');
 
-    const payments = getPaymentProvider();
-    const session = await payments.createPaymentSession({
+    const provider = getPaymentProvider();
+    const session = await provider.createPaymentSession({
       amountCents: totalAmountCents,
       currency: 'USD',
       description: tourName,
-      metadata: { bookingId: booking.id },
-      successUrl: `${appUrl}/checkout/success?booking=${booking.id}`,
-      cancelUrl: `${appUrl}/checkout/cancel?booking=${booking.id}`,
     });
 
     await db.from('payments').insert({
@@ -96,7 +84,7 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
       currency: 'USD',
     });
 
-    return { paymentUrl: session.paymentUrl, bookingId: booking.id };
+    return { externalPaymentId: session.externalPaymentId, bookingId: booking.id };
   } catch (err) {
     await releaseHold(holdId).catch(() => undefined);
     throw err;

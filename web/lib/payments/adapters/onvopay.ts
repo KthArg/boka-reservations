@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from 'crypto';
 import type {
   CreatePaymentParams,
   PaymentProvider,
@@ -10,25 +9,22 @@ const ONVOPAY_API_BASE = 'https://api.onvopay.com/v1';
 
 type OnvopayCreateResponse = {
   id: string;
-  payment_url: string;
 };
 
 type OnvopayWebhookBody = {
-  id: string;
   type: string;
   data: {
     id: string;
     status: string;
     amount: number;
     currency: string;
-    metadata: { bookingId: string };
   };
 };
 
 export function createOnvopayAdapter(secretKey: string, webhookSecret: string): PaymentProvider {
   return {
     async createPaymentSession(params: CreatePaymentParams): Promise<PaymentSession> {
-      const res = await fetch(`${ONVOPAY_API_BASE}/payments`, {
+      const res = await fetch(`${ONVOPAY_API_BASE}/payment-intents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,9 +34,6 @@ export function createOnvopayAdapter(secretKey: string, webhookSecret: string): 
           amount: params.amountCents,
           currency: params.currency,
           description: params.description,
-          metadata: params.metadata,
-          success_url: params.successUrl,
-          cancel_url: params.cancelUrl,
         }),
       });
 
@@ -50,26 +43,21 @@ export function createOnvopayAdapter(secretKey: string, webhookSecret: string): 
       }
 
       const data = (await res.json()) as OnvopayCreateResponse;
-      return { paymentUrl: data.payment_url, externalPaymentId: data.id };
+      return { externalPaymentId: data.id };
     },
 
     verifyWebhook(rawBody: string, signature: string): WebhookPayload | null {
-      const expected = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
-      const actual = Buffer.from(signature, 'hex');
-      const expectedBuf = Buffer.from(expected, 'hex');
-
-      if (actual.length !== expectedBuf.length) return null;
-      if (!timingSafeEqual(actual, expectedBuf)) return null;
+      // OnvoPay envía el webhook secret directamente en X-Webhook-Secret
+      if (signature !== webhookSecret) return null;
 
       const body = JSON.parse(rawBody) as OnvopayWebhookBody;
       return {
-        eventId: body.id,
+        eventId: body.data.id,
         eventType: body.type,
         paymentId: body.data.id,
         status: body.data.status === 'succeeded' ? 'succeeded' : 'failed',
         amountCents: body.data.amount,
         currency: body.data.currency,
-        metadata: body.data.metadata,
       };
     },
   };

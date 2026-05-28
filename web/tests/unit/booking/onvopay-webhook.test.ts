@@ -1,23 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { createHmac } from 'crypto';
 import { createOnvopayAdapter } from '@/lib/payments/adapters/onvopay';
 
-const WEBHOOK_SECRET = 'test-secret-key-32-chars-1234567';
-
-function makeSignature(body: string): string {
-  return createHmac('sha256', WEBHOOK_SECRET).update(body).digest('hex');
-}
+const WEBHOOK_SECRET = 'whsec_test_abc123';
 
 function makePaymentEvent(overrides: object = {}): object {
   return {
-    id: 'evt_abc123',
-    type: 'payment.succeeded',
+    type: 'payment-intent.succeeded',
     data: {
       id: 'pay_xyz789',
       status: 'succeeded',
       amount: 5000,
       currency: 'USD',
-      metadata: { bookingId: 'booking-uuid-1234' },
       ...overrides,
     },
   };
@@ -26,44 +19,39 @@ function makePaymentEvent(overrides: object = {}): object {
 describe('verifyWebhook (OnvoPay)', () => {
   const adapter = createOnvopayAdapter('sk_test_unused', WEBHOOK_SECRET);
 
-  it('retorna payload válido con firma correcta', () => {
+  it('retorna payload válido con secreto correcto', () => {
     const body = JSON.stringify(makePaymentEvent());
-    const sig = makeSignature(body);
-    const result = adapter.verifyWebhook(body, sig);
+    const result = adapter.verifyWebhook(body, WEBHOOK_SECRET);
 
     expect(result).not.toBeNull();
-    expect(result?.eventId).toBe('evt_abc123');
-    expect(result?.eventType).toBe('payment.succeeded');
+    expect(result?.eventId).toBe('pay_xyz789');
+    expect(result?.eventType).toBe('payment-intent.succeeded');
     expect(result?.paymentId).toBe('pay_xyz789');
     expect(result?.amountCents).toBe(5000);
-    expect(result?.metadata.bookingId).toBe('booking-uuid-1234');
     expect(result?.status).toBe('succeeded');
   });
 
-  it('retorna null con firma incorrecta', () => {
+  it('retorna null con secreto incorrecto', () => {
     const body = JSON.stringify(makePaymentEvent());
-    const result = adapter.verifyWebhook(body, 'deadbeef');
+    const result = adapter.verifyWebhook(body, 'wrong-secret');
     expect(result).toBeNull();
   });
 
-  it('retorna null cuando la firma está vacía', () => {
+  it('retorna null cuando el secreto está vacío', () => {
     const body = JSON.stringify(makePaymentEvent());
     const result = adapter.verifyWebhook(body, '');
     expect(result).toBeNull();
   });
 
-  it('retorna null cuando el body fue alterado después de firmar', () => {
-    const body = JSON.stringify(makePaymentEvent());
-    const sig = makeSignature(body);
-    const tampered = body + ' ';
-    const result = adapter.verifyWebhook(tampered, sig);
-    expect(result).toBeNull();
-  });
-
   it('mapea status failed correctamente', () => {
     const body = JSON.stringify(makePaymentEvent({ status: 'failed' }));
-    const sig = makeSignature(body);
-    const result = adapter.verifyWebhook(body, sig);
+    const result = adapter.verifyWebhook(body, WEBHOOK_SECRET);
     expect(result?.status).toBe('failed');
+  });
+
+  it('retorna null con secreto parcialmente correcto', () => {
+    const body = JSON.stringify(makePaymentEvent());
+    const result = adapter.verifyWebhook(body, WEBHOOK_SECRET.slice(0, -1));
+    expect(result).toBeNull();
   });
 });

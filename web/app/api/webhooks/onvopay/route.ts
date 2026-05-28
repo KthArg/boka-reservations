@@ -4,7 +4,7 @@ import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const rawBody = await req.text();
-  const signature = req.headers.get('x-onvopay-signature') ?? '';
+  const signature = req.headers.get('x-webhook-secret') ?? '';
 
   const provider = getPaymentProvider();
   const payload = provider.verifyWebhook(rawBody, signature);
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 400 });
   }
 
-  if (payload.eventType !== 'payment.succeeded') {
+  if (payload.eventType !== 'payment-intent.succeeded') {
     return NextResponse.json({ received: true });
   }
 
@@ -23,16 +23,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .insert({ id: payload.eventId, processed_at: new Date().toISOString() });
 
   if (conflictError) {
-    // Already processed — idempotent 200
     return NextResponse.json({ received: true });
   }
 
-  const bookingId = payload.metadata.bookingId;
+  const { data: payment } = await db
+    .from('payments')
+    .select('booking_id')
+    .eq('external_payment_id', payload.paymentId)
+    .single();
+
+  if (!payment) {
+    console.error('webhook: payment not found for intent', payload.paymentId);
+    return NextResponse.json({ error: 'payment_not_found' }, { status: 404 });
+  }
 
   const { data: booking } = await db
     .from('bookings')
     .select('tickets_adult, tickets_child, tickets_student')
-    .eq('id', bookingId)
+    .eq('id', payment.booking_id)
     .single();
 
   const totalSeats = booking
@@ -40,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     : 0;
 
   const { error: rpcError } = await db.rpc('confirm_booking', {
-    p_booking_id: bookingId,
+    p_booking_id: payment.booking_id,
     p_external_payment_id: payload.paymentId,
     p_total_seats: totalSeats,
   });

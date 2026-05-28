@@ -6,6 +6,7 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   ONVOPAY_SECRET_KEY: z.string().min(1),
   ONVOPAY_WEBHOOK_SECRET: z.string().min(1),
+  NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY: z.string().min(1),
   RESEND_API_KEY: z.string().min(1),
   APP_URL: z.string().url(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

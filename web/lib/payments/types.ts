@@ -2,13 +2,9 @@ export type CreatePaymentParams = {
   amountCents: number;
   currency: string;
   description: string;
-  metadata: { bookingId: string };
-  successUrl: string;
-  cancelUrl: string;
 };
 
 export type PaymentSession = {
-  paymentUrl: string;
   externalPaymentId: string;
 };
 
@@ -19,7 +15,6 @@ export type WebhookPayload = {
   status: 'succeeded' | 'failed';
   amountCents: number;
   currency: string;
-  metadata: { bookingId: string };
 };
 
 export interface PaymentProvider {
