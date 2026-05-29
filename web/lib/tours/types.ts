@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { TourDifficulty, TicketType } from '@shared/constants/enums';
+import { TourDifficulty, TicketType, DayOfWeek } from '@shared/constants/enums';
+
+const TOUR_NAME_MAX_LEN = 120;
 import type { Tables } from '@/types/database';
 
 export const PricingRowSchema = z.object({
@@ -14,7 +16,7 @@ export const PricingRowSchema = z.object({
 
 export const ScheduleRowSchema = z.object({
   id: z.string().uuid().optional(),
-  day_of_week: z.coerce.number().int().min(0).max(6),
+  day_of_week: z.coerce.number().int().min(DayOfWeek.Sunday).max(DayOfWeek.Saturday),
   start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   capacity: z.coerce.number().int().positive(),
   valid_from: z.string().optional(),
@@ -30,8 +32,8 @@ export const TourFormSchema = z
       .string()
       .min(1)
       .regex(/^[a-z0-9-]+$/, 'Solo letras minúsculas, números y guiones'),
-    name_es: z.string().min(1).max(120),
-    name_en: z.string().min(1).max(120),
+    name_es: z.string().min(1).max(TOUR_NAME_MAX_LEN),
+    name_en: z.string().min(1).max(TOUR_NAME_MAX_LEN),
     description_es: z.string().min(1),
     description_en: z.string().min(1),
     difficulty: z.nativeEnum(TourDifficulty),

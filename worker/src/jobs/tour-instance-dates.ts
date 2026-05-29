@@ -1,6 +1,7 @@
 const CR_UTC_OFFSET = '-06:00';
 const MS_PER_DAY = 86_400_000;
 const MS_PER_MINUTE = 60_000;
+const HHMM_LEN = 5; // longitud de "HH:MM"
 
 export type ScheduleInput = {
   id: string;
@@ -26,7 +27,7 @@ export function buildInstanceDates(
     if (getDayOfWeekInCR(candidate) !== schedule.day_of_week) continue;
 
     const dateStr = formatDateInCR(candidate);
-    const timeHHMM = schedule.start_time.slice(0, 5);
+    const timeHHMM = schedule.start_time.slice(0, HHMM_LEN);
     const starts_at = `${dateStr}T${timeHHMM}:00${CR_UTC_OFFSET}`;
     const ends_at = new Date(
       new Date(starts_at).getTime() + schedule.duration_minutes * MS_PER_MINUTE,

@@ -12,13 +12,12 @@ type Props = {
   instanceId: string;
   tourName: string;
   pricing: PublicPricing[];
-  tourSlug: string;
 };
 
 const TICKET_TYPES = ['adult', 'child', 'student'] as const;
 const ONVO_SDK_URL = 'https://sdk.onvopay.com/sdk.js';
 
-export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props) {
+export function CheckoutForm({ instanceId, tourName, pricing }: Props) {
   const t = useTranslations('checkout');
   const locale = useLocale();
   const router = useRouter();

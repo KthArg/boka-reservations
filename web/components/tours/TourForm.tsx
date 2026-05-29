@@ -3,7 +3,6 @@
 import { useActionState, useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { createTour, updateTour } from '@/lib/tours/actions';
-import { slugify } from '@/lib/tours/validation';
 import { TicketType } from '@shared/constants/enums';
 import type {
   ActionResult,

@@ -23,6 +23,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .insert({ id: payload.eventId, processed_at: new Date().toISOString() });
 
   if (conflictError) {
+    // 23505 = unique_violation: evento ya procesado, responder 200 idempotente
+    if (conflictError.code !== '23505') {
+      console.error('webhook: idempotency insert failed:', conflictError.message);
+      return NextResponse.json({ error: 'internal' }, { status: 500 });
+    }
     return NextResponse.json({ received: true });
   }
 
@@ -33,8 +38,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .single();
 
   if (!payment) {
+    // El registro de idempotencia ya fue insertado. Devolver 200 para que
+    // OnvoPay no reintente (los reintentos quedarían bloqueados de todas formas).
     console.error('webhook: payment not found for intent', payload.paymentId);
-    return NextResponse.json({ error: 'payment_not_found' }, { status: 404 });
+    return NextResponse.json({ received: true });
   }
 
   const { data: booking } = await db

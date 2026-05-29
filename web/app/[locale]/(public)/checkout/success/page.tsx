@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import styles from './success.module.css';
 
+const BOOKING_SHORT_ID_LEN = 8;
+
 type Props = { searchParams: Promise<{ booking?: string }> };
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
@@ -60,7 +62,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         <div className={styles.card}>
           <p>
             <strong>{t('success-booking')}</strong>
-            {booking.id.slice(0, 8).toUpperCase()}
+            {booking.id.slice(0, BOOKING_SHORT_ID_LEN).toUpperCase()}
           </p>
           {tourName && (
             <p>
