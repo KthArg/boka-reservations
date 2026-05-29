@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node';
 import { env } from './env.js';
 import { generateTourInstances } from './jobs/generate-tour-instances.js';
 import { releaseExpiredHolds } from './jobs/release-expired-holds.js';
+import { sendNotifications } from './jobs/send-notifications.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -37,6 +38,15 @@ async function runReleaseExpiredHolds() {
   }
 }
 
+async function runSendNotifications() {
+  try {
+    await sendNotifications();
+  } catch (err) {
+    console.error('[send-notifications] error:', err);
+    Sentry.captureException(err);
+  }
+}
+
 logAlive();
 setInterval(logAlive, ALIVE_INTERVAL_MS);
 
@@ -50,4 +60,10 @@ setInterval(() => {
 void runReleaseExpiredHolds();
 setInterval(() => {
   void runReleaseExpiredHolds();
+}, ONE_MINUTE_MS);
+
+// send-notifications: al inicio y luego cada minuto
+void runSendNotifications();
+setInterval(() => {
+  void runSendNotifications();
 }, ONE_MINUTE_MS);
