@@ -16,7 +16,7 @@ type Props = {
 };
 
 const TICKET_TYPES = ['adult', 'child', 'student'] as const;
-const ONVO_SDK_URL = 'https://onvo-pay-widget.vercel.app/sdk.js';
+const ONVO_SDK_URL = 'https://sdk.onvopay.com/sdk.js';
 
 export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props) {
   const t = useTranslations('checkout');
