@@ -37,12 +37,9 @@ export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props)
   useEffect(() => {
     if (!paymentState) return;
 
-    const script = document.createElement('script');
-    script.src = ONVO_SDK_URL;
-    script.async = true;
-    script.onload = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).onvo
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderWidget = (onvo: any) => {
+      onvo
         .pay({
           publicKey: process.env.NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY,
           paymentIntentId: paymentState.paymentIntentId,
@@ -56,10 +53,20 @@ export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props)
         })
         .render('#onvo-payment-container');
     };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).onvo) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderWidget((window as any).onvo);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = ONVO_SDK_URL;
+    script.async = true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    script.onload = () => renderWidget((window as any).onvo);
     document.head.appendChild(script);
-    return () => {
-      if (document.head.contains(script)) document.head.removeChild(script);
-    };
   }, [paymentState, locale, router]);
 
   if (paymentState) {
