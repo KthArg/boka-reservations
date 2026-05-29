@@ -286,6 +286,112 @@ export type Database = {
           },
         ];
       };
+      bookings: {
+        Row: {
+          id: string;
+          tour_instance_id: string;
+          hold_id: string | null;
+          customer_name: string;
+          customer_email: string;
+          tickets_adult: number;
+          tickets_child: number;
+          tickets_student: number;
+          total_amount_cents: number;
+          currency: string;
+          status: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tour_instance_id: string;
+          hold_id?: string | null;
+          customer_name: string;
+          customer_email: string;
+          tickets_adult?: number;
+          tickets_child?: number;
+          tickets_student?: number;
+          total_amount_cents: number;
+          currency?: string;
+          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tour_instance_id?: string;
+          hold_id?: string | null;
+          customer_name?: string;
+          customer_email?: string;
+          tickets_adult?: number;
+          tickets_child?: number;
+          tickets_student?: number;
+          total_amount_cents?: number;
+          currency?: string;
+          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'bookings_tour_instance_id_fkey';
+            columns: ['tour_instance_id'];
+            isOneToOne: false;
+            referencedRelation: 'tour_instances';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payments: {
+        Row: {
+          id: string;
+          booking_id: string;
+          external_provider: string;
+          external_payment_id: string;
+          amount_cents: number;
+          currency: string;
+          status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          external_provider?: string;
+          external_payment_id: string;
+          amount_cents: number;
+          currency?: string;
+          status?: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          booking_id?: string;
+          external_provider?: string;
+          external_payment_id?: string;
+          amount_cents?: number;
+          currency?: string;
+          status?: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payments_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      processed_webhook_events: {
+        Row: { id: string; processed_at: string };
+        Insert: { id: string; processed_at?: string };
+        Update: { id?: string; processed_at?: string };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -300,6 +406,14 @@ export type Database = {
           expires_at: string;
           created_at: string;
         };
+      };
+      confirm_booking: {
+        Args: {
+          p_booking_id: string;
+          p_external_payment_id: string;
+          p_total_seats: number;
+        };
+        Returns: void;
       };
     };
     Enums: {

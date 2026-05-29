@@ -35,6 +35,26 @@
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--color-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.dateLabel {
+  flex: 1;
+}
+
+.bookLink {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary, #1d9e75);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bookLink:hover {
+  text-decoration: underline;
 }
 
 .empty {
