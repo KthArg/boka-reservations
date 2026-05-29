@@ -1,22 +1,25 @@
+import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import type { PublicInstance } from '@/lib/public/tours';
 import styles from './AvailabilityCalendar.module.css';
 
-type Props = { instances: PublicInstance[] };
+type Props = { instances: PublicInstance[]; tourSlug: string };
 
-type MonthGroup = { label: string; dates: string[] };
+type InstanceRow = { id: string; label: string };
+type MonthGroup = { label: string; rows: InstanceRow[] };
 
 function groupByMonth(instances: PublicInstance[], locale: string): MonthGroup[] {
-  const groups = new Map<string, string[]>();
+  const groups = new Map<string, InstanceRow[]>();
 
   for (const inst of instances) {
     const date = new Date(inst.starts_at);
-    const monthKey = date.toLocaleDateString(locale === 'es' ? 'es-CR' : 'en-US', {
+    const lcTag = locale === 'es' ? 'es-CR' : 'en-US';
+    const monthKey = date.toLocaleDateString(lcTag, {
       year: 'numeric',
       month: 'long',
       timeZone: 'America/Costa_Rica',
     });
-    const dateLabel = date.toLocaleDateString(locale === 'es' ? 'es-CR' : 'en-US', {
+    const dateLabel = date.toLocaleDateString(lcTag, {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -26,13 +29,13 @@ function groupByMonth(instances: PublicInstance[], locale: string): MonthGroup[]
     });
 
     if (!groups.has(monthKey)) groups.set(monthKey, []);
-    groups.get(monthKey)!.push(dateLabel);
+    groups.get(monthKey)!.push({ id: inst.id, label: dateLabel });
   }
 
-  return Array.from(groups.entries()).map(([label, dates]) => ({ label, dates }));
+  return Array.from(groups.entries()).map(([label, rows]) => ({ label, rows }));
 }
 
-export function AvailabilityCalendar({ instances }: Props) {
+export function AvailabilityCalendar({ instances, tourSlug }: Props) {
   const locale = useLocale();
   const t = useTranslations('public');
 
@@ -48,9 +51,15 @@ export function AvailabilityCalendar({ instances }: Props) {
         <section key={group.label} className={styles.month}>
           <h3 className={styles.monthLabel}>{group.label}</h3>
           <ul className={styles.dateList}>
-            {group.dates.map((d) => (
-              <li key={d} className={styles.dateItem}>
-                {d}
+            {group.rows.map((row) => (
+              <li key={row.id} className={styles.dateItem}>
+                <span className={styles.dateLabel}>{row.label}</span>
+                <Link
+                  href={`/${locale}/tours/${tourSlug}/checkout?instance=${row.id}`}
+                  className={styles.bookLink}
+                >
+                  {t('detail-book-cta')}
+                </Link>
               </li>
             ))}
           </ul>
