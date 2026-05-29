@@ -6,6 +6,7 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/integration/**/*.test.ts'],
     exclude: ['node_modules'],
+    setupFiles: ['./tests/integration.setup.ts'],
     env: {
       TEST_DB: 'true',
     },
