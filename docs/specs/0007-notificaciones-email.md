@@ -3,7 +3,7 @@
 - **Estado**: approved
 - **Autor**: Kenneth
 - **Creado**: 2026-05-29
-- **Última actualización**: 2026-05-29 (rev. 3: aprobado; Resend deferido a post-implementación)
+- **Última actualización**: 2026-05-29 (rev. 4: templates/adapters relocados a worker/, no React Email)
 - **Rama**: feat/0007-notificaciones-email (pendiente)
 - **PR**: pendiente
 
@@ -62,8 +62,10 @@ Criterios de aceptación:
 
 Se define una interfaz `EmailAdapter` con el método `send({ to, subject, html, text, idempotencyKey }): Promise<{ providerMessageId: string }>` y dos implementaciones:
 
-- `web/lib/notifications/adapters/resend.ts` — usa la API HTTP de Resend (`POST https://api.resend.com/emails`), aprovecha la cabecera nativa `Idempotency-Key`. Se usa en staging y producción.
-- `web/lib/notifications/adapters/mailpit.ts` — usa nodemailer contra el SMTP de Mailpit que ya levanta `supabase start` en `localhost:1025` (puerto SMTP estándar de Mailpit; el `:54324` es la UI). Se usa en dev y en tests de integración del worker. La idempotencia no se traslada al transporte SMTP, pero el `UNIQUE (booking_id, kind)` en la tabla y el lock `SELECT FOR UPDATE SKIP LOCKED` ya impiden el doble despacho desde el lado nuestro.
+- `worker/src/notifications/adapters/resend.ts` — usa la API HTTP de Resend (`POST https://api.resend.com/emails`) vía `fetch` nativo de Node, aprovecha la cabecera nativa `Idempotency-Key`. Se usa en staging y producción.
+- `worker/src/notifications/adapters/mailpit.ts` — usa nodemailer contra el SMTP de Mailpit que ya levanta `supabase start` en `localhost:1025` (puerto SMTP estándar de Mailpit; el `:54324` es la UI). Se usa en dev y en tests de integración del worker. La idempotencia no se traslada al transporte SMTP, pero el `UNIQUE (booking_id, kind)` en la tabla y el lock `SELECT FOR UPDATE SKIP LOCKED` ya impiden el doble despacho desde el lado nuestro.
+
+**Desvío del spec original (rev. 4)**: los adapters viven en `worker/`, no en `web/lib/notifications/adapters/` como decía rev. 1–3. Razón: el único consumidor de los adapters es el job del worker; ponerlos en `web/` obliga a cross-imports entre paquetes que el monorepo no tiene configurados, y agrega complejidad sin beneficio. Si en el futuro el web necesita enviar emails sincrónicamente (p. ej., un endpoint admin de "reenviar"), se promueven a `shared/`.
 
 El adaptador concreto se elige por `env.EMAIL_PROVIDER` (`'resend' | 'mailpit'`). Se aplica el patrón de adapter ya usado en `lib/payments/adapters/`.
 
@@ -107,16 +109,16 @@ Cuando una reserva pasa a `cancelled` o `refunded`, el job de despacho lo detect
 
 Como segunda red de seguridad, el job ignora notificaciones `pending` cuyo booking ya no existe o cuyo `tour_instance.starts_at` ya pasó por más de 1h (las marca `cancelled` con `cancelled_reason='stale'`).
 
-### Templates de email (React Email)
+### Templates de email
 
-Se usa el paquete `@react-email/components` para definir los templates como componentes React, que se renderizan a HTML+texto plano en el adaptador. Ubicación: `web/emails/`.
+Templates como funciones puras TypeScript en `worker/src/notifications/templates/`. Cada template exporta una función `(props, locale) => { subject, html, text }`.
 
 Templates en este spec:
 
-- `BookingConfirmation.tsx` — confirmación inmediata.
-- `BookingReminder24h.tsx` — recordatorio 24h.
+- `booking-confirmation.ts` — confirmación inmediata.
+- `reminder-24h.ts` — recordatorio 24h.
 
-Ambos en ES y EN — la decisión de idioma se toma según `bookings.locale` (campo nuevo, ver §6). Textos via diccionario `messages/{es,en}/emails.json` siguiendo el patrón existente de `next-intl`.
+**Desvío del spec original (rev. 4)**: no se usa React Email. Razón: el worker es un proceso Node puro sin React; agregar React + `@react-email/render` para dos templates planos es overhead. El usuario confirmó (2026-05-29) que la estética de la app entera está pendiente de mejora; cuando ese trabajo se aborde, los templates pueden migrar a React Email o a un sistema más rico. Los strings de los templates se definen inline en cada archivo de template, en ES y EN, sin pasar por `next-intl` (el worker no carga next-intl).
 
 ### Diagrama del flujo
 
@@ -218,20 +220,18 @@ Sin cambios a la máquina de estados de `bookings`.
 - **Migración nueva** (`20260530000013_create_notifications.sql`) — tabla notifications + alter bookings + update a `confirm_booking`.
 - **Web (`/checkout`)**: capturar `locale` actual (`next-intl`) y persistirlo en el INSERT del booking. Cambio chico en la action que crea el booking.
 - **Worker**: nuevo job `send-notifications.ts`, registrado en `worker/src/index.ts` con polling de 60s siguiendo el patrón de `release-expired-holds`.
-- **Templates de email** nuevos en `web/emails/`. Dependencia nueva: `@react-email/components`, `@react-email/render`, `resend`.
+- **Templates de email** nuevos en `worker/src/notifications/templates/` (TypeScript puro, sin React Email — ver §5).
+- **Dependencias nuevas** (en `worker/`): `nodemailer` + `@types/nodemailer`. Resend se llama vía `fetch` nativo, sin SDK.
 - **i18n**: nuevos diccionarios `messages/es/emails.json` y `messages/en/emails.json` con strings de los templates.
 - **Variables de entorno nuevas** (a documentar en `.env.example`): `EMAIL_PROVIDER`, `RESEND_API_KEY` (staging/prod), `SMTP_HOST`/`SMTP_PORT` (dev/CI), `EMAIL_FROM`. Viven en el worker (que es quien envía). El web también las necesita si en algún momento se hacen previews server-side, pero por ahora solo el worker.
 - **Sin cambios** en panel admin, reportes, ni políticas de cancelación/refund.
 
 ## 10. Plan de tests
 
-**Unit** (web):
-
-- Renderizado de `BookingConfirmation` y `BookingReminder24h`: dado un payload, el HTML resultante contiene los campos esperados (nombre tour, fecha, punto de encuentro, link). Casos para ES y EN.
-- Cálculo de `nextScheduledFor` para backoff: dado `attempts ∈ {0,1,2}`, devuelve `+1min`, `+5min`, `+30min`.
-
 **Unit** (worker):
 
+- Renderizado de `booking-confirmation` y `reminder-24h`: dado un payload, el HTML/texto resultante contiene los campos esperados (nombre tour, fecha, punto de encuentro, link). Casos para ES y EN.
+- Cálculo de `nextScheduledFor` para backoff: dado `attempts ∈ {0,1,2}`, devuelve `+1min`, `+5min`, `+30min`.
 - Lógica del job para decidir send / cancel / retry según el estado del booking y la respuesta del adaptador (con MSW mockeando Resend HTTP).
 
 **Integration** (web):
