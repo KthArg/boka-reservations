@@ -207,11 +207,8 @@ describe('RLS — anon no puede escribir', () => {
 });
 
 describe('RLS — anon no puede leer', () => {
-  it('anon no puede leer tours', async () => {
-    const { error } = await anon.from('tours').select('slug');
-    expect(error).not.toBeNull();
-  });
-
+  // Nota: anon SÍ puede leer tours desde spec 0004 (portal público).
+  // Se mantiene el test de usuarios que sí debe estar bloqueado.
   it('anon no puede leer usuarios', async () => {
     const { error } = await anon.from('users').select('id');
     expect(error).not.toBeNull();
