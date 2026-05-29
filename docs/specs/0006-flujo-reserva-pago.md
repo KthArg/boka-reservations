@@ -1,11 +1,11 @@
 # 0006 — Flujo de reserva con pago (OnvoPay)
 
-- **Estado**: approved
+- **Estado**: implemented
 - **Autor**: KthArg
 - **Creado**: 2026-05-27
-- **Última actualización**: 2026-05-27
+- **Última actualización**: 2026-05-29
 - **Rama**: feat/0006-flujo-reserva-pago
-- **PR**: —
+- **PR**: #9
 
 ## 1. Contexto y motivación
 

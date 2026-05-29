@@ -3,6 +3,24 @@
 Spec: [0006-flujo-reserva-pago.md](./0006-flujo-reserva-pago.md)
 Rama: feat/0006-flujo-reserva-pago
 
+## 2026-05-29 — Mergeado a feat/0005, PR #9 cerrado
+
+**Hecho**:
+
+- Corregida URL del SDK de OnvoPay: `onvo-pay-widget.vercel.app/sdk.js` ya no existe; la URL correcta según docs.onvopay.com es `sdk.onvopay.com/sdk.js`.
+- Corregido error "Request listener already exists for zoid_allow_delegate_onvo_payments_widget": el `useEffect` ahora reutiliza `window.onvo` si ya existe en lugar de recargar el script.
+- Validado end-to-end con ngrok: reserva creada, pago completado con tarjeta de prueba `4242...`, webhook recibido, `bookings.status = 'confirmed'` en DB.
+- PR #9 mergeado a `feat/0005-motor-disponibilidad-holds`.
+
+**Por qué / decisiones**:
+
+- El SDK de OnvoPay registra listeners globales (`zoid`) que persisten aunque el script se remueva del DOM. Recargar el script causa colisión de listeners. La solución es verificar `window.onvo` antes de insertar el script.
+- Los errores de consola (`h.online-metrix.net`, Feature Policy) son no bloqueantes: ThreatMetrix falla en localhost (sin dominio real), OnvoPay lo ignora explícitamente. Desaparecen en producción.
+
+**Pendiente**:
+
+- Nada — feature implementada y mergeada. ✓
+
 ## 2026-05-27 — Implementación completa, lista para PR
 
 **Hecho**:
