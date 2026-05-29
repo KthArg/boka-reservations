@@ -1,11 +1,11 @@
 # 0005 — Motor de disponibilidad y holds temporales
 
-- **Estado**: approved
+- **Estado**: implemented
 - **Autor**: KthArg
 - **Creado**: 2026-05-26
-- **Última actualización**: 2026-05-26
+- **Última actualización**: 2026-05-29
 - **Rama**: feat/0005-motor-disponibilidad-holds
-- **PR**: —
+- **PR**: #8
 
 ## 1. Contexto y motivación
 

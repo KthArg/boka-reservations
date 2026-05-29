@@ -1,11 +1,11 @@
 # 0002 — Autenticación de usuarios internos
 
-- **Estado**: aprobado
+- **Estado**: implemented
 - **Autor**: KthArg
 - **Creado**: 2026-05-23
-- **Última actualización**: 2026-05-23
+- **Última actualización**: 2026-05-29
 - **Rama**: feat/0002-autenticacion-usuarios-internos
-- **PR**: (sin asignar)
+- **PR**: #4
 
 ## 1. Contexto y motivación
 

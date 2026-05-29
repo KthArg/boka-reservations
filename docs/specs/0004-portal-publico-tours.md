@@ -3,9 +3,9 @@
 - **Estado**: implemented
 - **Autor**: KthArg
 - **Creado**: 2026-05-24
-- **Última actualización**: 2026-05-24
+- **Última actualización**: 2026-05-29
 - **Rama**: feat/0004-portal-publico-tours
-- **PR**: —
+- **PR**: #7
 
 ## 1. Contexto y motivación
 

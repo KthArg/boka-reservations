@@ -1,11 +1,11 @@
 # 0003 — Gestión de tours desde el panel admin
 
-- **Estado**: draft
+- **Estado**: implemented
 - **Autor**: KthArg
 - **Creado**: 2026-05-22
-- **Última actualización**: 2026-05-22
+- **Última actualización**: 2026-05-29
 - **Rama**: feat/0003-gestion-tours-panel-admin
-- **PR**: (sin asignar)
+- **PR**: #5
 
 ## 1. Contexto y motivación
 

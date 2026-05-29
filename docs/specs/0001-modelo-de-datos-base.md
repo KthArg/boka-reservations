@@ -1,11 +1,11 @@
 # 0001 — Modelo de datos base
 
-- **Estado**: aprobado
+- **Estado**: implemented
 - **Autor**: KthArg
 - **Creado**: 2026-05-23
-- **Última actualización**: 2026-05-23
+- **Última actualización**: 2026-05-29
 - **Rama**: feat/0001-modelo-de-datos-base
-- **PR**: (sin asignar)
+- **PR**: #3
 
 ## 1. Contexto y motivación
 
