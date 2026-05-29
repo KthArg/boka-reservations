@@ -1,6 +1,6 @@
 # 0007 — Notificaciones por email (confirmación + recordatorio 24h)
 
-- **Estado**: approved
+- **Estado**: in-review
 - **Autor**: Kenneth
 - **Creado**: 2026-05-29
 - **Última actualización**: 2026-05-29 (rev. 4: templates/adapters relocados a worker/, no React Email)
