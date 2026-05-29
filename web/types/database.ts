@@ -299,6 +299,7 @@ export type Database = {
           total_amount_cents: number;
           currency: string;
           status: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          locale: 'es' | 'en';
           created_at: string;
           updated_at: string;
         };
@@ -314,6 +315,7 @@ export type Database = {
           total_amount_cents: number;
           currency?: string;
           status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          locale?: 'es' | 'en';
           created_at?: string;
           updated_at?: string;
         };
@@ -329,6 +331,7 @@ export type Database = {
           total_amount_cents?: number;
           currency?: string;
           status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          locale?: 'es' | 'en';
           created_at?: string;
           updated_at?: string;
         };
@@ -391,6 +394,71 @@ export type Database = {
         Insert: { id: string; processed_at?: string };
         Update: { id?: string; processed_at?: string };
         Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          booking_id: string;
+          kind: 'booking_confirmation' | 'reminder_24h';
+          channel: 'email';
+          recipient_email: string;
+          locale: 'es' | 'en';
+          status: 'pending' | 'sent' | 'failed' | 'cancelled';
+          scheduled_for: string;
+          attempts: number;
+          provider: string | null;
+          provider_message_id: string | null;
+          last_error: string | null;
+          sent_at: string | null;
+          cancelled_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          kind: 'booking_confirmation' | 'reminder_24h';
+          channel?: 'email';
+          recipient_email: string;
+          locale: 'es' | 'en';
+          status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          scheduled_for: string;
+          attempts?: number;
+          provider?: string | null;
+          provider_message_id?: string | null;
+          last_error?: string | null;
+          sent_at?: string | null;
+          cancelled_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          booking_id?: string;
+          kind?: 'booking_confirmation' | 'reminder_24h';
+          channel?: 'email';
+          recipient_email?: string;
+          locale?: 'es' | 'en';
+          status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          scheduled_for?: string;
+          attempts?: number;
+          provider?: string | null;
+          provider_message_id?: string | null;
+          last_error?: string | null;
+          sent_at?: string | null;
+          cancelled_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
