@@ -62,6 +62,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (rpcError) {
     console.error('confirm_booking failed:', rpcError.message);
+    // Eliminar el registro de idempotencia para que OnvoPay pueda reintentar.
+    // Si este delete también falla, el evento queda irrecuperable — escenario
+    // de fallo doble de DB que no vale la pena manejar en MVP.
+    await db.from('processed_webhook_events').delete().eq('id', payload.eventId);
     return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 
