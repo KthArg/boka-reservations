@@ -63,3 +63,9 @@ export async function requireRole(role: UserRole): Promise<AuthUser> {
   if (user.userRole !== role) throw new AuthError('UNAUTHORIZED');
   return user;
 }
+
+export async function requireAnyRole(roles: readonly UserRole[]): Promise<AuthUser> {
+  const user = await requireAuth();
+  if (!user.userRole || !roles.includes(user.userRole)) throw new AuthError('UNAUTHORIZED');
+  return user;
+}
