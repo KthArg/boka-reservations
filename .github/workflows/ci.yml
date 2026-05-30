@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, chore/etapa2-setup-tecnico]
+    branches: [main, dev]
   push:
-    branches: [main, chore/etapa2-setup-tecnico]
+    branches: [main, dev]
 
 jobs:
   ci:
