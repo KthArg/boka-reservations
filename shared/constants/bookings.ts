@@ -14,3 +14,22 @@ export const ADMIN_BOOKINGS_PAGE_SIZE = 50;
 
 /** Rango máximo (en días) permitido al exportar reservas a CSV. */
 export const EXPORT_MAX_RANGE_DAYS = 366;
+
+/** Motivos por los que un export puede rechazarse (responde 400). */
+export enum ExportRangeError {
+  Missing = 'export_range_missing',
+  TooLong = 'export_range_too_long',
+}
+
+/** Motivos por los que el toggle de check-in puede rechazarse. */
+export enum CheckInError {
+  Unauthorized = 'checkin_unauthorized',
+  NotFound = 'checkin_not_found',
+  NotConfirmed = 'checkin_not_confirmed',
+}
+
+/** Offset horario del operador (Costa Rica, UTC-6, sin horario de verano). */
+export const OPERATOR_UTC_OFFSET_HOURS = -6;
+
+/** Centavos por unidad de moneda (para mostrar montos en unidad mayor). */
+export const CENTS_PER_UNIT = 100;
