@@ -5,7 +5,15 @@ description: Convenciones de commits (Conventional Commits), nombrado de ramas, 
 
 # Commit and PR — convenciones de git para el proyecto
 
-Este proyecto sigue **Conventional Commits** y un flujo de ramas basado en feature branches con squash merge a `main`. La consistencia acá no es estética: permite generar changelogs automáticos, navegar la historia con `git log`, y entender qué hace cada commit sin abrir su diff.
+Este proyecto sigue **Conventional Commits** y un flujo de ramas basado en feature branches con squash merge a `dev`. La consistencia acá no es estética: permite generar changelogs automáticos, navegar la historia con `git log`, y entender qué hace cada commit sin abrir su diff.
+
+## Modelo de ramas
+
+- **`main`** — rama de producción. Únicamente `dev` mergea a `main` (vía PR `dev → main` cuando hay una pasada estable lista para promover). No se commitea directamente; no se abren PRs de features contra `main`.
+- **`dev`** — rama de integración. Todas las features, fixes, chores, docs y refactors mergean acá vía PR.
+- **Feature branches** — siempre nacen de `dev` y vuelven a `dev`.
+
+`main` es la default branch en GitHub, pero el target normal de PRs es `dev`. La promoción `dev → main` se hace cuando un set de cambios está validado y listo para producción.
 
 ## Nombrado de ramas
 
@@ -32,7 +40,7 @@ Donde:
 - `santiago/working` (no descriptivo)
 - `fix-bug` (sin estructura)
 
-`main` es la rama principal. No se commitea directamente a `main`; siempre pasa por PR.
+No se commitea directamente a `main` ni a `dev`; siempre pasa por PR. El PR target es `dev` salvo el caso de promoción `dev → main`.
 
 ## Conventional Commits
 
@@ -167,7 +175,7 @@ Refs: 0030
 
 ### Título del PR
 
-Sigue Conventional Commits, igual que los commits. Es lo que va a quedar en `main` después del squash merge.
+Sigue Conventional Commits, igual que los commits. Es lo que va a quedar en `dev` después del squash merge (y eventualmente en `main` cuando se promueva).
 
 ```
 feat(booking): recordatorio por email 24h antes del tour
@@ -231,7 +239,8 @@ Si querés mostrar trabajo en progreso para feedback temprano, abrí el PR como 
 
 ## Merge
 
-- **Modo de merge**: squash merge. Único modo permitido en `main`.
+- **Modo de merge a `dev`**: squash merge. Único modo permitido para PRs de feature.
+- **Modo de merge `dev → main`**: merge commit normal — preserva la historia de los squash commits previos. Solo el autor responsable de la promoción lo hace, después de verificar que `dev` está estable.
 - **Mensaje del squash**: el título del PR (Conventional Commits) + referencia al spec en el body.
 - **Quién mergea**: el autor del PR mergea después de tener aprobación. Salvo emergencia, no mergeés PRs ajenos.
 - **Después del merge**: borrar la rama remota. Las ramas locales se limpian con `git fetch --prune` periódicamente.
@@ -252,14 +261,14 @@ Si alguno falla, no hagas push. Si es CI quien los va a correr de todas formas, 
 
 ### Hotfix urgente
 
-1. Crear rama `fix/quick-<descripción>` desde `main`.
+1. Crear rama `fix/quick-<descripción>` desde `dev`.
 2. Hacer el fix con tests.
 3. Abrir PR con descripción mínima pero clara.
 4. Después del merge, si el bug ameritaba investigación de causa raíz, abrir un spec retrospectivo.
 
 ### Revertir un commit
 
-Usar `git revert` (que crea un commit nuevo que deshace los cambios), nunca `git reset` sobre `main` ni force-push. El commit de revert sigue Conventional Commits:
+Usar `git revert` (que crea un commit nuevo que deshace los cambios), nunca `git reset` sobre `main` o `dev` ni force-push. El commit de revert sigue Conventional Commits:
 
 ```
 revert: feat(booking): recordatorio por email 24h antes del tour
@@ -285,10 +294,10 @@ Después de aprobación pero antes del merge, podés hacer rebase para limpiar l
 
 ## Anti-patrones
 
-- **Commits "WIP"** mergeados a `main`. Si el commit no está terminado, no se mergea.
+- **Commits "WIP"** mergeados a `dev` o `main`. Si el commit no está terminado, no se mergea.
 - **Commits con mensaje vacío o "fix"** sin contexto.
 - **Mergear con tests rotos** "porque ya lo arreglo después". Nunca.
-- **Force-push a `main`**. Nunca, bajo ninguna circunstancia.
+- **Force-push a `main` o `dev`**. Nunca, bajo ninguna circunstancia.
 - **PRs sin spec referenciado** (salvo los `fix/quick-*` justificados).
 - **PRs gigantes "porque la feature es grande"**. La feature se parte, no el PR.
 
