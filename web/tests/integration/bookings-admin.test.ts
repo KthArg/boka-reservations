@@ -147,7 +147,8 @@ describe('panel de reservas + check-in (integration)', () => {
       .select('checked_in_at')
       .eq('id', bookingId)
       .single();
-    expect(data!.checked_in_at).toBe(first);
+    // Comparar instantes, no strings: PostgREST formatea como +00:00, no .000Z.
+    expect(new Date(data!.checked_in_at!).getTime()).toBe(new Date(first).getTime());
   });
 
   it('revertir el check-in deja los campos en null', async () => {
