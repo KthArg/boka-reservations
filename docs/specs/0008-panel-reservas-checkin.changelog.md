@@ -13,7 +13,7 @@ Rama: feat/0008-panel-reservas-checkin
 - `checkin-action.ts`: Server Action `toggleCheckIn` idempotente (UPDATE condicionado a `checked_in_at IS NULL`), guard admin/staff vía `requireAnyRole`, escritura con service client.
 - Route handler `dashboard/bookings/export` (CSV con rango obligatorio ≤1 año).
 - UI: páginas lista/detalle/hoy, `CheckInButton` (client) con confirmación, filtros server-rendered, paginación por query params. Nav + i18n ES/EN.
-- Tests: **55 unit y 54 integración pasan** (suites completas, contra DB real con `supabase start`). Lint y typecheck (web + worker) limpios. Nuevos: unit de filtros/CSV/TZ; integración `bookings-admin.test.ts` (embedding del listado, idempotencia del check-in, revert, denegación RLS a anon).
+- Tests: **55 unit y 55 integración pasan** (suites completas, contra DB real con `supabase start`; la config usa `singleFork`, ejecución secuencial). Lint y typecheck (web + worker) limpios. Nuevos: unit de filtros/CSV/TZ; integración `bookings-admin.test.ts` (embedding del listado, idempotencia del check-in, revert, denegación RLS a anon).
 - Gotchas resueltos al ejecutar la integración: (1) el assert de RLS anon asumía la tabla vacía y fallaba en la suite completa — se reescribió para verificar que anon no ve la reserva concreta recién creada (RLS correcta: anon = 0 filas, confirmado vía psql `SET ROLE`, REST y supabase-js). (2) el assert de idempotencia comparaba strings y PostgREST formatea `+00:00` (no `.000Z`) — se compara por instante (`getTime()`).
 
 **Por qué / decisiones**:
