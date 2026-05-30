@@ -300,6 +300,8 @@ export type Database = {
           currency: string;
           status: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
           locale: 'es' | 'en';
+          checked_in_at: string | null;
+          checked_in_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -316,6 +318,8 @@ export type Database = {
           currency?: string;
           status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
           locale?: 'es' | 'en';
+          checked_in_at?: string | null;
+          checked_in_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -332,6 +336,8 @@ export type Database = {
           currency?: string;
           status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
           locale?: 'es' | 'en';
+          checked_in_at?: string | null;
+          checked_in_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
