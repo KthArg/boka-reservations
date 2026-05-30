@@ -13,7 +13,8 @@ Rama: feat/0008-panel-reservas-checkin
 - `checkin-action.ts`: Server Action `toggleCheckIn` idempotente (UPDATE condicionado a `checked_in_at IS NULL`), guard admin/staff vía `requireAnyRole`, escritura con service client.
 - Route handler `dashboard/bookings/export` (CSV con rango obligatorio ≤1 año).
 - UI: páginas lista/detalle/hoy, `CheckInButton` (client) con confirmación, filtros server-rendered, paginación por query params. Nav + i18n ES/EN.
-- Tests: unit nuevos (filtros, CSV, TZ) + 4 integración (embedding del listado, idempotencia, revert, RLS anon). Suites completas verdes: **55 unit, 58 integración**. Lint y typecheck (web + worker) limpios.
+- Tests: **55 unit pasan** (nuevos: filtros, CSV, TZ). Lint y typecheck (web + worker) limpios.
+- Tests de integración escritos (`bookings-admin.test.ts`: embedding del listado, idempotencia, revert, RLS anon) pero **NO ejecutados esta sesión**: Docker/Supabase local estaba caído. Deben correr verdes en CI (o localmente con `supabase start`) antes de mergear.
 
 **Por qué / decisiones**:
 
@@ -29,4 +30,4 @@ Rama: feat/0008-panel-reservas-checkin
 
 **Pendiente**:
 
-- Nada — feature lista para PR.
+- Ejecutar la suite de integración con Supabase local arriba (Docker estaba caído esta sesión) o confirmar verde en CI antes de mergear el PR #12.
