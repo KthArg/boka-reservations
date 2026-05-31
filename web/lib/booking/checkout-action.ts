@@ -1,7 +1,8 @@
 'use server';
 
+import { getLocale } from 'next-intl/server';
 import { initCheckout, calculateTotalCents } from '@/lib/booking/create';
-import type { PricingRow } from '@/lib/booking/create';
+import type { BookingLocale, PricingRow } from '@/lib/booking/create';
 
 export type CheckoutFormState =
   | { error: string }
@@ -34,6 +35,9 @@ export async function checkoutAction(
   const totalCents = calculateTotalCents({ adult, child, student }, pricing);
   if (totalCents === 0) return { error: 'error-generic' };
 
+  const rawLocale = await getLocale();
+  const locale: BookingLocale = rawLocale === 'en' ? 'en' : 'es';
+
   try {
     const result = await initCheckout({
       instanceId,
@@ -43,6 +47,7 @@ export async function checkoutAction(
       quantities: { adult, child, student },
       pricing,
       tourName,
+      locale,
     });
     return { paymentIntentId: result.externalPaymentId, bookingId: result.bookingId };
   } catch (err) {
