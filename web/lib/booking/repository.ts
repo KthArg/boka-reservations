@@ -30,6 +30,7 @@ interface RawListRow {
 export type FilterBuilder = any;
 
 const startOfDay = (d: string) => `${d}T00:00:00Z`;
+const FIRST_PAGE = 1;
 const endOfDay = (d: string) => `${d}T23:59:59.999Z`;
 const sanitizeSearch = (s: string) => s.replace(/[,()*\\]/g, '');
 
@@ -62,17 +63,28 @@ export function applyFilters(query: FilterBuilder, filters: BookingFilters): Fil
 export const ordered = (q: FilterBuilder): FilterBuilder =>
   q.order('starts_at', { referencedTable: 'tour_instances', ascending: true });
 
-/** Construye el builder de bookings con el select dado (server-only). */
-export async function bookingsQuery(select: string, withCount: boolean): Promise<FilterBuilder> {
-  const supabase = await createSupabaseServerClient();
-  return withCount
-    ? supabase.from('bookings').select(select, { count: 'exact' })
-    : supabase.from('bookings').select(select);
+/**
+ * Construye el query builder de bookings con el select dado.
+ *
+ * IMPORTANTE: esta función NO puede ser `async` retornando el builder. El
+ * filter builder de PostgREST es thenable, y una función async que retorna un
+ * thenable lo desenvuelve al await-earla — devolvería el resultado de la query
+ * en vez del builder, y la cadena `.eq()/.order()/.range()` rompería con
+ * "q.order is not a function". Por eso recibe el cliente ya resuelto.
+ */
+export function buildBookingsQuery(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  select: string,
+  withCount: boolean,
+): FilterBuilder {
+  const table = supabase.from('bookings');
+  return withCount ? table.select(select, { count: 'exact' }) : table.select(select);
 }
 
 export async function listBookingsForAdmin(filters: BookingFilters): Promise<AdminBookingPage> {
-  const base = await bookingsQuery(LIST_SELECT, true);
-  const from = (filters.page - 1) * ADMIN_BOOKINGS_PAGE_SIZE;
+  const supabase = await createSupabaseServerClient();
+  const base = buildBookingsQuery(supabase, LIST_SELECT, true);
+  const from = (filters.page - FIRST_PAGE) * ADMIN_BOOKINGS_PAGE_SIZE;
   const to = from + ADMIN_BOOKINGS_PAGE_SIZE - 1;
 
   const { data, count, error } = await ordered(applyFilters(base, filters)).range(from, to);

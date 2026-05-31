@@ -1,5 +1,6 @@
 import 'server-only';
-import { applyFilters, ordered, bookingsQuery } from './repository';
+import { createSupabaseServerClient } from '@/lib/db/supabase-server';
+import { applyFilters, ordered, buildBookingsQuery } from './repository';
 import type { BookingFilters, AdminExportRow } from './admin-types';
 
 const EXPORT_SELECT = `
@@ -47,7 +48,8 @@ function toExportRow(r: RawExportRow): AdminExportRow {
 
 /** Reservas que matchean los filtros, sin paginar, para el export CSV. */
 export async function listBookingsForExport(filters: BookingFilters): Promise<AdminExportRow[]> {
-  const base = await bookingsQuery(EXPORT_SELECT, false);
+  const supabase = await createSupabaseServerClient();
+  const base = buildBookingsQuery(supabase, EXPORT_SELECT, false);
   const { data, error } = await ordered(applyFilters(base, filters));
   if (error) throw new Error(error.message);
   return ((data as RawExportRow[] | null) ?? []).map(toExportRow);
