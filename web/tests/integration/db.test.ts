@@ -3,6 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { TourStatus } from '@shared/constants/enums';
 import type { Database } from '@/types/database';
 
 // Valores locales de Supabase CLI (supabase start) — fallbacks = default local JWT secret
@@ -206,10 +207,30 @@ describe('RLS — anon no puede escribir', () => {
   });
 });
 
-describe('RLS — anon no puede leer', () => {
-  it('anon no puede leer tours', async () => {
-    const { error } = await anon.from('tours').select('slug');
-    expect(error).not.toBeNull();
+describe('RLS — lectura anon', () => {
+  // anon SÍ puede leer tours activos: el portal público lo requiere (spec 0004,
+  // política tours_select_anon con USING status='active'). Lo que la RLS impide
+  // es ver tours archivados.
+  it('anon lee tours activos pero no archivados', async () => {
+    const { data: active } = await admin
+      .from('tours')
+      .insert({ ...tourBase, slug: `rls-active-${Date.now()}`, status: 'active' })
+      .select()
+      .single();
+    const { data: archived } = await admin
+      .from('tours')
+      .insert({ ...tourBase, slug: `rls-archived-${Date.now()}`, status: 'archived' })
+      .select()
+      .single();
+
+    const { data, error } = await anon.from('tours').select('id, status');
+    expect(error).toBeNull();
+    const ids = (data ?? []).map((t) => t.id);
+    expect(ids).toContain(active!.id);
+    expect(ids).not.toContain(archived!.id);
+    expect((data ?? []).every((t) => t.status === 'active')).toBe(true);
+
+    await admin.from('tours').delete().in('id', [active!.id, archived!.id]);
   });
 
   it('anon no puede leer usuarios', async () => {
