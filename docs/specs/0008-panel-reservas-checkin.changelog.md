@@ -3,6 +3,23 @@
 Spec: [0008-panel-reservas-checkin.md](./0008-panel-reservas-checkin.md)
 Rama: feat/0008-panel-reservas-checkin
 
+## 2026-05-30 — Test de integración de la Server Action + fix de paralelismo
+
+**Hecho**:
+
+- Agregué `tests/integration/checkin-action.test.ts`: 6 tests que llaman a la Server Action **`toggleCheckIn` de verdad** contra Postgres (no solo el patrón SQL): marca + registro del actor, idempotencia (doble marca no pisa timestamp), revert, rechazo sobre reserva no confirmada, rechazo sin rol admin/staff, y `NotFound`. Cierra la brecha de cobertura señalada en la entrada anterior.
+- Mockeo solo las fronteras de Next que no existen en vitest: `requireAnyRole` (`@/lib/auth/server`) y `revalidatePath` (`next/cache`); la escritura en DB corre real. Patrón `vi.hoisted` para evitar el TDZ del hoisting de `vi.mock`.
+- Fix en `vitest.integration.config.ts`: `fileParallelism: false`. Los tests de integración comparten una sola DB local; correr los archivos en paralelo (default de vitest) producía un fallo no determinista en el test "rechaza sin rol" por interferencia entre suites. En serie, la suite es estable.
+
+**Por qué / decisiones**:
+
+- El test de la action mockea `requireAnyRole`/`revalidatePath` pero **no** la DB: así se ejercita la lógica real (precondición `confirmed`, `UPDATE` idempotente, FK `checked_in_by`) contra Postgres, que es donde podían esconderse bugs.
+- `fileParallelism: false` es la decisión estándar para suites de integración con DB compartida; alternativa (DB por worker) sería sobreingeniería para este tamaño.
+
+**Pendiente**:
+
+- Nada — feature lista para PR. Integración local: **60 de 61 pasan**; la única roja es `db.test.ts > "anon no puede leer tours"`, preexistente y ajena a 0008 (ver entrada siguiente).
+
 ## 2026-05-30 — Implementación completa, lista para PR
 
 **Hecho**:
