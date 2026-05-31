@@ -3,6 +3,24 @@
 Spec: [0008-panel-reservas-checkin.md](./0008-panel-reservas-checkin.md)
 Rama: feat/0008-panel-reservas-checkin
 
+## 2026-05-31 — Fix runtime: "q.order is not a function" + i18n faltante
+
+**Hecho**:
+
+- Corregido el crash de `/dashboard/bookings` en runtime. `bookingsQuery` era `async` y retornaba el filter builder de PostgREST; como ese builder es _thenable_, `await bookingsQuery(...)` lo desenvolvía y devolvía el **resultado** de la query en vez del builder, rompiendo la cadena `.eq()/.order()/.range()`.
+- Fix: `buildBookingsQuery` recibe el cliente ya resuelto y construye la query **sin** `async` (no se desenvuelve). `listBookingsForAdmin` y `listBookingsForExport` hacen el `await` del cliente y arman la query inline (patrón original previo al refactor).
+- Test de regresión `bookings-repository.test.ts`: ejecuta `listBookingsForAdmin`/`listBookingsForExport` reales contra Postgres (mockeando solo el server client). +3 integración.
+- Fix `i18n`: el namespace `bookings` faltaba en `en.json` (estaba solo en `es.json`), lo que crasheaba `/en/dashboard/*` con `MISSING_MESSAGE`. Ahora ambos locales tienen las 73 claves idénticas.
+
+**Por qué / decisiones**:
+
+- El bug del builder llegó a runtime porque (1) `FilterBuilder = any` desactivó el chequeo de tipos en esa cadena, y (2) ningún test ejecutaba `listBookingsForAdmin` (depende de `next/headers`). Los dos huecos se cierran: el test nuevo cubre la ruta y el gotcha del thenable queda documentado en el comentario de `buildBookingsQuery`.
+
+**Aprendido**:
+
+- Envolver un builder _thenable_ en una función `async` cambia su semántica en silencio (lo ejecuta al await-earlo). Cuidado al "extraer un helper" sobre clientes de query.
+- `any` en una cadena de builder anula la red de tipos; si se usa, hace falta un test que ejecute esa ruta de verdad. Esto es justo lo que la nueva cláusula de `testing-practices` busca prevenir.
+
 ## 2026-05-30 — Test de integración de la Server Action + fix de paralelismo
 
 **Hecho**:
