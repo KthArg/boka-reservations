@@ -228,7 +228,7 @@ describe('RLS — lectura anon', () => {
     const ids = (data ?? []).map((t) => t.id);
     expect(ids).toContain(active!.id);
     expect(ids).not.toContain(archived!.id);
-    expect((data ?? []).every((t) => t.status === 'active')).toBe(true);
+    expect((data ?? []).every((t) => t.status === TourStatus.Active)).toBe(true);
 
     await admin.from('tours').delete().in('id', [active!.id, archived!.id]);
   });
