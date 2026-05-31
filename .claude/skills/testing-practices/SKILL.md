@@ -306,6 +306,31 @@ Los tests son documentación viva del comportamiento esperado. Reglas:
 - Magic values en tests (`expect(result.amount).toBe(85)`) están permitidos cuando explicitan la expectativa. Si el número es derivado (ej: 24 horas en milisegundos), igual usar constantes del proyecto.
 - Mensajes de assert custom cuando el default no es claro: `expect(result.status, 'expected refund completion').toBe(BookingStatus.CancelledRefunded)`.
 
+## Diagnóstico de tests que fallan: causa raíz antes de tocar
+
+Cuando un test falla, **está prohibido modificar el test, su assert o su expectativa hasta haber determinado por qué falla.** Un test rojo es una de tres cosas, y cada una tiene un tratamiento distinto:
+
+1. **Bug en el código** → se arregla el código, NO el test. El test está haciendo su trabajo.
+2. **Test obsoleto/incorrecto** → el comportamiento esperado cambió legítimamente (una migración, un spec posterior, una decisión documentada). Recién acá se actualiza el test, y el commit debe citar la fuente que prueba que el nuevo comportamiento es el correcto.
+3. **Test frágil** (orden de ejecución, estado compartido, tiempo, paralelismo) → se arregla la fragilidad (aislamiento, `fileParallelism`, fixtures), no el assert.
+
+**El error a evitar:** cambiar el assert para que pase sin entender la causa. Eso puede **enmascarar un bug real** (caso 1) haciéndolo pasar por test obsoleto (caso 2). Son indistinguibles si no se investiga.
+
+**Cómo decidir entre "bug" y "test obsoleto":** contrastar contra la fuente de verdad, no contra la memoria ni la intuición:
+
+- ¿Qué dice el **spec** asociado sobre el comportamiento esperado?
+- ¿Qué hacen las **migraciones**, incluyendo las posteriores que pueden revertir una anterior (verificar el orden por timestamp)?
+- ¿Cuál es el **comportamiento real en la DB/runtime** ahora mismo (consulta directa, no asunción)?
+
+Si las tres fuentes coinciden en que el nuevo comportamiento es el correcto, es un test obsoleto y se actualiza citando la evidencia. Si no coinciden, o no se pueden verificar, asumir que es un bug del código hasta probar lo contrario.
+
+## Reportar resultados de tests con honestidad
+
+- **Nunca afirmar que un test o suite "pasa" sin haberlo ejecutado en esta sesión.** Si no se corrió (Docker caído, entorno faltante), decir exactamente eso y marcarlo como pendiente.
+- **Reportar el conteo real, no el esperado.** "54 de 55 pasan" no es "55 pasan". Si hay una falla, nombrarla y aclarar si es propia o preexistente.
+- Si una afirmación previa (un número, un "gotcha") resulta inexacta, **corregirla explícitamente** en vez de borrarla en silencio.
+- Antes de declarar una feature "lista para PR", correr la suite completa relevante (unit + integración) y reportar el resultado verificado.
+
 ## Anti-patrones de testing
 
 - **Tests que prueban la implementación, no el comportamiento**: `expect(spy).toHaveBeenCalledTimes(3)` cuando lo que importa es que el resultado final sea correcto. Si refactorizás internamente, el test rompe sin que haya un bug real.
