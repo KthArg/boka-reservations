@@ -1,5 +1,11 @@
 # Roadmap — booking-platform de 0 a 100
 
+> **⚠️ Estado actualizado: 2026-05-31.** La numeración de "Etapas" de este archivo no coincide con los IDs de spec (ej. la "Etapa 10" es el spec 0008). La **fuente de verdad del estado del proyecto** es `.claude/memory/project-state.md`, no este roadmap.
+>
+> **Specs entregados y mergeados a `dev`:** 0001 (modelo de datos) · 0002 (auth interna) · 0003 (CRUD tours) · 0004 (portal público) · 0005 (disponibilidad y holds) · 0006 (reserva + pago OnvoPay) · 0007 (notificaciones email) · 0008 (panel de reservas y check-in).
+>
+> **Siguiente:** spec 0009 — gestión y asignación de guías (Etapa 11 abajo). Después: Checkpoint 5.
+
 Este documento es el plan completo para construir la plataforma desde el día cero hasta el lanzamiento. Está pensado para que Claude Code lo siga etapa por etapa, con checkpoints explícitos donde se pausa para revisar.
 
 ## Cómo usar este documento
