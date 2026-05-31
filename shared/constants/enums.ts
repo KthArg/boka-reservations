@@ -32,6 +32,20 @@ export enum InstanceStatus {
   Cancelled = 'cancelled',
 }
 
+export enum BookingStatus {
+  PendingPayment = 'pending_payment',
+  Confirmed = 'confirmed',
+  Cancelled = 'cancelled',
+  Refunded = 'refunded',
+}
+
+export enum PaymentStatus {
+  Pending = 'pending',
+  Succeeded = 'succeeded',
+  Failed = 'failed',
+  Refunded = 'refunded',
+}
+
 export enum DayOfWeek {
   Sunday = 0,
   Monday = 1,
