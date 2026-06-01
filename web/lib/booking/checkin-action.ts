@@ -35,18 +35,19 @@ export async function toggleCheckIn(
     return { ok: false, error: CheckInError.NotConfirmed };
   }
 
-  if (action === CheckInAction.CheckIn) {
-    await db
-      .from('bookings')
-      .update({ checked_in_at: new Date().toISOString(), checked_in_by: user.id })
-      .eq('id', bookingId)
-      .is('checked_in_at', null);
-  } else {
-    await db
-      .from('bookings')
-      .update({ checked_in_at: null, checked_in_by: null })
-      .eq('id', bookingId);
-  }
+  const { error } =
+    action === CheckInAction.CheckIn
+      ? await db
+          .from('bookings')
+          .update({ checked_in_at: new Date().toISOString(), checked_in_by: user.id })
+          .eq('id', bookingId)
+          .is('checked_in_at', null)
+      : await db
+          .from('bookings')
+          .update({ checked_in_at: null, checked_in_by: null })
+          .eq('id', bookingId);
+
+  if (error) return { ok: false, error: CheckInError.WriteFailed };
 
   revalidatePath(LIST_PATH);
   revalidatePath(`${LIST_PATH}/${bookingId}`);
