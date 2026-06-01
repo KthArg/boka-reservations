@@ -54,7 +54,7 @@ Criterios de aceptación:
 Criterios de aceptación:
 
 - [ ] Al ser asignado, el guía recibe un email con el nombre del tour, fecha/hora, punto de encuentro y un enlace a su página de próximas salidas.
-- [ ] El enlace lleva a `/guia/[token]/proximos-tours` sin requerir login.
+- [ ] El enlace lleva a `/guide/[token]/upcoming-tours` sin requerir login.
 - [ ] La página muestra, ordenadas por fecha ascendente, las instancias futuras asignadas al guía, cada una con: nombre del tour, fecha y hora de inicio, punto de encuentro, y cantidad total de pasajeros confirmados.
 - [ ] Las instancias ya pasadas no se muestran.
 - [ ] Si el token expiró o no existe, la página muestra un mensaje claro ("Este enlace ya no es válido, pedí uno nuevo al operador") y no filtra datos.
@@ -103,7 +103,7 @@ La asignación vive en el **detalle de la instancia** dentro del panel. La memor
 
 ### Vista del guía
 
-Route group propio para la vista pública del guía, separado de `(admin)`, en `/guia/[token]/proximos-tours`. Server Component que: valida el token, y si es válido renderiza tarjetas-resumen por instancia futura asignada. Sin acciones de mutación.
+Route group propio para la vista pública del guía, separado de `(admin)`, en `/guide/[token]/upcoming-tours`. Server Component que: valida el token, y si es válido renderiza tarjetas-resumen por instancia futura asignada. Sin acciones de mutación.
 
 ```mermaid
 flowchart TD
@@ -114,7 +114,7 @@ flowchart TD
   H --> I[Worker toma la notificación]
   I --> F[Genera token, guarda hash, arma enlace]
   F --> G[Renderiza y envía email]
-  G --> J[Guía abre /guia/token/proximos-tours]
+  G --> J[Guía abre /guide/token/upcoming-tours]
   J --> K[Valida token, muestra resumen de salidas]
 ```
 

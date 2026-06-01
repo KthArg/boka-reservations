@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: Props) {
           <Link href="/dashboard/bookings" className={styles.navLink}>
             {tBookings('nav-label')}
           </Link>
-          <Link href="/dashboard/salidas" className={styles.navLink}>
+          <Link href="/dashboard/departures" className={styles.navLink}>
             {tGuides('nav-label')}
           </Link>
         </nav>

@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { listGuides, listUpcomingDepartures } from '@/lib/guides/repository';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { GuideAssigner } from './GuideAssigner';
-import styles from './salidas.module.css';
+import styles from './departures.module.css';
 
 export default async function SalidasPage() {
   const t = await getTranslations('guides');

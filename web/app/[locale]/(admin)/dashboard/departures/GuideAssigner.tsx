@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { assignGuide, unassignGuide } from '@/lib/guides/assign-action';
 import type { AssignableGuide } from '@/lib/guides/types';
-import styles from './salidas.module.css';
+import styles from './departures.module.css';
 
 type Props = {
   instanceId: string;

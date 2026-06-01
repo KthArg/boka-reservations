@@ -3,11 +3,21 @@
 Spec: [0009-gestion-asignacion-guias.md](./0009-gestion-asignacion-guias.md)
 Rama: feat/0009-gestion-asignacion-guias
 
+## 2026-06-01 (review) — URLs en inglés
+
+**Hecho**:
+
+- Renombré las rutas de 0009 a inglés (preferencia del usuario: todos los URLs en inglés): `/dashboard/salidas` → `/dashboard/departures` y `/guia/[token]/proximos-tours` → `/guide/[token]/upcoming-tours`. Actualicé imports de CSS, link de nav, `DEPARTURES_PATH` de la Server Action y los segmentos que arma el worker (`guide`/`upcoming-tours`). La copy de los emails y la prosa de docs siguen en su idioma; solo cambiaron los segmentos de URL.
+
+**Notas para retomar**:
+
+- Quedan rutas viejas en español fuera de 0009 (`/dashboard/bookings/hoy`, `/reserva/[id]`). No se tocaron acá: `/reserva/[id]` ya viaja en emails de confirmación enviados; renombrarlas es una decisión aparte.
+
 ## 2026-06-01 (review) — Fix del embed de Salidas + cobertura del hueco
 
 **Hecho**:
 
-- Corregí un error de runtime en `/dashboard/salidas`: `listUpcomingDepartures` embebía `tour_instance_guides → users` sin desambiguar, y PostgREST falla con "more than one relationship was found" porque la tabla puente tiene **dos** FKs a `users` (`guide_id` y `assigned_by`). Fix: hint de FK en el select (`users!guide_id(...)`).
+- Corregí un error de runtime en `/dashboard/departures`: `listUpcomingDepartures` embebía `tour_instance_guides → users` sin desambiguar, y PostgREST falla con "more than one relationship was found" porque la tabla puente tiene **dos** FKs a `users` (`guide_id` y `assigned_by`). Fix: hint de FK en el select (`users!guide_id(...)`).
 - Agregué `tests/integration/guide-departures.test.ts` (3 casos) que ejercita `listUpcomingDepartures`/`listGuides` contra la DB real, con una asignación que setea ambas FKs. Reproduce el bug antes del fix.
 
 **Por qué / decisiones**:
@@ -28,7 +38,7 @@ Rama: feat/0009-gestion-asignacion-guias
   - Generalización de `notifications`: `booking_id` nullable, columnas `tour_instance_id`/`guide_id`, `kind` extendido con `guide_assignment`, CHECK de coherencia, e índice único parcial de asignación.
 - **Shared**: `NotificationKind`/`NotificationChannel`/`NotificationStatus` en `constants/notifications.ts`; `GUIDE_TOKEN_TTL_DAYS` y `GuideAssignmentError` en `constants/guides.ts`.
 - **Worker**: generalicé la cola para soportar un email sin booking. `send-notifications.ts` ramifica por `kind`; nuevos `prepare.ts` (resolución por tipo), `guide-repository.ts` (instancia + guía + conteo de pasajeros), `guide-token.ts` (emisión del token), template `guide-assignment.ts` ES/EN. `RenderedEmail` movido a `types.ts` (fuente única).
-- **Web**: lib `guides/` (hash puro, validación de token, repos del panel y de la vista, Server Action `assign/unassign`), sección `/dashboard/salidas` con asignador (client component) + link de nav, y vista pública `/guia/[token]/proximos-tours`.
+- **Web**: lib `guides/` (hash puro, validación de token, repos del panel y de la vista, Server Action `assign/unassign`), sección `/dashboard/departures` con asignador (client component) + link de nav, y vista pública `/guide/[token]/upcoming-tours`.
 - **i18n**: namespace `guides` en `es.json` **y** `en.json`.
 - **Tests**: unit worker (template + hash), unit web (hash), integración web (asignación: 7, vista de guía: 4), integración worker (despacho del email + token). Verde end-to-end contra DB real + Mailpit.
 

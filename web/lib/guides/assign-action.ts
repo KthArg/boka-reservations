@@ -8,7 +8,7 @@ import { UserRole } from '@shared/constants/enums';
 import { GuideAssignmentError } from '@shared/constants/guides';
 import { NotificationKind } from '@shared/constants/notifications';
 
-const DEPARTURES_PATH = '/dashboard/salidas';
+const DEPARTURES_PATH = '/dashboard/departures';
 
 export type AssignResult = { ok: true } | { ok: false; error: GuideAssignmentError };
 

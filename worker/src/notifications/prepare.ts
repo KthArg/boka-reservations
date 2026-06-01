@@ -8,8 +8,8 @@ import { renderForKind } from './render.js';
 import { renderGuideAssignment } from './templates/guide-assignment.js';
 
 const CONFIRMED_STATUS = 'confirmed';
-const GUIDE_PATH_SEGMENT = 'guia';
-const GUIDE_UPCOMING_SEGMENT = 'proximos-tours';
+const GUIDE_PATH_SEGMENT = 'guide';
+const GUIDE_UPCOMING_SEGMENT = 'upcoming-tours';
 const MS_PER_HOUR = 60 * 60 * 1000;
 const STALE_AFTER_MS = MS_PER_HOUR;
 
