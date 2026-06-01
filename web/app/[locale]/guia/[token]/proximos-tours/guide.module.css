@@ -1,0 +1,61 @@
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--space-lg);
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-lg);
+}
+
+.tourName {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 var(--space-sm);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 4px var(--space-md);
+  margin: 0;
+}
+
+.metaLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metaValue {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  margin: 0;
+}

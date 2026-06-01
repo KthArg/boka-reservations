@@ -229,5 +229,26 @@
     "today-checkedin": "Check-in",
     "today-empty": "No tours scheduled for today.",
     "today-view": "View bookings"
+  },
+  "guides": {
+    "nav-label": "Departures",
+    "departures-title": "Departures",
+    "departures-empty": "No upcoming departures.",
+    "col-date": "Date",
+    "col-tour": "Tour",
+    "col-passengers": "Passengers",
+    "col-guide": "Guide",
+    "select-guide": "Select guide",
+    "assign": "Assign",
+    "unassign": "Remove",
+    "unassign-confirm": "Remove the guide from this departure?",
+    "assign-error": "Couldn’t save the assignment. Please try again.",
+    "view-title": "My upcoming tours",
+    "view-empty": "You have no assigned tours yet.",
+    "view-date": "Date",
+    "view-meeting": "Meeting point",
+    "view-passengers": "Passengers",
+    "view-invalid-title": "Invalid link",
+    "view-invalid-body": "This link is no longer valid. Ask the operator for a new one."
   }
 }

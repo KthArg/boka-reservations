@@ -72,10 +72,9 @@ Se crea `tour_instance_guides` como tabla puente entre `tour_instances` y `users
 
 El enlace del guía **no usa Supabase Auth**. Usa un token propio, generado con `crypto.randomBytes`, del que se guarda **solo el hash SHA-256 en DB**; el texto plano viaja únicamente en el email. Esto sigue la regla de workflow-rules (tokens: hash en DB, plano solo en email) y evita el gotcha de PKCE de Supabase documentado en tech-decisions, que aplica a flujos de browser con verifier en cookie — inadecuado para un enlace que el guía abre desde el teléfono días después.
 
-El token es **a nivel guía**, no a nivel asignación: la página muestra _todas_ las próximas salidas del guía, así que un único token por guía es lo natural. Se crea la tabla `guide_access_tokens`. El token **expira a los 30 días** de emitido. Cuando se asigna una salida a un guía:
+El token es **a nivel guía**, no a nivel asignación: la página muestra _todas_ las próximas salidas del guía, así que un token por guía sirve para todas. Se crea la tabla `guide_access_tokens`. El token **expira a los 30 días** de emitido.
 
-1. Si el guía tiene un token vigente (no expirado), se reutiliza ese para el enlace del email.
-2. Si no tiene token vigente, se genera uno nuevo (hash en DB, plano en el email).
+**Quién genera el token (decisión por la regla hash-only):** como solo se guarda el hash en DB y el texto plano viaja únicamente en el email, **es imposible "reutilizar" un token entre requests** (nadie puede recuperar el plano a partir del hash). Por eso el token lo **genera el worker en el momento de despachar el email** de asignación, no la Server Action: el worker crea el plano, guarda el hash con expiración a 30 días, arma el enlace y lo manda. Cada email de asignación lleva su propio token; todos los tokens vigentes de un guía funcionan en paralelo (hasta expirar). La Server Action solo encola la notificación; no toca tokens. Una reentrega por reintento puede generar un token extra para el guía: es inocuo (todos expiran a 30 días) y evita almacenar el plano en la cola.
 
 La validación en la página hashea el token de la URL y busca una fila con ese `token_hash` y `expires_at > NOW()`. La lectura de las instancias del guía se hace **server-side con service role** después de validar el token, no vía RLS con sesión (el visitante es anónimo). El token gatea el acceso; sin token válido no se ejecuta ninguna query de datos.
 
@@ -88,13 +87,13 @@ El costo es que `notifications` hoy es **booking-céntrica** y hay que generaliz
 - `booking_id` pasa a ser **nullable** (un email de guía no tiene booking).
 - Se agregan columnas nullable `tour_instance_id uuid REFERENCES tour_instances(id) ON DELETE CASCADE` y `guide_id uuid REFERENCES users(id) ON DELETE CASCADE`.
 - El `CHECK` de `kind` agrega `'guide_assignment'`.
-- Se reemplaza `UNIQUE (booking_id, kind)` por dos índices únicos parciales: uno para notificaciones de booking (`(booking_id, kind) WHERE booking_id IS NOT NULL`) y otro para asignaciones (`(tour_instance_id, guide_id, kind) WHERE kind = 'guide_assignment'`). Esto da idempotencia por asignación: no se encola dos veces el mismo email para la misma (instancia, guía).
+- Se **conserva** el `UNIQUE (booking_id, kind)` original. Con `booking_id` nullable, los NULL son distintos (NULLS DISTINCT por defecto en Postgres), así que las filas de guía no colisionan entre sí y `confirm_booking` sigue usando su `ON CONFLICT (booking_id, kind)` sin cambios. La idempotencia de la asignación de guía la da un índice único parcial nuevo `(tour_instance_id, guide_id, kind) WHERE kind = 'guide_assignment'`. (Dropear el unique por un índice parcial rompía la RPC: un índice parcial no sirve como arbiter de ese `ON CONFLICT`.)
 - Se agrega un `CHECK` que garantiza coherencia: si `kind = 'guide_assignment'` entonces `tour_instance_id` y `guide_id` son NOT NULL y `booking_id` es NULL; en otro caso `booking_id` es NOT NULL.
 
 En el worker, `send-notifications` ramifica por `kind`:
 
 - `booking_confirmation` / `reminder_24h`: camino actual (carga booking, render con `BookingRow`).
-- `guide_assignment`: carga la instancia + tour + guía + conteo de pasajeros, y renderiza un template nuevo `guide-assignment.ts`. `recipient_email` es el email del guía; `locale` el idioma del guía (columna `users.locale`, ver modelo de datos).
+- `guide_assignment`: carga la instancia + tour + guía + conteo de pasajeros, **genera el token de acceso** (hash en `guide_access_tokens`), arma el enlace y renderiza un template nuevo `guide-assignment.ts`. `recipient_email` es el email del guía; `locale` el idioma del guía (columna `users.locale`, ver modelo de datos), ambos fijados al encolar.
 
 El email del guía se encola desde la **Server Action de asignación** (no desde una función Postgres como `confirm_booking`), porque la asignación es una acción de panel, no un evento transaccional de pago. La inserción usa `ON CONFLICT DO NOTHING` contra el índice único parcial de asignación.
 
@@ -111,13 +110,11 @@ flowchart TD
   A[Staff asigna guía en panel] --> B[Server Action]
   B --> C[Borra asignación previa de la instancia]
   C --> D[Inserta en tour_instance_guides]
-  D --> E{Guía tiene token vigente?}
-  E -- sí --> G[Reusa token]
-  E -- no --> F[Genera token, guarda hash]
-  F --> G
-  G --> H[Encola notification kind=guide_assignment]
-  H --> I[Worker despacha email con enlace]
-  I --> J[Guía abre /guia/token/proximos-tours]
+  D --> H[Encola notification kind=guide_assignment]
+  H --> I[Worker toma la notificación]
+  I --> F[Genera token, guarda hash, arma enlace]
+  F --> G[Renderiza y envía email]
+  G --> J[Guía abre /guia/token/proximos-tours]
   J --> K[Valida token, muestra resumen de salidas]
 ```
 
@@ -158,7 +155,7 @@ flowchart TD
   - `ADD COLUMN tour_instance_id uuid REFERENCES public.tour_instances(id) ON DELETE CASCADE`
   - `ADD COLUMN guide_id uuid REFERENCES public.users(id) ON DELETE CASCADE`
   - `kind` CHECK extendido a `('booking_confirmation','reminder_24h','guide_assignment')`.
-  - `DROP CONSTRAINT` del `UNIQUE (booking_id, kind)`; crear índice único parcial `notifications_booking_kind_uniq ON (booking_id, kind) WHERE booking_id IS NOT NULL` y `notifications_assignment_uniq ON (tour_instance_id, guide_id, kind) WHERE kind = 'guide_assignment'`.
+  - Se conserva el `UNIQUE (booking_id, kind)` original (NULLS DISTINCT permite múltiples filas de guía con `booking_id NULL`). Se agrega `notifications_assignment_uniq ON (tour_instance_id, guide_id, kind) WHERE kind = 'guide_assignment'`.
   - `ADD CONSTRAINT` de coherencia (CHECK) entre `kind` y qué FKs deben estar presentes.
 - **Migración**: `2026XXXX_generalize_notifications_for_guides.sql`
 
@@ -178,8 +175,8 @@ El token de acceso no tiene estados explícitos: es válido si `expires_at > NOW
 ## 8. Casos borde y errores
 
 - **Usuario seleccionado no es guía**: la Server Action valida `role = 'guide'` antes de insertar; si no, error de validación y no se asigna.
-- **Reasignación**: asignar un guía distinto borra la asignación previa de esa instancia (regla de un guía por instancia en MVP) y notifica al nuevo. No se notifica al guía removido (fuera de alcance).
-- **Asignar el mismo guía que ya está asignado**: idempotente. El `ON CONFLICT DO NOTHING` de la notificación evita reenviar el email; la asignación ya existe.
+- **Reasignación**: asignar un guía distinto borra la asignación previa de esa instancia (regla de un guía por instancia en MVP) y notifica al nuevo, salvo que ese guía ya hubiera sido notificado antes para esta instancia (ver idempotencia). No se notifica al guía removido (fuera de alcance).
+- **Idempotencia del email — a lo sumo uno por (instancia, guía)**: antes de encolar, la Server Action verifica si ya existe una notificación `guide_assignment` para ese par; si existe (en cualquier estado), no encola otra. El índice único parcial `notifications_assignment_uniq` lo respalda a nivel DB ante carreras. Consecuencia: si un guía ya recibió el email de una instancia, reasignarlo a la misma instancia (tras haberlo quitado) no le manda otro email — su vista de próximas salidas se actualiza sola igual. Es el comportamiento deseado (no spamear) y suficiente para el MVP.
 - **Token expirado**: la página muestra mensaje de enlace inválido, sin filtrar datos ni revelar si el guía existe.
 - **Token vigente al reasignar**: se reutiliza; el guía no acumula tokens. Si el token venció entre asignaciones, se genera uno nuevo y el enlace del email lleva el nuevo.
 - **Instancia cancelada después de asignar**: la vista del guía filtra por instancias futuras; una instancia `cancelled` se decide si se oculta o se muestra marcada. MVP: se muestran solo instancias con `status != 'cancelled'` y `starts_at > NOW()`. Notificar la cancelación al guía es fuera de alcance.

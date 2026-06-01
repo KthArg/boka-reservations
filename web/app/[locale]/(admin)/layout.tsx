@@ -7,10 +7,11 @@ import styles from './admin.module.css';
 type Props = { children: React.ReactNode };
 
 export default async function AdminLayout({ children }: Props) {
-  const [tAuth, tTours, tBookings] = await Promise.all([
+  const [tAuth, tTours, tBookings, tGuides] = await Promise.all([
     getTranslations('auth'),
     getTranslations('tours'),
     getTranslations('bookings'),
+    getTranslations('guides'),
   ]);
   const user = await getCurrentUser();
 
@@ -25,6 +26,9 @@ export default async function AdminLayout({ children }: Props) {
           </Link>
           <Link href="/dashboard/bookings" className={styles.navLink}>
             {tBookings('nav-label')}
+          </Link>
+          <Link href="/dashboard/salidas" className={styles.navLink}>
+            {tGuides('nav-label')}
           </Link>
         </nav>
 
