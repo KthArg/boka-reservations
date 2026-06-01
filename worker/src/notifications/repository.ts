@@ -7,7 +7,9 @@ const BATCH_SIZE = 20;
 
 export type NotificationRow = {
   id: string;
-  booking_id: string;
+  booking_id: string | null;
+  tour_instance_id: string | null;
+  guide_id: string | null;
   kind: NotificationKind;
   recipient_email: string;
   locale: EmailLocale;
@@ -18,7 +20,9 @@ export type NotificationRow = {
 export async function fetchPending(db: SupabaseClient): Promise<NotificationRow[]> {
   const { data, error } = await db
     .from('notifications')
-    .select('id, booking_id, kind, recipient_email, locale, attempts, scheduled_for')
+    .select(
+      'id, booking_id, tour_instance_id, guide_id, kind, recipient_email, locale, attempts, scheduled_for',
+    )
     .eq('status', 'pending')
     .lte('scheduled_for', new Date().toISOString())
     .order('scheduled_for', { ascending: true })
