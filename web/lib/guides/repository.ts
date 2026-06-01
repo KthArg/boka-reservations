@@ -21,10 +21,13 @@ type RawDeparture = {
   bookings: RawBooking[] | null;
 };
 
+// tour_instance_guides tiene DOS FKs a users (guide_id y assigned_by); hay que
+// desambiguar el embed con el hint de la FK, si no PostgREST falla con
+// "more than one relationship was found".
 const DEPARTURES_SELECT = `
   id, starts_at, capacity_total,
   tours!inner ( name_es ),
-  tour_instance_guides ( users ( id, full_name ) ),
+  tour_instance_guides ( users!guide_id ( id, full_name ) ),
   bookings ( status, tickets_adult, tickets_child, tickets_student )
 `;
 

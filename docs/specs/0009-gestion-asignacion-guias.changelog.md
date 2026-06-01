@@ -3,6 +3,21 @@
 Spec: [0009-gestion-asignacion-guias.md](./0009-gestion-asignacion-guias.md)
 Rama: feat/0009-gestion-asignacion-guias
 
+## 2026-06-01 (review) — Fix del embed de Salidas + cobertura del hueco
+
+**Hecho**:
+
+- Corregí un error de runtime en `/dashboard/salidas`: `listUpcomingDepartures` embebía `tour_instance_guides → users` sin desambiguar, y PostgREST falla con "more than one relationship was found" porque la tabla puente tiene **dos** FKs a `users` (`guide_id` y `assigned_by`). Fix: hint de FK en el select (`users!guide_id(...)`).
+- Agregué `tests/integration/guide-departures.test.ts` (3 casos) que ejercita `listUpcomingDepartures`/`listGuides` contra la DB real, con una asignación que setea ambas FKs. Reproduce el bug antes del fix.
+
+**Por qué / decisiones**:
+
+- El bug pasó porque `listUpcomingDepartures` no tenía ningún test que lo ejecutara (los tests de 0009 cubrían la Server Action y la vista del guía, no el repo del panel). Lo detectó la revisión manual de la página. La lección: todo repo con un `select` no trivial (embeddings) necesita un test que corra la query de verdad — mismo patrón que el bug de `q.order` en 0008.
+
+**Pendiente**:
+
+- Nada — fix cubierto y verde (web integración 78).
+
 ## 2026-06-01 — Implementación completa, lista para PR
 
 **Hecho**:
