@@ -1,6 +1,8 @@
-import type { EmailLocale } from '../types.js';
+import type { EmailLocale, RenderedEmail } from '../types.js';
 import { escapeHtml, formatDateTime, formatMoney } from './format.js';
 import { wrapHtml } from './layout.js';
+
+export type { RenderedEmail } from '../types.js';
 
 export type BookingConfirmationProps = {
   customerName: string;
@@ -14,8 +16,6 @@ export type BookingConfirmationProps = {
   currency: string;
   bookingUrl: string;
 };
-
-export type RenderedEmail = { subject: string; html: string; text: string };
 
 const COPY = {
   es: {

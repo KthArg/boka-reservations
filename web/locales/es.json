@@ -229,5 +229,26 @@
     "today-checkedin": "Check-in",
     "today-empty": "No hay tours programados para hoy.",
     "today-view": "Ver reservas"
+  },
+  "guides": {
+    "nav-label": "Salidas",
+    "departures-title": "Salidas",
+    "departures-empty": "No hay salidas próximas.",
+    "col-date": "Fecha",
+    "col-tour": "Tour",
+    "col-passengers": "Pasajeros",
+    "col-guide": "Guía",
+    "select-guide": "Seleccionar guía",
+    "assign": "Asignar",
+    "unassign": "Quitar",
+    "unassign-confirm": "¿Quitar el guía de esta salida?",
+    "assign-error": "No se pudo guardar la asignación. Intentá de nuevo.",
+    "view-title": "Mis próximas salidas",
+    "view-empty": "No tenés salidas asignadas por ahora.",
+    "view-date": "Fecha",
+    "view-meeting": "Punto de encuentro",
+    "view-passengers": "Pasajeros",
+    "view-invalid-title": "Enlace no válido",
+    "view-invalid-body": "Este enlace ya no es válido. Pedí uno nuevo al operador."
   }
 }

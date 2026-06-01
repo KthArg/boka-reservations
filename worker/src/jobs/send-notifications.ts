@@ -1,21 +1,22 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from '../env.js';
-import type { EmailAdapter } from '../notifications/types.js';
 import { getEmailAdapter } from '../notifications/adapters/index.js';
-import { renderForKind } from '../notifications/render.js';
+import { prepareBookingEmail, prepareGuideEmail } from '../notifications/prepare.js';
 import {
   cancelNotification,
   fetchPending,
   handleTransient,
-  loadBookingForNotification,
   markFailed,
   markSent,
   type NotificationRow,
 } from '../notifications/repository.js';
-import { EmailPermanentError, EmailTransientError } from '../notifications/types.js';
-
-const MS_PER_HOUR = 60 * 60 * 1000;
-const STALE_AFTER_MS = MS_PER_HOUR;
+import {
+  EmailPermanentError,
+  EmailTransientError,
+  GUIDE_ASSIGNMENT_KIND,
+  type EmailAdapter,
+  type RenderedEmail,
+} from '../notifications/types.js';
 
 export async function sendNotifications(): Promise<void> {
   if (!env.NOTIFICATIONS_ENABLED) return;
@@ -38,28 +39,30 @@ async function processOne(
   adapter: EmailAdapter,
   notif: NotificationRow,
 ): Promise<void> {
-  const booking = await loadBookingForNotification(db, notif.booking_id);
-  if (!booking) {
-    await cancelNotification(db, notif.id, 'booking-not-found');
-    return;
-  }
-  if (booking.status !== 'confirmed') {
-    await cancelNotification(db, notif.id, `booking-status-${booking.status}`);
-    return;
-  }
-  if (isStale(booking.tour_instance.starts_at)) {
-    await cancelNotification(db, notif.id, 'stale');
-    return;
-  }
+  const prepared =
+    notif.kind === GUIDE_ASSIGNMENT_KIND
+      ? await prepareGuideEmail(db, notif, env.APP_URL)
+      : await prepareBookingEmail(db, notif, env.APP_URL);
 
-  const rendered = renderForKind(notif.kind, notif.locale, booking, env.APP_URL);
+  if (!prepared.ok) {
+    await cancelNotification(db, notif.id, prepared.reason);
+    return;
+  }
+  await deliver(db, adapter, notif, prepared.email);
+}
 
+async function deliver(
+  db: SupabaseClient,
+  adapter: EmailAdapter,
+  notif: NotificationRow,
+  email: RenderedEmail,
+): Promise<void> {
   try {
     const result = await adapter.send({
       to: notif.recipient_email,
-      subject: rendered.subject,
-      html: rendered.html,
-      text: rendered.text,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
       idempotencyKey: notif.id,
     });
     await markSent(db, notif.id, adapter.provider, result.providerMessageId);
@@ -74,10 +77,6 @@ async function processOne(
     }
     throw err;
   }
-}
-
-function isStale(startsAt: string): boolean {
-  return Date.now() - new Date(startsAt).getTime() > STALE_AFTER_MS;
 }
 
 export const __testing = { processOne };
