@@ -1,11 +1,11 @@
 # 0009 — Gestión y asignación de guías
 
-- **Estado**: approved
+- **Estado**: implemented
 - **Autor**: Kenneth
 - **Creado**: 2026-05-31
 - **Última actualización**: 2026-06-01
-- **Rama**: feat/0009-gestion-asignacion-guias (cuando aplique)
-- **PR**: # (cuando aplique)
+- **Rama**: feat/0009-gestion-asignacion-guias
+- **PR**: #17 (mergeado a `dev`, commit `c5e89e7`)
 
 ## 1. Contexto y motivación
 
