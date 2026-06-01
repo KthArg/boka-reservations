@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// Mirror de @shared/constants/guides.GUIDE_TOKEN_TTL_DAYS. El worker es
-// self-contained (no importa @shared en runtime), así que se replica acá.
+// TTL del token del guía (spec 0009). Vive acá porque es el único consumidor:
+// el worker es self-contained (no importa @shared en runtime).
 const TOKEN_TTL_DAYS = 30;
 const TOKEN_BYTES = 32;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
