@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 // guide-view.ts y token.ts llevan `import 'server-only'`, paquete que no existe
@@ -78,8 +78,25 @@ describe('getGuideUpcomingTours (integration)', () => {
     admin = createClient(SUPABASE_URL, SERVICE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data: guides } = await admin.from('users').select('id').eq('role', 'guide').limit(1);
-    guideId = guides![0].id;
+    // Guía efímero propio: el aserto cuenta TODAS las salidas asignadas al guía,
+    // así que usar el guía del seed (compartido) volvería el test frágil ante
+    // cualquier asignación residual de otras corridas. Con un guía dedicado, su
+    // estado global es siempre el que siembra este test.
+    const { data: guide } = await admin
+      .from('users')
+      .insert({
+        email: `gv-guide-${crypto.randomUUID()}@example.com`,
+        role: 'guide',
+        full_name: 'Guía Vista',
+        phone: '+506 8000-0002',
+      })
+      .select('id')
+      .single();
+    guideId = guide!.id;
+  });
+
+  afterAll(async () => {
+    await admin.from('users').delete().eq('id', guideId);
   });
 
   afterEach(async () => {
