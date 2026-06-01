@@ -12,6 +12,7 @@ export type Database = {
           full_name: string;
           phone: string | null;
           active: boolean;
+          locale: 'es' | 'en';
           created_at: string;
           updated_at: string;
         };
@@ -22,6 +23,7 @@ export type Database = {
           full_name: string;
           phone?: string | null;
           active?: boolean;
+          locale?: 'es' | 'en';
           created_at?: string;
           updated_at?: string;
         };
@@ -32,6 +34,7 @@ export type Database = {
           full_name?: string;
           phone?: string | null;
           active?: boolean;
+          locale?: 'es' | 'en';
           created_at?: string;
           updated_at?: string;
         };
@@ -404,8 +407,10 @@ export type Database = {
       notifications: {
         Row: {
           id: string;
-          booking_id: string;
-          kind: 'booking_confirmation' | 'reminder_24h';
+          booking_id: string | null;
+          tour_instance_id: string | null;
+          guide_id: string | null;
+          kind: 'booking_confirmation' | 'reminder_24h' | 'guide_assignment';
           channel: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
@@ -422,8 +427,10 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          booking_id: string;
-          kind: 'booking_confirmation' | 'reminder_24h';
+          booking_id?: string | null;
+          tour_instance_id?: string | null;
+          guide_id?: string | null;
+          kind: 'booking_confirmation' | 'reminder_24h' | 'guide_assignment';
           channel?: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
@@ -440,8 +447,10 @@ export type Database = {
         };
         Update: {
           id?: string;
-          booking_id?: string;
-          kind?: 'booking_confirmation' | 'reminder_24h';
+          booking_id?: string | null;
+          tour_instance_id?: string | null;
+          guide_id?: string | null;
+          kind?: 'booking_confirmation' | 'reminder_24h' | 'guide_assignment';
           channel?: 'email';
           recipient_email?: string;
           locale?: 'es' | 'en';
@@ -462,6 +471,91 @@ export type Database = {
             columns: ['booking_id'];
             isOneToOne: false;
             referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_tour_instance_id_fkey';
+            columns: ['tour_instance_id'];
+            isOneToOne: false;
+            referencedRelation: 'tour_instances';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_guide_id_fkey';
+            columns: ['guide_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      tour_instance_guides: {
+        Row: {
+          tour_instance_id: string;
+          guide_id: string;
+          assigned_at: string;
+          assigned_by: string | null;
+        };
+        Insert: {
+          tour_instance_id: string;
+          guide_id: string;
+          assigned_at?: string;
+          assigned_by?: string | null;
+        };
+        Update: {
+          tour_instance_id?: string;
+          guide_id?: string;
+          assigned_at?: string;
+          assigned_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tour_instance_guides_tour_instance_id_fkey';
+            columns: ['tour_instance_id'];
+            isOneToOne: false;
+            referencedRelation: 'tour_instances';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tour_instance_guides_guide_id_fkey';
+            columns: ['guide_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      guide_access_tokens: {
+        Row: {
+          id: string;
+          guide_id: string;
+          token_hash: string;
+          expires_at: string;
+          created_at: string;
+          last_used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          guide_id: string;
+          token_hash: string;
+          expires_at: string;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          guide_id?: string;
+          token_hash?: string;
+          expires_at?: string;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'guide_access_tokens_guide_id_fkey';
+            columns: ['guide_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
             referencedColumns: ['id'];
           },
         ];
