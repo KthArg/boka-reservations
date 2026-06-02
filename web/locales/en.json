@@ -229,7 +229,21 @@
     "today-confirmed": "Confirmed",
     "today-checkedin": "Check-in",
     "today-empty": "No tours scheduled for today.",
-    "today-view": "View bookings"
+    "today-view": "View bookings",
+    "notif-cancellation_confirmation": "Cancellation confirmation",
+    "notif-refund_confirmation": "Refund confirmation",
+    "detail-cancel": "Cancel booking",
+    "cancel-confirm-refund": "This booking is eligible for a {amount} refund. Confirm cancellation?",
+    "cancel-confirm-no-refund": "This cancellation has no refund. Confirm cancellation?",
+    "cancel-error": "The booking could not be cancelled.",
+    "detail-refund": "Refund",
+    "refund-status-pending": "Queued",
+    "refund-status-processing": "Processing",
+    "refund-status-succeeded": "Credited",
+    "refund-status-failed": "Failed",
+    "refund-retry": "Retry refund",
+    "refund-retry-confirm": "Retry the failed refund?",
+    "refund-retry-error": "The refund could not be retried."
   },
   "guides": {
     "nav-label": "Departures",
@@ -299,5 +313,28 @@
       "user_mgmt_self_deactivation": "You can’t deactivate yourself.",
       "user_mgmt_last_admin": "You can’t deactivate the last active administrator."
     }
+  },
+  "cancellation": {
+    "title": "Your booking",
+    "tour": "Tour",
+    "date": "Date and time",
+    "people": "People",
+    "status": "Status",
+    "status-confirmed": "Confirmed",
+    "status-cancelled": "Cancelled",
+    "status-refunded": "Refunded",
+    "status-pending_payment": "Pending payment",
+    "cancel-cta": "Cancel booking",
+    "cancel-title": "Cancel booking",
+    "refund-yes": "You are eligible for a refund: {amount}",
+    "refund-no": "This cancellation has no refund.",
+    "confirm": "Confirm cancellation",
+    "back": "Back to my booking",
+    "cancelled-title": "Booking cancelled",
+    "cancelled-refund": "We will refund {amount}. You should see it credited within the next business days.",
+    "cancelled-no-refund": "Your booking was cancelled. This cancellation had no refund.",
+    "already": "This booking is not active.",
+    "error-invalid": "This link is invalid or expired.",
+    "error-generic": "The booking could not be cancelled. Please try again."
   }
 }

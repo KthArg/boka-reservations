@@ -10,7 +10,8 @@ const DETAIL_SELECT = `
   total_amount_cents, currency, status, checked_in_at, created_at, updated_at,
   tour_instances!inner ( starts_at, ends_at, tours!inner ( name_es ) ),
   payments ( status, external_provider ),
-  notifications ( kind, status, sent_at )
+  notifications ( kind, status, sent_at ),
+  refunds ( id, status, failure_reason )
 `;
 
 const TODAY_SELECT = `
@@ -35,6 +36,7 @@ interface RawDetail {
   tour_instances: { starts_at: string; ends_at: string; tours: { name_es: string } | null } | null;
   payments: { status: string; external_provider: string }[] | null;
   notifications: { kind: string; status: string; sent_at: string | null }[] | null;
+  refunds: { id: string; status: string; failure_reason: string | null }[] | null;
 }
 
 interface RawTodayBooking {
@@ -78,6 +80,13 @@ function toDetail(r: RawDetail): AdminBookingDetail {
       status: n.status,
       sentAt: n.sent_at,
     })),
+    refund: r.refunds?.[0]
+      ? {
+          id: r.refunds[0].id,
+          status: r.refunds[0].status,
+          failureReason: r.refunds[0].failure_reason,
+        }
+      : null,
   };
 }
 

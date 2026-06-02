@@ -229,7 +229,21 @@
     "today-confirmed": "Confirmados",
     "today-checkedin": "Check-in",
     "today-empty": "No hay tours programados para hoy.",
-    "today-view": "Ver reservas"
+    "today-view": "Ver reservas",
+    "notif-cancellation_confirmation": "Confirmación de cancelación",
+    "notif-refund_confirmation": "Confirmación de reembolso",
+    "detail-cancel": "Cancelar reserva",
+    "cancel-confirm-refund": "Esta reserva tiene derecho a reembolso de {amount}. ¿Confirmás la cancelación?",
+    "cancel-confirm-no-refund": "Esta cancelación no tiene reembolso. ¿Confirmás la cancelación?",
+    "cancel-error": "No se pudo cancelar la reserva.",
+    "detail-refund": "Reembolso",
+    "refund-status-pending": "En cola",
+    "refund-status-processing": "Procesando",
+    "refund-status-succeeded": "Acreditado",
+    "refund-status-failed": "Falló",
+    "refund-retry": "Reintentar reembolso",
+    "refund-retry-confirm": "¿Reintentar el reembolso fallido?",
+    "refund-retry-error": "No se pudo reintentar el reembolso."
   },
   "guides": {
     "nav-label": "Salidas",
@@ -299,5 +313,28 @@
       "user_mgmt_self_deactivation": "No podés desactivarte a vos mismo.",
       "user_mgmt_last_admin": "No se puede desactivar al último administrador activo."
     }
+  },
+  "cancellation": {
+    "title": "Tu reserva",
+    "tour": "Tour",
+    "date": "Fecha y hora",
+    "people": "Personas",
+    "status": "Estado",
+    "status-confirmed": "Confirmada",
+    "status-cancelled": "Cancelada",
+    "status-refunded": "Reembolsada",
+    "status-pending_payment": "Pago pendiente",
+    "cancel-cta": "Cancelar reserva",
+    "cancel-title": "Cancelar reserva",
+    "refund-yes": "Tenés derecho a reembolso: {amount}",
+    "refund-no": "Esta cancelación no tiene reembolso.",
+    "confirm": "Confirmar cancelación",
+    "back": "Volver a mi reserva",
+    "cancelled-title": "Reserva cancelada",
+    "cancelled-refund": "Te reembolsaremos {amount}. Lo verás acreditado en los próximos días hábiles.",
+    "cancelled-no-refund": "Tu reserva fue cancelada. Esta cancelación no tuvo reembolso.",
+    "already": "Esta reserva no está activa.",
+    "error-invalid": "Este enlace no es válido o expiró.",
+    "error-generic": "No se pudo cancelar la reserva. Intentá de nuevo."
   }
 }

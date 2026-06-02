@@ -29,6 +29,13 @@ export interface AdminBookingNotification {
   sentAt: string | null;
 }
 
+/** Reembolso asociado a una reserva, en el detalle. */
+export interface AdminBookingRefund {
+  id: string;
+  status: string;
+  failureReason: string | null;
+}
+
 /** Detalle completo de una reserva. */
 export interface AdminBookingDetail {
   id: string;
@@ -49,6 +56,7 @@ export interface AdminBookingDetail {
   paymentStatus: string | null;
   paymentProvider: string | null;
   notifications: AdminBookingNotification[];
+  refund: AdminBookingRefund | null;
 }
 
 /** Fila enriquecida para el export CSV (más columnas que la lista). */
