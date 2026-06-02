@@ -39,12 +39,19 @@ export async function assignGuide(instanceId: string, guideId: string): Promise<
     return { ok: false, error: GuideAssignmentError.NotAGuide };
   }
 
-  await db.from('tour_instance_guides').delete().eq('tour_instance_id', instanceId);
-  await db
+  const { error: delErr } = await db
+    .from('tour_instance_guides')
+    .delete()
+    .eq('tour_instance_id', instanceId);
+  if (delErr) return { ok: false, error: GuideAssignmentError.WriteFailed };
+
+  const { error: insErr } = await db
     .from('tour_instance_guides')
     .insert({ tour_instance_id: instanceId, guide_id: guideId, assigned_by: user.id });
+  if (insErr) return { ok: false, error: GuideAssignmentError.WriteFailed };
 
-  await enqueueAssignmentEmail(db, instanceId, guide);
+  const enqueueErr = await enqueueAssignmentEmail(db, instanceId, guide);
+  if (enqueueErr) return { ok: false, error: GuideAssignmentError.WriteFailed };
 
   revalidatePath(DEPARTURES_PATH);
   return { ok: true };
@@ -56,7 +63,11 @@ export async function unassignGuide(instanceId: string): Promise<AssignResult> {
   if (!user) return { ok: false, error: GuideAssignmentError.Unauthorized };
 
   const db = createSupabaseServiceClient();
-  await db.from('tour_instance_guides').delete().eq('tour_instance_id', instanceId);
+  const { error } = await db
+    .from('tour_instance_guides')
+    .delete()
+    .eq('tour_instance_id', instanceId);
+  if (error) return { ok: false, error: GuideAssignmentError.WriteFailed };
 
   revalidatePath(DEPARTURES_PATH);
   return { ok: true };
@@ -64,21 +75,23 @@ export async function unassignGuide(instanceId: string): Promise<AssignResult> {
 
 type GuideRow = { id: string; email: string; locale: 'es' | 'en' };
 
+/** Encola el email (idempotente por (instancia, guía)). Devuelve true si algo falló. */
 async function enqueueAssignmentEmail(
   db: ReturnType<typeof createSupabaseServiceClient>,
   instanceId: string,
   guide: GuideRow,
-): Promise<void> {
-  const { data: existing } = await db
+): Promise<boolean> {
+  const { data: existing, error: selErr } = await db
     .from('notifications')
     .select('id')
     .eq('tour_instance_id', instanceId)
     .eq('guide_id', guide.id)
     .eq('kind', NotificationKind.GuideAssignment)
     .maybeSingle();
-  if (existing) return;
+  if (selErr) return true;
+  if (existing) return false;
 
-  await db.from('notifications').insert({
+  const { error: insErr } = await db.from('notifications').insert({
     kind: NotificationKind.GuideAssignment,
     tour_instance_id: instanceId,
     guide_id: guide.id,
@@ -86,4 +99,5 @@ async function enqueueAssignmentEmail(
     locale: guide.locale,
     scheduled_for: new Date().toISOString(),
   });
+  return insErr !== null;
 }
