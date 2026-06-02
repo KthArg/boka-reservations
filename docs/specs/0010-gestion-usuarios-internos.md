@@ -1,6 +1,6 @@
 # 0010 — Gestión de usuarios internos
 
-- **Estado**: in-progress
+- **Estado**: implemented
 - **Autor**: Kenneth
 - **Creado**: 2026-06-01
 - **Última actualización**: 2026-06-01
