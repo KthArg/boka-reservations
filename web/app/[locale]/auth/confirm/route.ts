@@ -18,7 +18,8 @@ const MS_PER_SECOND = 1000;
  * el Host real para que TODO el flujo de invitación quede en un solo origen.
  */
 function requestOrigin(request: NextRequest): string {
-  const host = request.headers.get('host') ?? request.nextUrl.host;
+  const host =
+    request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? request.nextUrl.host;
   const proto =
     request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '');
   return `${proto}://${host}`;
