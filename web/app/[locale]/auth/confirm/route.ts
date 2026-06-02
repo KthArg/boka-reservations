@@ -11,23 +11,37 @@ const ALLOWED_TYPES: readonly EmailOtpType[] = ['invite', 'recovery'];
 const MS_PER_SECOND = 1000;
 
 /**
+ * Origen real del request (Host header). En dev, `request.url` se normaliza a
+ * `localhost` aunque el browser haya entrado por `127.0.0.1` (el origen de
+ * site_url). Redirigir con ese `request.url` cambiaría de origen y la cookie
+ * `invite_set` (seteada en el origen del email) no viajaría al destino. Usamos
+ * el Host real para que TODO el flujo de invitación quede en un solo origen.
+ */
+function requestOrigin(request: NextRequest): string {
+  const host = request.headers.get('host') ?? request.nextUrl.host;
+  const proto =
+    request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '');
+  return `${proto}://${host}`;
+}
+
+/**
  * Completa una invitación (o recovery) verificando el OTP del email con
  * `verifyOtp({ token_hash })` — patrón server-side de Supabase, no depende del
  * browser que abrió el link (spec 0010).
  *
  * Tras verificar, emite la cookie firmada INVITE_SET_COOKIE con el id del usuario
  * verificado: /reset-password la usa para fijar la contraseña vía service client,
- * sin depender de que la sesión del navegador sobreviva la navegación + POST (lo
- * que en el navegador real fallaba: la sesión del invitado no llegaba al submit).
+ * sin depender de que la sesión del navegador sobreviva la navegación + POST.
  */
 export async function GET(request: NextRequest, { params }: Params) {
   const { locale } = await params;
+  const origin = requestOrigin(request);
   const { searchParams } = request.nextUrl;
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
   const next = searchParams.get('next') ?? DEFAULT_NEXT;
 
-  const expired = new URL(`/${locale}/forgot-password?error=link-expired`, request.url);
+  const expired = new URL(`/${locale}/forgot-password?error=link-expired`, origin);
   if (!tokenHash || !type || !ALLOWED_TYPES.includes(type)) {
     return NextResponse.redirect(expired);
   }
@@ -41,7 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (error || !data.user) return NextResponse.redirect(expired);
 
   const target = next.startsWith('/') ? next : `/${next}`;
-  const response = NextResponse.redirect(new URL(`/${locale}${target}`, request.url));
+  const response = NextResponse.redirect(new URL(`/${locale}${target}`, origin));
   response.cookies.set(INVITE_SET_COOKIE, signInviteSet(data.user.id), {
     httpOnly: true,
     sameSite: 'lax',
