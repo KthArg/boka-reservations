@@ -137,8 +137,8 @@ ALTER TABLE public.notifications
 CREATE OR REPLACE FUNCTION public.cancel_booking(
   p_booking_id          uuid,
   p_actor_type          text,
-  p_actor_id            uuid,
-  p_refund_amount_cents integer
+  p_refund_amount_cents integer,
+  p_actor_id            uuid DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -226,4 +226,4 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.cancel_booking(uuid, text, uuid, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.cancel_booking(uuid, text, integer, uuid) FROM PUBLIC;
