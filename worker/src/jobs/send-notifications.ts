@@ -3,6 +3,10 @@ import { env } from '../env.js';
 import { getEmailAdapter } from '../notifications/adapters/index.js';
 import { prepareBookingEmail, prepareGuideEmail } from '../notifications/prepare.js';
 import {
+  prepareCancellationEmail,
+  prepareRefundEmail,
+} from '../notifications/prepare-cancellation.js';
+import {
   cancelNotification,
   fetchPending,
   handleTransient,
@@ -11,9 +15,11 @@ import {
   type NotificationRow,
 } from '../notifications/repository.js';
 import {
+  CANCELLATION_CONFIRMATION_KIND,
   EmailPermanentError,
   EmailTransientError,
   GUIDE_ASSIGNMENT_KIND,
+  REFUND_CONFIRMATION_KIND,
   type EmailAdapter,
   type RenderedEmail,
 } from '../notifications/types.js';
@@ -39,16 +45,26 @@ async function processOne(
   adapter: EmailAdapter,
   notif: NotificationRow,
 ): Promise<void> {
-  const prepared =
-    notif.kind === GUIDE_ASSIGNMENT_KIND
-      ? await prepareGuideEmail(db, notif, env.APP_URL)
-      : await prepareBookingEmail(db, notif, env.APP_URL);
+  const prepared = await prepareForKind(db, notif);
 
   if (!prepared.ok) {
     await cancelNotification(db, notif.id, prepared.reason);
     return;
   }
   await deliver(db, adapter, notif, prepared.email);
+}
+
+function prepareForKind(db: SupabaseClient, notif: NotificationRow) {
+  switch (notif.kind) {
+    case GUIDE_ASSIGNMENT_KIND:
+      return prepareGuideEmail(db, notif, env.APP_URL);
+    case CANCELLATION_CONFIRMATION_KIND:
+      return prepareCancellationEmail(db, notif, env.APP_URL);
+    case REFUND_CONFIRMATION_KIND:
+      return prepareRefundEmail(db, notif);
+    default:
+      return prepareBookingEmail(db, notif, env.APP_URL);
+  }
 }
 
 async function deliver(

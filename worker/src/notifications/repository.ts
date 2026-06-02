@@ -48,6 +48,25 @@ export async function loadBookingForNotification(
   return (data as unknown as BookingRow | null) ?? null;
 }
 
+export type LatestRefund = { amountCents: number; currency: string };
+
+/** Último reembolso de una reserva (cualquier estado). null si no hay. */
+export async function loadLatestRefund(
+  db: SupabaseClient,
+  bookingId: string,
+): Promise<LatestRefund | null> {
+  const { data, error } = await db
+    .from('refunds')
+    .select('amount_cents, currency')
+    .eq('booking_id', bookingId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<{ amount_cents: number; currency: string }>();
+
+  if (error) throw new Error(`load refund: ${error.message}`);
+  return data ? { amountCents: data.amount_cents, currency: data.currency } : null;
+}
+
 export async function cancelNotification(
   db: SupabaseClient,
   id: string,
