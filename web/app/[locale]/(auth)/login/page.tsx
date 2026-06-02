@@ -4,16 +4,18 @@ import { signIn } from './actions';
 import styles from './page.module.css';
 
 type Props = {
-  searchParams: Promise<{ error?: string; redirectTo?: string }>;
+  searchParams: Promise<{ error?: string; redirectTo?: string; reset?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: Props) {
   const t = await getTranslations('auth');
-  const { error, redirectTo } = await searchParams;
+  const { error, redirectTo, reset } = await searchParams;
 
   return (
     <>
       <h1 className={styles.title}>{t('login')}</h1>
+
+      {reset === 'success' && <p className={styles.success}>{t('password-set')}</p>}
 
       {error === 'invalid-credentials' && (
         <p className={styles.error}>{t('error-invalid-credentials')}</p>

@@ -3,6 +3,23 @@
 Spec: [0010-gestion-usuarios-internos.md](./0010-gestion-usuarios-internos.md)
 Rama: feat/0010-gestion-usuarios-internos
 
+## 2026-06-02 — Rediseño del seteo de contraseña: no depender de la sesión del navegador
+
+**Síntoma (2º reporte en navegador)**: tras los fixes anteriores, al llegar a `/reset-password` y enviar el formulario, salía "no pudimos completar la invitación" (el guard `uid` se disparaba). Diagnóstico: la sesión del invitado que arma `verifyOtp` **no sobrevive** hasta el POST del Server Action en el navegador real (reproducí multi-salto server-side y la sesión SÍ persiste — el fallo es específico del navegador, no reproducible con fetch). El guard hacía su trabajo (no cambiaba la contraseña equivocada) pero bloqueaba el onboarding legítimo.
+
+**Decisión**: dejar de depender de la sesión del navegador para fijar la contraseña del invitado.
+
+**Cambios**:
+
+- `/auth/confirm`: tras `verifyOtp`, emite cookie firmada **`invite_set`** (HMAC con `SUPABASE_SERVICE_ROLE_KEY`, HttpOnly, SameSite=Lax, 15 min) con el id del usuario verificado. Helper `lib/auth/invite-set-token.ts` (`signInviteSet`/`verifyInviteSet`), unit-testeado (firma, tamper, uid swap, expiración, malformado).
+- `/reset-password` `updatePassword`: si hay `invite_set` válida → fija la contraseña vía **service client `auth.admin.updateUserById`** y redirige a `/login?reset=success`. Sin `invite_set` (forgot-password) → sigue el flujo viejo `updateUser` sobre la sesión propia.
+- Eliminado el guard `uid`/`isSessionMismatch` (`guard.ts`/`guard.test.ts`) y la i18n `reset-session-mismatch`; ya no aplican. Agregada i18n `auth.password-set` + estilo `.success` en login.
+- Constantes nuevas en `shared/constants/users.ts`: `INVITE_SET_COOKIE`, `INVITE_SET_TTL_MS`.
+
+**Por qué es robusto**: el seteo se hace con el id firmado en la cookie (plain cookie que round-trippea confiable, a diferencia de la cookie de sesión troceada de Supabase) + admin API. No toca la sesión del navegador, así que es inmune a que un admin esté logueado o a que la sesión del invitado no persista. Seguridad equivalente al magic link: la cookie sólo se emite tras un `verifyOtp` válido, es HttpOnly, firmada y de vida corta.
+
+**Verificado en sesión**: `/auth/confirm` emite `invite_set` con el uid correcto; `updateUserById` fija la contraseña; el invitado loguea con la nueva y el admin queda intacto. Web unit 76, integración 87, typecheck/lint limpios. Falta la confirmación final del usuario en navegador.
+
 ## 2026-06-02 — Fix del middleware: persistir el refresh de cookies de sesión
 
 Continuación del fix anterior (a pedido del usuario, misma rama). `middleware.ts` devolvía `intlMiddleware(request)` y **descartaba** el `response` donde `getUser()` escribía las cookies de sesión refrescadas → al expirar el access token la sesión se "perdía". Ahora la respuesta base es la de next-intl y el cliente de Supabase se engancha a ESA respuesta (patrón oficial SSR + next-intl), así el refresh persiste.

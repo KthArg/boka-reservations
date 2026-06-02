@@ -34,7 +34,7 @@
     "new-password-label": "Nueva contraseña (mínimo 8 caracteres)",
     "save-password": "Guardar contraseña",
     "link-expired": "El enlace expiró o ya fue usado. Solicitá uno nuevo.",
-    "reset-session-mismatch": "No pudimos completar la invitación en esta sesión. Pedile al administrador que te reenvíe la invitación.",
+    "password-set": "Contraseña fijada. Iniciá sesión con tu nueva contraseña.",
     "admin-panel-title": "Panel de administración",
     "panel-under-construction": "Las funciones del panel estarán disponibles en las próximas etapas."
   },

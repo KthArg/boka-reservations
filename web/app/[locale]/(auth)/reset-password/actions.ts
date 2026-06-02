@@ -1,10 +1,13 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
+import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
+import { verifyInviteSet } from '@/lib/auth/invite-set-token';
+import { INVITE_SET_COOKIE } from '@shared/constants/users';
 import { getLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { isSessionMismatch } from './guard';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -23,19 +26,25 @@ export async function updatePassword(formData: FormData) {
     redirect(`/${locale}/reset-password?error=invalid-password`);
   }
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const cookieStore = await cookies();
+  const inviteUid = verifyInviteSet(cookieStore.get(INVITE_SET_COOKIE)?.value);
 
-  // Guard de seguridad: no cambiar la contraseña de una sesión que no es la del
-  // usuario para el que se emitió el enlace (ver guard.ts). Evita que un admin
-  // logueado en el mismo navegador termine cambiando SU contraseña al abrir el
-  // enlace de invitación de otra persona.
-  if (isSessionMismatch(formData.get('uid'), user?.id)) {
-    redirect(`/${locale}/reset-password?error=session-mismatch`);
+  // Flujo de invitación (admin/staff): fija la contraseña vía service client,
+  // identificando al usuario con la cookie firmada que emitió /auth/confirm. No
+  // depende de la sesión del navegador (que en el navegador real no sobrevivía
+  // hasta este POST). El usuario luego inicia sesión con su nueva contraseña.
+  if (inviteUid) {
+    const service = createSupabaseServiceClient();
+    const { error } = await service.auth.admin.updateUserById(inviteUid, {
+      password: result.data.password,
+    });
+    cookieStore.delete(INVITE_SET_COOKIE);
+    if (error) redirect(`/${locale}/reset-password?error=update-failed`);
+    redirect(`/${locale}/login?reset=success`);
   }
 
+  // Flujo forgot-password (self-service: el usuario reseteó su propia sesión).
+  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.updateUser({
     password: result.data.password,
   });
