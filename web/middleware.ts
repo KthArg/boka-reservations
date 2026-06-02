@@ -13,7 +13,12 @@ function isProtectedPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+  // next-intl produce la respuesta (rewrite de locale, etc.) y enganchamos el
+  // cliente de Supabase a ESA respuesta: así el refresh de cookies que hace
+  // getUser() persiste al navegador. Antes se devolvía intlMiddleware(request)
+  // descartando el response con las cookies refrescadas, lo que dejaba que la
+  // sesión se perdiera al expirar el access token.
+  const response = intlMiddleware(request);
   const supabase = createSupabaseMiddlewareClient(request, response);
 
   const {
@@ -29,7 +34,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return intlMiddleware(request);
+  return response;
 }
 
 export const config = {

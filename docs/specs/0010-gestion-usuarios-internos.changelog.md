@@ -3,6 +3,12 @@
 Spec: [0010-gestion-usuarios-internos.md](./0010-gestion-usuarios-internos.md)
 Rama: feat/0010-gestion-usuarios-internos
 
+## 2026-06-02 — Fix del middleware: persistir el refresh de cookies de sesión
+
+Continuación del fix anterior (a pedido del usuario, misma rama). `middleware.ts` devolvía `intlMiddleware(request)` y **descartaba** el `response` donde `getUser()` escribía las cookies de sesión refrescadas → al expirar el access token la sesión se "perdía". Ahora la respuesta base es la de next-intl y el cliente de Supabase se engancha a ESA respuesta (patrón oficial SSR + next-intl), así el refresh persiste.
+
+**Verificado en runtime (dev server)**: ruta protegida sin sesión → 307 a login; `/` → 307 a `/es` (intl OK); `/es/dashboard` con sesión → 200; invitación (`/auth/confirm`) sigue resolviendo al invitado con `?uid=`. Unit 76, integración 87, typecheck/lint limpios. Cierra la deuda anotada en la entrada anterior.
+
 ## 2026-06-02 — Fix de seguridad: abrir invitación con otra sesión activa cambiaba la contraseña equivocada
 
 **Síntoma (reportado por el usuario)**: estando logueado como `admin@bokatrails.com`, creó `qwe@qwe.com` y abrió el enlace de invitación **en el mismo navegador**. Resultado: se cambió la contraseña del **admin**, no la de qwe. En DB: qwe quedó `confirmed` y con `last_sign_in` (la sesión que arma `verifyOtp` se emitió server-side) pero **sin** contraseña propia; `admin1234` dejó de funcionar.
