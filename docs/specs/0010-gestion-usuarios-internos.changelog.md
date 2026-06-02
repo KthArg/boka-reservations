@@ -3,6 +3,19 @@
 Spec: [0010-gestion-usuarios-internos.md](./0010-gestion-usuarios-internos.md)
 Rama: feat/0010-gestion-usuarios-internos
 
+## 2026-06-02 — CAUSA RAÍZ encontrada: redirect de /auth/confirm cambiaba de origen (127.0.0.1 → localhost)
+
+Tras el rediseño con `invite_set`, el navegador real seguía fallando con "enlace expirado" al fijar la contraseña (el POST de `/reset-password` daba `update-failed`). Diagnóstico definitivo:
+
+- El email usa `{{ .SiteURL }}` = `http://127.0.0.1:3000`, así que el click entra a `/auth/confirm` en el origen **127.0.0.1**.
+- `/auth/confirm` redirigía con `new URL(path, request.url)`, pero **Next dev normaliza `request.url` a `localhost`** aunque el browser entró por 127.0.0.1 (verificado con curl: pedido a 127 → `Location: http://localhost:3000/...`).
+- La cookie `invite_set` (y antes la de sesión) se seteaba en **127.0.0.1** y el redirect iba a **localhost** → el navegador NO envía esa cookie al otro origen → `invite_set` ausente en el POST → cae al flujo de sesión → `update-failed`.
+- **Por qué mis reproducciones con fetch nunca lo vieron**: mi cookie jar mandaba las cookies sin importar el origen. El bug es exclusivo de un navegador real que respeta el origen.
+
+Esto explica retroactivamente TODOS los fallos de invitación en el navegador (contraseña equivocada, "sesión no coincide", "update-failed"): las cookies se partían entre `localhost` y `127.0.0.1`.
+
+**Fix**: `/auth/confirm` arma los redirects con el **Host real del request** (`request.headers.get('host')` + proto), no con `request.url`. Así el flujo de invitación queda íntegro en el origen del email (127.0.0.1): cookie seteada y enviada en el mismo origen. Verificado: pedido a 127 → Location 127; pedido a localhost → Location localhost. En prod no aplica (un solo dominio).
+
 ## 2026-06-02 — Rediseño del seteo de contraseña: no depender de la sesión del navegador
 
 **Síntoma (2º reporte en navegador)**: tras los fixes anteriores, al llegar a `/reset-password` y enviar el formulario, salía "no pudimos completar la invitación" (el guard `uid` se disparaba). Diagnóstico: la sesión del invitado que arma `verifyOtp` **no sobrevive** hasta el POST del Server Action en el navegador real (reproducí multi-salto server-side y la sesión SÍ persiste — el fallo es específico del navegador, no reproducible con fetch). El guard hacía su trabajo (no cambiaba la contraseña equivocada) pero bloqueaba el onboarding legítimo.
