@@ -1,10 +1,10 @@
 # 0010 — Gestión de usuarios internos
 
-- **Estado**: approved
+- **Estado**: in-progress
 - **Autor**: Kenneth
 - **Creado**: 2026-06-01
 - **Última actualización**: 2026-06-01
-- **Rama**: feat/0010-gestion-usuarios-internos (cuando aplique)
+- **Rama**: feat/0010-gestion-usuarios-internos
 - **PR**: # (cuando aplique)
 
 ## 1. Contexto y motivación
@@ -73,17 +73,28 @@ La diferencia clave es si el usuario **inicia sesión**:
 
 `public.users.id` NO tiene FK a `auth.users` (ver migración 0002), así que un guía sin cuenta de auth es un estado válido.
 
-### Email de invitación (reusa el flujo de auth existente)
+### Email de invitación (Supabase Auth, vía `inviteUserByEmail` + `verifyOtp`)
 
-El onboarding de admin/staff reutiliza el mecanismo de **Supabase Auth** ya usado por `forgot-password` (`resetPasswordForEmail`): tras crear la cuenta de auth, se envía el email de "fijá tu contraseña". Estos emails salen por el **SMTP de Supabase Auth** (Mailpit en dev, el SMTP configurado en prod), NO por la cola `notifications` del 0007.
+El onboarding de admin/staff sale por el canal de **Supabase Auth** (Mailpit en dev, el SMTP configurado en prod), NO por la cola `notifications` del 0007. Es un email de auth, no transaccional de negocio.
 
-**Decisión y tradeoff**: se acepta esta divergencia de la convención "todos los emails por la cola" porque es coherente con cómo ya funciona el reset de contraseña (mismo canal, mismo template de Supabase) y evita reimplementar el set-password con tokens propios. El email de invitación es un email de auth, no transaccional de negocio.
+**Corrección al diseño original (decidido en implementación, 2026-06-01).** El borrador asumía reusar `resetPasswordForEmail` "como en forgot-password". No es viable tal cual: ese flujo es **PKCE y depende del browser** que lo inicia — el code verifier se guarda en la cookie del navegador del que llama (ver gotcha en `tech-decisions.md` / memoria). En una invitación, el admin crea la cuenta de **otra persona** desde el server; el verifier nunca llega al browser del invitado, así que el link no completaría contra el `/auth/callback` actual (`exchangeCodeForSession`, que exige el `?code=` con verifier).
+
+**Mecanismo elegido (server-side, sin dependencia de browser):**
+
+1. `inviteUserByEmail(email, { data })` de la **Admin API** (service role): crea la cuenta en `auth.users` (sin contraseña) y dispara el email de invitación por el SMTP de Supabase, usando el template **`invite`**.
+2. El template `invite` se personaliza para apuntar a una ruta propia **`/{locale}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password`**.
+3. `/auth/confirm` (Route Handler nuevo) llama `supabase.auth.verifyOtp({ token_hash, type })` con el **server client** (`@supabase/ssr`): verifica el token contra GoTrue y deja la sesión en las cookies, luego redirige a `next` (`/reset-password`). Es el patrón server-side oficial de Supabase y no depende de qué browser abrió el link.
+4. En `/reset-password` (ya existente) el invitado fija su contraseña (`updateUser({ password })`), reusando la pantalla del flujo de reset.
+
+**Aislamiento**: sólo se personaliza el template **`invite`** y se agrega `/auth/confirm`. El flujo de **forgot-password** (template `recovery` + `/auth/callback` PKCE) **NO se toca** — sigue funcionando igual. Así se evita regresión en una ruta de auth ya validada.
+
+**`resendInvite`**: reenvía vía `inviteUserByEmail` para un admin/staff que aún no fijó contraseña (cuenta sin confirmar). Si Supabase rechaza el reenvío, devuelve error claro (no deja al usuario inaccesible de forma silenciosa).
 
 ### Server Actions (admin-only, service role)
 
 En `lib/users/` (nuevo módulo), todas verifican `requireRole(UserRole.Admin)` y usan el service client:
 
-- `createUser(input)`: valida con Zod; si `role='guide'` inserta solo en `public.users`; si no, crea `auth.users` (Admin API) + `public.users` con el mismo id + envía invitación. Email único (rechaza duplicados).
+- `createUser(input)`: valida con Zod; chequea email no usado en `public.users` (error claro antes de tocar auth). Si `role='guide'` inserta solo en `public.users` (`id` por `gen_random_uuid()`). Si admin/staff: `inviteUserByEmail` (crea `auth.users` + dispara invitación) → inserta `public.users` con el **mismo id** que devuelve la Admin API → si el insert falla, `deleteUser(id)` para revertir la cuenta de auth.
 - `updateUser(id, input)`: edita `full_name`, `phone`, `locale`. (Rol y email inmutables — ver fuera de alcance.)
 - `deactivateUser(id)` / `reactivateUser(id)`: togglea `active`. `deactivateUser` rechaza si el target es el propio admin o si es el último admin activo.
 - `resendInvite(id)` (opcional): reenvía el email de invitación a un admin/staff que aún no fijó contraseña.
@@ -118,7 +129,7 @@ No se introduce otra máquina de estados.
 
 ## 8. Casos borde y errores
 
-- **Email duplicado**: `createUser` rechaza (la columna `email` es UNIQUE; además chequear antes para dar error claro). Si la cuenta de auth se creó pero el insert en `public.users` falla, revertir la cuenta de auth (o crear primero `public.users` y auth después con rollback manual) — definir orden transaccional en implementación: crear auth primero, y si falla el `public.users`, borrar la cuenta de auth recién creada.
+- **Email duplicado**: `createUser` rechaza. Se chequea contra `public.users` ANTES de tocar auth (error claro sin crear cuenta huérfana). Orden transaccional para admin/staff: `inviteUserByEmail` (crea auth) primero, luego insert en `public.users`; si el insert falla, `deleteUser` borra la cuenta de auth recién creada. El email de invitación ya pudo haber salido en ese caso de borde raro, pero el link queda muerto y el admin ve el error — acepta reintentar.
 - **Guía sin teléfono**: rechazado por Zod y por el CHECK de DB.
 - **Desactivarse a sí mismo**: rechazado (no lockout).
 - **Desactivar al último admin activo**: rechazado (el sistema siempre debe tener ≥1 admin activo).
@@ -130,7 +141,7 @@ No se introduce otra máquina de estados.
 ## 9. Impacto en otras áreas
 
 - **Panel admin**: sección nueva `/dashboard/users` + link de nav (solo admin). Reusa el patrón de guards y Server Actions de 0008/0009.
-- **Auth (0002)**: se usa la Admin API de Supabase (service role) para crear cuentas; el email de invitación reusa el canal de `resetPasswordForEmail`. Sin cambios a las políticas RLS (ya son admin-only).
+- **Auth (0002)**: se usa la Admin API de Supabase (service role) para crear cuentas (`inviteUserByEmail`/`deleteUser`). Se agrega un Route Handler **`/auth/confirm`** (`verifyOtp` con token_hash) para completar la invitación, y se personaliza el template de email **`invite`** para apuntar ahí. El flujo de forgot-password (template `recovery` + `/auth/callback`) NO se modifica. Sin cambios a las políticas RLS (ya son admin-only).
 - **Guías (0009)**: `listGuides` ya filtra `active=true`, así que desactivar saca al guía del selector sin cambios. Además, este spec **modifica `getGuideUpcomingTours`** (vista del guía) para verificar `users.active`: un guía desactivado ve "enlace no válido" aunque su token siga vigente. Es robusto porque el guía no puede alterar su propio `active` (sin login, vista de solo lectura, RLS admin-only).
 - **i18n**: namespace nuevo `users` en AMBOS `es.json` Y `en.json` (lección de 0008/0009).
 - **Emails/templates**: no se crea template propio; la invitación usa el email de Supabase Auth.
