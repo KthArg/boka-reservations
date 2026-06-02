@@ -160,4 +160,17 @@ describe('getGuideUpcomingTours (integration)', () => {
     const tours = await getGuideUpcomingTours('no-such-token', 'es');
     expect(tours).toBeNull();
   });
+
+  it('con guía desactivado devuelve null aunque el token siga vigente (spec 0010)', async () => {
+    await seedAssignedInstance(new Date(Date.now() + 2 * DAY_MS).toISOString());
+    await issueToken('inactive-guide-token', new Date(Date.now() + 10 * DAY_MS).toISOString());
+
+    await admin.from('users').update({ active: false }).eq('id', guideId);
+    try {
+      const tours = await getGuideUpcomingTours('inactive-guide-token', 'es');
+      expect(tours).toBeNull();
+    } finally {
+      await admin.from('users').update({ active: true }).eq('id', guideId);
+    }
+  });
 });

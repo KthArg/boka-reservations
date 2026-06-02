@@ -64,6 +64,12 @@ export async function getGuideUpcomingTours(
   const guideId = await validateGuideToken(db, token);
   if (!guideId) return null;
 
+  // Un guía desactivado pierde acceso aunque su token siga vigente (spec 0010).
+  // Es seguro: el guía no puede cambiar su propio `active` (sin login, vista de
+  // solo lectura, RLS admin-only sobre users).
+  const { data: guide } = await db.from('users').select('active').eq('id', guideId).maybeSingle();
+  if (!guide?.active) return null;
+
   const nowIso = new Date().toISOString();
   const { data, error } = await db
     .from('tour_instance_guides')

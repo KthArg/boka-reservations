@@ -2,16 +2,18 @@ import { getCurrentUser } from '@/lib/auth/server';
 import { signOut } from '@/lib/auth/actions';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import { UserRole } from '@shared/constants/enums';
 import styles from './admin.module.css';
 
 type Props = { children: React.ReactNode };
 
 export default async function AdminLayout({ children }: Props) {
-  const [tAuth, tTours, tBookings, tGuides] = await Promise.all([
+  const [tAuth, tTours, tBookings, tGuides, tUsers] = await Promise.all([
     getTranslations('auth'),
     getTranslations('tours'),
     getTranslations('bookings'),
     getTranslations('guides'),
+    getTranslations('users'),
   ]);
   const user = await getCurrentUser();
 
@@ -30,6 +32,11 @@ export default async function AdminLayout({ children }: Props) {
           <Link href="/dashboard/departures" className={styles.navLink}>
             {tGuides('nav-label')}
           </Link>
+          {user?.role === UserRole.Admin && (
+            <Link href="/dashboard/users" className={styles.navLink}>
+              {tUsers('nav-label')}
+            </Link>
+          )}
         </nav>
 
         <div className={styles.footer}>
