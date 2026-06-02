@@ -1,3 +1,5 @@
+import { UserRole } from './enums';
+
 /** Quién originó un evento en `audit_logs` (spec 0011). */
 export enum AuditActorType {
   Tourist = 'tourist',
@@ -19,4 +21,9 @@ export enum AuditAction {
 export enum AuditEntityType {
   Booking = 'booking',
   Refund = 'refund',
+}
+
+/** Mapea el rol del usuario interno al actor de auditoría. */
+export function actorTypeForRole(role: UserRole): AuditActorType {
+  return role === UserRole.Admin ? AuditActorType.Admin : AuditActorType.Staff;
 }
