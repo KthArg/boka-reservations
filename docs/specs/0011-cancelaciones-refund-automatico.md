@@ -108,9 +108,9 @@ La elegibilidad y el monto se calculan en la capa lib **antes** de llamar a la f
 - Status del Refund en OnvoPay: `pending → succeeded | failed`.
 - **No hay evento de webhook de refund** (los eventos OnvoPay son solo `payment-intent.*`, `subscription.*`, `checkout-session.succeeded`, `mobile-transfer.received`).
 
-Interfaz `PaymentProvider` (`web/lib/payments/types.ts`) gana dos métodos; el adapter OnvoPay los implementa:
+**Corrección de diseño (2026-06-02, durante implementación):** el cliente HTTP de refunds de OnvoPay vive en el **worker**, no en el `PaymentProvider` de `web/lib/payments`. Razón: el reembolso lo dispara el job del worker, y el worker es self-contained (no importa `web/lib`); además ya tiene `ONVOPAY_SECRET_KEY` en su env. `web` nunca llama a OnvoPay para reembolsar (solo encola la fila `refunds`), así que agregar métodos de refund al adapter de web sería código muerto. El worker tiene su propio adapter `worker/src/refunds/onvopay.ts` (mismo patrón de adapter, preservado dentro del worker):
 
-- `createRefund({ externalPaymentId, amountCents?, reason }) → { externalRefundId, status }`
+- `createRefund({ externalPaymentId, amountCents?, reason }) → { externalRefundId, status, failureReason? }`
 - `getRefund(externalRefundId) → { status, failureReason? }`
 
 Nuevo job del worker `process-refunds` (polling cada 60s, igual cadencia que el resto):
@@ -233,7 +233,7 @@ stateDiagram-v2
 - **Panel admin**: el detalle de reserva (`/dashboard/bookings/[id]`) suma botón "Cancelar reserva" y, si hay reembolso, su estado + botón "Reintentar reembolso" cuando está fallido.
 - **Emails**: dos templates nuevos (worker, funciones puras ES/EN como el resto): `cancellation-confirmation` y `refund-confirmation`. Además `render.ts` cambia el link de la reserva a la ruta nueva con token. Nuevos kinds en `NotificationKind` (`shared/constants/notifications.ts`).
 - **Worker**: job nuevo `process-refunds` (polling 60s). Reusa el ciclo y el patrón de `send-notifications`. Debe estar corriendo para que los reembolsos avancen (mismo gotcha operativo que los emails).
-- **Pagos**: interfaz `PaymentProvider` +2 métodos; adapter OnvoPay los implementa. Mock MSW en tests.
+- **Pagos**: el cliente de refunds de OnvoPay vive en el worker (`worker/src/refunds/onvopay.ts`), no en el adapter de web (ver corrección en sección 5). Mock MSW en tests del worker. El adapter de `web/lib/payments` no cambia.
 - **i18n**: namespace nuevo `cancellation` en `es.json` **y** `en.json` (página de ver/cancelar reserva). Copy de los dos emails ES/EN.
 - **Notificación de fallo al staff**: **descartada** (decisión 2026-06-02). Un reembolso `failed` se ve en el panel de detalle + retry manual; no se envía email interno. Evita generalizar notificaciones a destinatarios internos para algo que el pull del panel ya cubre.
 - **Reportes (0012)**: `audit_logs` y la tasa de cancelación quedan disponibles para cuando se construya ese spec; acá no se consumen.
