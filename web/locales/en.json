@@ -34,6 +34,7 @@
     "new-password-label": "New password (minimum 8 characters)",
     "save-password": "Save password",
     "link-expired": "The link has expired or was already used. Request a new one.",
+    "reset-session-mismatch": "Sign out of your current session and reopen the link from the email: the active session isn't the invited user's.",
     "admin-panel-title": "Admin panel",
     "panel-under-construction": "Panel features will be available in upcoming stages."
   },

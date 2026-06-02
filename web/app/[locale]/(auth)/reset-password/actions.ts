@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { getLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { isSessionMismatch } from './guard';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -23,6 +24,18 @@ export async function updatePassword(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Guard de seguridad: no cambiar la contraseña de una sesión que no es la del
+  // usuario para el que se emitió el enlace (ver guard.ts). Evita que un admin
+  // logueado en el mismo navegador termine cambiando SU contraseña al abrir el
+  // enlace de invitación de otra persona.
+  if (isSessionMismatch(formData.get('uid'), user?.id)) {
+    redirect(`/${locale}/reset-password?error=session-mismatch`);
+  }
+
   const { error } = await supabase.auth.updateUser({
     password: result.data.password,
   });

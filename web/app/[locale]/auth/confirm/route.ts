@@ -26,9 +26,19 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-  if (error) return NextResponse.redirect(expired);
 
+  // Limpia cualquier sesión previa del navegador ANTES de verificar el OTP: si un
+  // admin abre el enlace de invitación de otra persona en el mismo navegador, su
+  // sesión no debe quedar activa. verifyOtp establece luego la sesión del invitado.
+  await supabase.auth.signOut({ scope: 'local' });
+
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+  if (error || !data.user) return NextResponse.redirect(expired);
+
+  // Pasa el id del usuario verificado para que /reset-password se niegue a cambiar
+  // la contraseña si la sesión activa no es la suya (defensa ante sesión residual).
   const target = next.startsWith('/') ? next : `/${next}`;
-  return NextResponse.redirect(new URL(`/${locale}${target}`, request.url));
+  const dest = new URL(`/${locale}${target}`, request.url);
+  dest.searchParams.set('uid', data.user.id);
+  return NextResponse.redirect(dest);
 }

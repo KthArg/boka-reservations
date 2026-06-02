@@ -3,6 +3,23 @@
 Spec: [0010-gestion-usuarios-internos.md](./0010-gestion-usuarios-internos.md)
 Rama: feat/0010-gestion-usuarios-internos
 
+## 2026-06-02 — Fix de seguridad: abrir invitación con otra sesión activa cambiaba la contraseña equivocada
+
+**Síntoma (reportado por el usuario)**: estando logueado como `admin@bokatrails.com`, creó `qwe@qwe.com` y abrió el enlace de invitación **en el mismo navegador**. Resultado: se cambió la contraseña del **admin**, no la de qwe. En DB: qwe quedó `confirmed` y con `last_sign_in` (la sesión que arma `verifyOtp` se emitió server-side) pero **sin** contraseña propia; `admin1234` dejó de funcionar.
+
+**Diagnóstico**: en `/reset-password`, `updateUser({ password })` actúa sobre la **sesión activa** del navegador. Al abrir la invitación con la sesión del admin presente, el `updateUser` corrió bajo el admin. No pude reproducirlo server-side (mi simulación con fetch siempre resolvía correctamente al invitado — la cookie de qwe reemplazaba la del admin, incluso troceada); el mecanismo exacto es específico del navegador real (prefetch / timing del POST del Server Action). Por eso el fix NO depende de adivinar ese mecanismo.
+
+**Fix (defensa que hace imposible el cambio de cuenta equivocada):**
+
+- `/auth/confirm` ahora hace `signOut({ scope: 'local' })` antes de `verifyOtp` (limpia la sesión residual) y agrega `?uid=<id del usuario verificado>` al redirect a `/reset-password`.
+- `/reset-password` lleva el `uid` en un input oculto; `updatePassword` chequea `isSessionMismatch(uid, sessionUserId)` (guard puro en `guard.ts`) y **rechaza** el cambio si la sesión activa no es la del usuario del enlace → error `session-mismatch` (i18n nuevo). Si no viene `uid` (forgot-password viejo, mismo usuario) el guard no aplica: comportamiento sin cambios.
+
+**Remediación aplicada**: restauré la contraseña del seed admin a `admin1234` vía Admin API.
+
+**Verificado en sesión**: confirm redirige a `/reset-password?uid=<invitado>` y la sesión resuelve al invitado (happy path intacto); guard unit-testeado (5 casos). Web unit 76, integración 87, typecheck/lint limpios.
+
+**Deuda anotada**: el middleware (`middleware.ts`) retorna `intlMiddleware(request)` descartando el `response` con las cookies refrescadas por `getUser()` — quirk latente de propagación de cookies; no se tocó (riesgo transversal), candidato a fix aparte.
+
 ## 2026-06-01 — Implementación completa (backend + UI + tests)
 
 **Hecho**:
