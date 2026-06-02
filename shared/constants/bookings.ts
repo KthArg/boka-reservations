@@ -26,6 +26,7 @@ export enum CheckInError {
   Unauthorized = 'checkin_unauthorized',
   NotFound = 'checkin_not_found',
   NotConfirmed = 'checkin_not_confirmed',
+  WriteFailed = 'checkin_write_failed',
 }
 
 /** Offset horario del operador (Costa Rica, UTC-6, sin horario de verano). */
