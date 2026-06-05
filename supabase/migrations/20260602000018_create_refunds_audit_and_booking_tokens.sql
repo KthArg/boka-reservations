@@ -53,7 +53,15 @@ CREATE TRIGGER set_refunds_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
 
 ALTER TABLE public.refunds ENABLE ROW LEVEL SECURITY;
--- Solo service_role accede (igual patrón que payments).
+
+-- Lectura para el panel (admin/staff), igual patrón que payments/bookings.
+-- El detalle de reserva muestra el estado del refund y el botón de retry.
+-- Los writes los hace el worker/Server Actions con service_role.
+CREATE POLICY refunds_select_admin_staff
+  ON public.refunds
+  FOR SELECT
+  TO authenticated
+  USING ((SELECT auth.jwt() ->> 'user_role') IN ('admin', 'staff'));
 
 -- ----------------------------------------------------------------
 -- audit_logs
