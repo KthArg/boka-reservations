@@ -1,10 +1,15 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
+import { formatMoneyCents } from '@/lib/format/money';
 import { BookingStatus } from '@shared/constants/enums';
+import { RefundStatus } from '@shared/constants/refunds';
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
+import { computeRefund } from '@shared/constants/policies';
 import type { AdminBookingDetail } from '@/lib/booking/admin-types';
 import { CheckInButton } from '../CheckInButton';
+import { CancelBookingButton } from '../CancelBookingButton';
+import { RetryRefundButton } from '../RetryRefundButton';
 import styles from '../bookings.module.css';
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -17,11 +22,21 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export async function BookingDetailView({ booking }: { booking: AdminBookingDetail }) {
-  const t = await getTranslations('bookings');
+  const [t, locale] = await Promise.all([getTranslations('bookings'), getLocale()]);
   const start = formatOperatorDateTime(booking.startsAt);
   const checkIn = formatOperatorDateTime(booking.checkedInAt ?? '');
   const created = formatOperatorDateTime(booking.createdAt);
   const amount = (booking.totalAmountCents / CENTS_PER_UNIT).toFixed(2);
+
+  const isConfirmed = booking.status === BookingStatus.Confirmed;
+  const refundPreview = computeRefund({
+    startsAt: new Date(booking.startsAt),
+    totalAmountCents: booking.totalAmountCents,
+    now: new Date(),
+  });
+  const refundAmountLabel = refundPreview.eligible
+    ? formatMoneyCents(refundPreview.amountCents, booking.currency, locale)
+    : null;
 
   return (
     <div className={styles.page}>
@@ -30,9 +45,14 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
       </Link>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('detail-title')}</h1>
-        {booking.status === BookingStatus.Confirmed ? (
-          <CheckInButton bookingId={booking.id} checkedIn={booking.checkedInAt !== null} />
-        ) : null}
+        <div className={styles.headerActions}>
+          {isConfirmed ? (
+            <CheckInButton bookingId={booking.id} checkedIn={booking.checkedInAt !== null} />
+          ) : null}
+          {isConfirmed ? (
+            <CancelBookingButton bookingId={booking.id} refundAmount={refundAmountLabel} />
+          ) : null}
+        </div>
       </div>
 
       <div className={styles.detailGrid}>
@@ -56,6 +76,21 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
         />
         <Row label={t('detail-created')} value={`${created.date} ${created.time}`} />
       </div>
+
+      {booking.refund ? (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('detail-refund')}</h2>
+          <div className={styles.refundRow}>
+            <span>{t(`refund-status-${booking.refund.status}`)}</span>
+            {booking.refund.status === RefundStatus.Failed ? (
+              <RetryRefundButton refundId={booking.refund.id} />
+            ) : null}
+          </div>
+          {booking.refund.failureReason ? (
+            <p className={styles.empty}>{booking.refund.failureReason}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('detail-notifications')}</h2>

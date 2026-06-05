@@ -3,6 +3,7 @@ import { env } from './env.js';
 import { generateTourInstances } from './jobs/generate-tour-instances.js';
 import { releaseExpiredHolds } from './jobs/release-expired-holds.js';
 import { sendNotifications } from './jobs/send-notifications.js';
+import { processRefunds } from './jobs/process-refunds.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -47,6 +48,15 @@ async function runSendNotifications() {
   }
 }
 
+async function runProcessRefunds() {
+  try {
+    await processRefunds();
+  } catch (err) {
+    console.error('[process-refunds] error:', err);
+    Sentry.captureException(err);
+  }
+}
+
 logAlive();
 setInterval(logAlive, ALIVE_INTERVAL_MS);
 
@@ -66,4 +76,10 @@ setInterval(() => {
 void runSendNotifications();
 setInterval(() => {
   void runSendNotifications();
+}, ONE_MINUTE_MS);
+
+// process-refunds: al inicio y luego cada minuto
+void runProcessRefunds();
+setInterval(() => {
+  void runProcessRefunds();
 }, ONE_MINUTE_MS);

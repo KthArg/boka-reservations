@@ -42,6 +42,11 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({})),
 }));
 
+// 0011: los emails de booking ahora emiten un token de acceso a la reserva.
+vi.mock('../../../src/notifications/booking-token.js', () => ({
+  issueBookingToken: vi.fn().mockResolvedValue('tok-test'),
+}));
+
 import { sendNotifications } from '../../../src/jobs/send-notifications.js';
 import { EmailPermanentError, EmailTransientError } from '../../../src/notifications/types.js';
 

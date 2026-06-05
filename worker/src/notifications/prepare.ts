@@ -1,20 +1,38 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { BookingRow } from './render.js';
 import type { NotificationRow } from './repository.js';
-import type { PreparedEmail } from './types.js';
+import type { EmailLocale, PreparedEmail } from './types.js';
 import { loadBookingForNotification } from './repository.js';
 import { loadGuideAssignment } from './guide-repository.js';
 import { issueGuideToken } from './guide-token.js';
+import { issueBookingToken } from './booking-token.js';
 import { renderForKind } from './render.js';
 import { renderGuideAssignment } from './templates/guide-assignment.js';
 
 const CONFIRMED_STATUS = 'confirmed';
 const GUIDE_PATH_SEGMENT = 'guide';
 const GUIDE_UPCOMING_SEGMENT = 'upcoming-tours';
+const BOOKING_PATH_SEGMENT = 'booking';
 const MS_PER_HOUR = 60 * 60 * 1000;
 const STALE_AFTER_MS = MS_PER_HOUR;
 
 function isStale(startsAt: string): boolean {
   return Date.now() - new Date(startsAt).getTime() > STALE_AFTER_MS;
+}
+
+/** Emite un token de acceso fresco y arma el link de "ver mi reserva". */
+export async function bookingViewUrl(
+  db: SupabaseClient,
+  booking: BookingRow,
+  locale: EmailLocale,
+  appUrl: string,
+): Promise<string> {
+  const token = await issueBookingToken(db, booking.id, booking.tour_instance.starts_at);
+  return `${appUrl}/${locale}/${BOOKING_PATH_SEGMENT}/${token}`;
+}
+
+export function localizedTourName(booking: BookingRow, locale: EmailLocale): string {
+  return locale === 'es' ? booking.tour_instance.tour.name_es : booking.tour_instance.tour.name_en;
 }
 
 /** Resuelve el email de una notificación de booking (confirmación / recordatorio). */
@@ -32,7 +50,8 @@ export async function prepareBookingEmail(
   }
   if (isStale(booking.tour_instance.starts_at)) return { ok: false, reason: 'stale' };
 
-  return { ok: true, email: renderForKind(notif.kind, notif.locale, booking, appUrl) };
+  const url = await bookingViewUrl(db, booking, notif.locale, appUrl);
+  return { ok: true, email: renderForKind(notif.kind, notif.locale, booking, url) };
 }
 
 /** Resuelve el email de asignación al guía: genera el token y arma el enlace. */

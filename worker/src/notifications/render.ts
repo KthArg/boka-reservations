@@ -28,12 +28,11 @@ export function renderForKind(
   kind: NotificationKind,
   locale: EmailLocale,
   booking: BookingRow,
-  appUrl: string,
+  bookingUrl: string,
 ): RenderedEmail {
   const tour = booking.tour_instance.tour;
   const tourName = locale === 'es' ? tour.name_es : tour.name_en;
   const meetingPoint = locale === 'es' ? tour.meeting_point_es : tour.meeting_point_en;
-  const bookingUrl = `${appUrl}/${locale}/reserva/${booking.id}`;
 
   if (kind === 'booking_confirmation') {
     return renderBookingConfirmation(

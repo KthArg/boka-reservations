@@ -248,3 +248,34 @@
   color: var(--color-primary);
   text-decoration: none;
 }
+
+.headerActions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+.cancelBtn,
+.retryBtn {
+  background: transparent;
+  border: 1px solid #b91c1c;
+  border-radius: var(--radius-md);
+  padding: 4px var(--space-sm);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  color: #b91c1c;
+}
+.cancelBtn:hover,
+.retryBtn:hover {
+  background: #fef2f2;
+}
+.cancelBtn:disabled,
+.retryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.refundRow {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}

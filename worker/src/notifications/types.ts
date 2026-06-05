@@ -2,9 +2,16 @@ export type EmailLocale = 'es' | 'en';
 
 // Mirror del CHECK de notifications.kind en DB. El worker es self-contained
 // (no importa @shared en runtime); este union es su fuente de verdad.
-export type NotificationKind = 'booking_confirmation' | 'reminder_24h' | 'guide_assignment';
+export type NotificationKind =
+  | 'booking_confirmation'
+  | 'reminder_24h'
+  | 'guide_assignment'
+  | 'cancellation_confirmation'
+  | 'refund_confirmation';
 
 export const GUIDE_ASSIGNMENT_KIND: NotificationKind = 'guide_assignment';
+export const CANCELLATION_CONFIRMATION_KIND: NotificationKind = 'cancellation_confirmation';
+export const REFUND_CONFIRMATION_KIND: NotificationKind = 'refund_confirmation';
 
 /** Email ya renderizado, listo para entregar. */
 export type RenderedEmail = {
