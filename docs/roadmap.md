@@ -22,13 +22,18 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 
 ---
 
-## Estado actual (2026-06-01)
+## Estado actual (2026-06-05)
 
 - **Bloques 1–5 completos.** Specs 0001–0009 implementados y mergeados a `dev` (modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones, panel+check-in, asignación de guías).
 - **Checkpoints 1–5 pasados.** El Checkpoint 5 (2026-06-01) cerró el Bloque 5; su verificación de deliverability real (inbox vs spam) se difirió al Checkpoint 7 (requiere Resend+dominio).
-- **Spec 0010 — Gestión de usuarios internos**: escrito y aprobado, **sin implementar** (surgió como hallazgo del Checkpoint 5; lo arranca el usuario en una sesión futura). Es la **Etapa 12**, primera del Bloque 6.
+- **Bloque 6 en curso** (Etapas 12–15):
+  - **Etapa 12 — Spec 0010 (Gestión de usuarios internos)**: ✅ **MERGEADO** a `dev` (PR #20, squash `dc31b97`).
+  - **Etapa 13 — Spec 0011 (Cancelaciones con refund automático)**: ✅ **IMPLEMENTADO y validado en vivo**, **PR #21 abierto, pendiente de merge**. Validado end-to-end en navegador contra el sandbox real de OnvoPay (refund exitoso turista+staff, refund fallido+retry). Introdujo `audit_logs`, `refunds`, `booking_access_tokens` y la ruta pública `/booking/[token]` (que de paso resolvió el 404 del link "ver mi reserva" de los emails 0007). Dos preguntas abiertas no bloqueantes (política de reembolso definitiva + comisión de OnvoPay en refunds) en `docs/onvopay-consulta-reembolsos.md`.
+  - **Etapa 14 — Spec 0012 (Reportes básicos)**: ⬜ siguiente.
+  - **Etapa 15 — Spec 0013 (i18n completo)**: ⬜ pendiente.
+- **Checkpoint intermedio (2026-06-05)**: auditoría técnica verde (web unit 83 / integ 94, worker unit 45 / integ 5; lint 0 errores; typecheck limpio) tras 0010+0011. **Aprobado por el usuario.** El **Checkpoint 6 formal** cierra el Bloque 6 completo (después de 0012 y 0013).
 - **Renumeración**: al insertarse 0010 (usuarios), los specs planificados aguas abajo corrieron +1 (cancelaciones 0011, reportes 0012, i18n 0013, rate-limiting 0014, observabilidad 0015, e2e 0016, PayPal 0017).
-- Nota: algunos detalles de implementación divergieron de lo que decían las etapas viejas (rutas reales bajo `/dashboard/*` y en inglés; check-in a nivel reserva sin `booking_tickets`; `audit_logs` diferido a cancelaciones). Las etapas de abajo conservan su redacción original como plan; la fuente de verdad del estado real son los specs en `docs/specs/` y la memoria del proyecto.
+- Nota: algunos detalles de implementación divergieron de lo que decían las etapas viejas (rutas reales bajo `/dashboard/*` y en inglés; check-in a nivel reserva sin `booking_tickets`; `audit_logs` creado en 0011). Las etapas de abajo conservan su redacción original como plan; la fuente de verdad del estado real son los specs en `docs/specs/` y la memoria del proyecto.
 
 ---
 
@@ -408,6 +413,8 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 
 ### Etapa 12 — Gestión de usuarios internos
 
+> **Estado: ✅ MERGEADO** (PR #20, `dc31b97`).
+
 **Spec asociado**: `0010-gestion-usuarios-internos` (escrito y aprobado; surgió del Checkpoint 5).
 
 **Objetivo**: el admin puede crear, editar y desactivar usuarios internos (admin, staff, guías) desde el panel, sin SQL crudo.
@@ -427,6 +434,8 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - [ ] Desactivar bloquea acceso y conserva historial; reactivar funciona.
 
 ### Etapa 13 — Cancelaciones con refund automático
+
+> **Estado: ✅ IMPLEMENTADO y validado en vivo — PR #21 abierto, pendiente de merge.** Validado end-to-end contra el sandbox real de OnvoPay (refund exitoso turista+staff, refund fallido+retry). Detalle en `docs/specs/0011-*.changelog.md`.
 
 **Spec asociado**: `0011-cancelaciones-refund-automatico`.
 
