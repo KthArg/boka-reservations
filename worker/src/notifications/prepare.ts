@@ -20,14 +20,21 @@ function isStale(startsAt: string): boolean {
   return Date.now() - new Date(startsAt).getTime() > STALE_AFTER_MS;
 }
 
-/** Emite un token de acceso fresco y arma el link de "ver mi reserva". */
+/**
+ * Emite un token de acceso fresco y arma el link de "ver mi reserva". Por
+ * defecto el token expira al inicio del tour (confirmación/recordatorio: no
+ * tiene sentido verla después). Para emails post-cancelación se pasa un
+ * `expiresAtIso` propio, porque ese link debe seguir vivo aunque el tour ya
+ * haya pasado.
+ */
 export async function bookingViewUrl(
   db: SupabaseClient,
   booking: BookingRow,
   locale: EmailLocale,
   appUrl: string,
+  expiresAtIso: string = booking.tour_instance.starts_at,
 ): Promise<string> {
-  const token = await issueBookingToken(db, booking.id, booking.tour_instance.starts_at);
+  const token = await issueBookingToken(db, booking.id, expiresAtIso);
   return `${appUrl}/${locale}/${BOOKING_PATH_SEGMENT}/${token}`;
 }
 

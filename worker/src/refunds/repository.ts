@@ -11,6 +11,7 @@ export type RefundRow = {
   currency: string;
   status: 'pending' | 'processing' | 'succeeded' | 'failed';
   attempts: number;
+  created_at: string;
 };
 
 /** Reembolsos activos (encolados o en proceso) que el job debe atender. */
@@ -18,7 +19,7 @@ export async function fetchActiveRefunds(db: SupabaseClient): Promise<RefundRow[
   const { data, error } = await db
     .from('refunds')
     .select(
-      'id, booking_id, payment_id, external_refund_id, amount_cents, currency, status, attempts',
+      'id, booking_id, payment_id, external_refund_id, amount_cents, currency, status, attempts, created_at',
     )
     .in('status', ['pending', 'processing'])
     .order('created_at', { ascending: true })
@@ -27,6 +28,39 @@ export async function fetchActiveRefunds(db: SupabaseClient): Promise<RefundRow[
 
   if (error) throw new Error(`fetch refunds: ${error.message}`);
   return data ?? [];
+}
+
+/**
+ * Reclama una fila 'pending' pasándola a 'processing' de forma atómica
+ * (single-flight). El UPDATE condicional `WHERE status='pending'` garantiza que
+ * si dos ciclos del worker se solapan, solo uno afecta la fila: el otro recibe
+ * 0 filas y devuelve false, y NO debe llamar a OnvoPay. Así se evita el doble
+ * POST /refunds (doble reembolso), que el spec exigía prevenir y la versión
+ * previa no hacía (posteaba antes de reclamar).
+ */
+export async function claimForProcessing(
+  db: SupabaseClient,
+  id: string,
+  attempts: number,
+): Promise<boolean> {
+  const { data, error } = await db
+    .from('refunds')
+    .update({ status: 'processing', attempts })
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id');
+
+  if (error) throw new Error(`claim refund: ${error.message}`);
+  return (data?.length ?? 0) > 0;
+}
+
+/** Devuelve una fila reclamada a 'pending' tras un fallo transitorio del POST. */
+export async function releaseClaim(
+  db: SupabaseClient,
+  id: string,
+  attempts: number,
+): Promise<void> {
+  await db.from('refunds').update({ status: 'pending', attempts }).eq('id', id);
 }
 
 export async function loadPaymentIntentId(
@@ -54,15 +88,6 @@ export async function markProcessing(
     .eq('id', id);
 }
 
-/** Incrementa intentos de creación (fallo transitorio del POST). */
-export async function bumpAttempts(
-  db: SupabaseClient,
-  id: string,
-  attempts: number,
-): Promise<void> {
-  await db.from('refunds').update({ attempts }).eq('id', id);
-}
-
 async function writeAudit(
   db: SupabaseClient,
   action: string,
@@ -78,34 +103,15 @@ async function writeAudit(
   });
 }
 
-/** Cierra el refund como acreditado: marca payment/booking, encola el email y audita. */
+/**
+ * Cierra el refund como acreditado de forma ATÓMICA vía la función DB
+ * `settle_refund`: en una sola transacción marca refund/payment/booking,
+ * encola el email de reembolso y audita. Reemplaza la secuencia previa de
+ * UPDATEs sueltos, que dejaba estados inconsistentes si el worker caía a mitad.
+ */
 export async function markSucceeded(db: SupabaseClient, refund: RefundRow): Promise<void> {
-  await db.from('refunds').update({ status: 'succeeded' }).eq('id', refund.id);
-  await db.from('payments').update({ status: 'refunded' }).eq('id', refund.payment_id);
-  await db.from('bookings').update({ status: 'refunded' }).eq('id', refund.booking_id);
-
-  const { data: booking } = await db
-    .from('bookings')
-    .select('customer_email, locale')
-    .eq('id', refund.booking_id)
-    .maybeSingle();
-
-  if (booking) {
-    await db.from('notifications').upsert(
-      {
-        booking_id: refund.booking_id,
-        kind: 'refund_confirmation',
-        recipient_email: booking.customer_email,
-        locale: booking.locale,
-        scheduled_for: new Date().toISOString(),
-      },
-      { onConflict: 'booking_id,kind', ignoreDuplicates: true },
-    );
-  }
-
-  await writeAudit(db, 'refund.succeeded', refund.booking_id, {
-    amount_cents: refund.amount_cents,
-  });
+  const { error } = await db.rpc('settle_refund', { p_refund_id: refund.id });
+  if (error) throw new Error(`settle refund: ${error.message}`);
 }
 
 /** Cierra el refund como fallido para retry manual; no toca el booking. */

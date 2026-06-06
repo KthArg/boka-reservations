@@ -23,7 +23,13 @@ let admin: SupabaseClient;
 let staffUserId: string;
 const createdTourIds: string[] = [];
 
-type SeedOpts = { status?: string; hoursAhead?: number; withPayment?: boolean; reserved?: number };
+type SeedOpts = {
+  status?: string;
+  hoursAhead?: number;
+  withPayment?: boolean;
+  reserved?: number;
+  paymentAmountCents?: number;
+};
 
 async function seed(opts: SeedOpts = {}) {
   const {
@@ -31,6 +37,7 @@ async function seed(opts: SeedOpts = {}) {
     hoursAhead = 48,
     withPayment = true,
     reserved = 3,
+    paymentAmountCents = 9000,
   } = opts;
   const { data: tour } = await admin
     .from('tours')
@@ -100,7 +107,7 @@ async function seed(opts: SeedOpts = {}) {
       booking_id: booking!.id,
       external_provider: 'onvopay',
       external_payment_id: `pi_${crypto.randomUUID()}`,
-      amount_cents: 9000,
+      amount_cents: paymentAmountCents,
       status: 'succeeded',
     });
   }
@@ -160,7 +167,7 @@ describe('cancellation flow (server actions, integration)', () => {
           .select('id')
           .eq('tour_instance_id', inst.id);
         for (const b of bks ?? []) {
-          await admin.from('audit_logs').delete().eq('entity_id', b.id);
+          // audit_logs es append-only (trigger de inmutabilidad): no se borra.
           await admin.from('refunds').delete().eq('booking_id', b.id);
           await admin.from('booking_access_tokens').delete().eq('booking_id', b.id);
           await admin.from('notifications').delete().eq('booking_id', b.id);
@@ -214,6 +221,41 @@ describe('cancellation flow (server actions, integration)', () => {
     const actions = (audits ?? []).map((a) => a.action);
     expect(actions).toContain(AuditAction.BookingCancelled);
     expect(actions).toContain(AuditAction.RefundRequested);
+  });
+
+  it('refunda el monto efectivamente pagado, no el total de la reserva', async () => {
+    requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
+    // Total 9000 pero solo se cobraron 8000: el refund debe ser por lo pagado.
+    const { bookingId } = await seed({ hoursAhead: 48, paymentAmountCents: 8000 });
+
+    await cancelByStaff(bookingId);
+
+    const { data: refund } = await admin
+      .from('refunds')
+      .select('amount_cents, currency')
+      .eq('booking_id', bookingId)
+      .single();
+    expect(refund).toEqual({ amount_cents: 8000, currency: 'USD' });
+  });
+
+  it('audit_logs es append-only: rechaza UPDATE y DELETE', async () => {
+    requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
+    const { bookingId } = await seed({ hoursAhead: 48 });
+    await cancelByStaff(bookingId);
+
+    const { data: row } = await admin
+      .from('audit_logs')
+      .select('id')
+      .eq('entity_id', bookingId)
+      .limit(1)
+      .single();
+    expect(row).not.toBeNull();
+
+    const upd = await admin.from('audit_logs').update({ action: 'tampered' }).eq('id', row!.id);
+    expect(upd.error).not.toBeNull();
+
+    const del = await admin.from('audit_logs').delete().eq('id', row!.id);
+    expect(del.error).not.toBeNull();
   });
 
   it('cancela sin reembolso (<24h): no crea refund pero sí encola el email', async () => {

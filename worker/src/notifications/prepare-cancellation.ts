@@ -6,6 +6,10 @@ import { bookingViewUrl, localizedTourName } from './prepare.js';
 import { renderCancellationConfirmation } from './templates/cancellation-confirmation.js';
 import { renderRefundConfirmation } from './templates/refund-confirmation.js';
 
+// El link "ver mi reserva" del email de cancelación debe seguir vivo aunque el
+// tour ya haya pasado (a diferencia del de confirmación, que expira al inicio).
+const POST_CANCELLATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+
 /** Email de confirmación de cancelación. La reserva ya NO está confirmada, así
  * que no aplica el guard de `prepareBookingEmail`. Informa el reembolso si hay. */
 export async function prepareCancellationEmail(
@@ -19,7 +23,8 @@ export async function prepareCancellationEmail(
   if (!booking) return { ok: false, reason: 'booking-not-found' };
 
   const refund = await loadLatestRefund(db, booking.id);
-  const url = await bookingViewUrl(db, booking, notif.locale, appUrl);
+  const expiresAt = new Date(Date.now() + POST_CANCELLATION_TOKEN_TTL_MS).toISOString();
+  const url = await bookingViewUrl(db, booking, notif.locale, appUrl, expiresAt);
 
   const email = renderCancellationConfirmation(
     {

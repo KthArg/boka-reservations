@@ -87,6 +87,7 @@ afterAll(async () => {
     .eq('tour_instance_id', instanceId);
   const bookingIds = (bookings ?? []).map((b) => b.id);
   if (bookingIds.length > 0) {
+    await admin.from('booking_access_tokens').delete().in('booking_id', bookingIds);
     await admin.from('notifications').delete().in('booking_id', bookingIds);
     await admin.from('payments').delete().in('booking_id', bookingIds);
     await admin.from('bookings').delete().in('id', bookingIds);
@@ -106,6 +107,7 @@ afterEach(async () => {
     .eq('tour_instance_id', instanceId);
   const bookingIds = (bookings ?? []).map((b) => b.id);
   if (bookingIds.length > 0) {
+    await admin.from('booking_access_tokens').delete().in('booking_id', bookingIds);
     await admin.from('notifications').delete().in('booking_id', bookingIds);
     await admin.from('payments').delete().in('booking_id', bookingIds);
     await admin.from('bookings').delete().in('id', bookingIds);
@@ -161,6 +163,30 @@ describe('sendNotifications job (integración)', () => {
     expect(notif!.provider).toBe('mailpit');
     expect(notif!.sent_at).toBeTruthy();
     expect(notif!.provider_message_id).toBeTruthy();
+  });
+
+  it('el email de cancelación emite un token que no expira al inicio del tour', async () => {
+    const email = `cxl-${crypto.randomUUID().slice(0, 8)}@example.com`;
+    const bookingId = await createConfirmedBooking(email);
+    await admin.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+    await admin.from('notifications').insert({
+      booking_id: bookingId,
+      kind: 'cancellation_confirmation',
+      recipient_email: email,
+      locale: 'es',
+      scheduled_for: new Date().toISOString(),
+    });
+
+    await sendNotifications();
+
+    // El tour arranca en 25h; el token del email de cancelación debe vivir mucho
+    // más (30 días) para que el link no nazca muerto si el tour ya pasó.
+    const { data: tokens } = await admin
+      .from('booking_access_tokens')
+      .select('expires_at')
+      .eq('booking_id', bookingId);
+    const maxExpiryMs = Math.max(...(tokens ?? []).map((t) => new Date(t.expires_at).getTime()));
+    expect(maxExpiryMs).toBeGreaterThan(Date.now() + 20 * 24 * 60 * 60 * 1000);
   });
 
   it('cancela el reminder si el booking ya esta cancelled', async () => {
