@@ -745,6 +745,42 @@ export type Database = {
         };
         Returns: void;
       };
+      report_revenue: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          tour_id: string;
+          name_es: string;
+          name_en: string;
+          gross_cents: number;
+          refunded_cents: number;
+          net_cents: number;
+          currency: string;
+        }[];
+      };
+      report_occupancy: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          tour_id: string;
+          name_es: string;
+          name_en: string;
+          bookings_count: number;
+          tickets_sold: number;
+          capacity_total: number;
+          occupancy_pct: number | null;
+          no_show_count: number;
+          past_bookings_count: number;
+        }[];
+      };
+      report_refunds_summary: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          refunds_count: number;
+          refunds_amount_cents: number;
+          cancelled_count: number;
+          valid_bookings_count: number;
+          currency: string;
+        }[];
+      };
     };
     Enums: {
       user_role: 'admin' | 'staff' | 'guide';

@@ -1,0 +1,165 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.primaryBtn {
+  padding: 0.5rem 1rem;
+  background: #0f766e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.secondaryBtn {
+  padding: 0.45rem 0.9rem;
+  background: #fff;
+  color: #0f766e;
+  border: 1px solid #0f766e;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.error {
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sectionTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.card {
+  flex: 1 1 160px;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.cardLabel {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 0.35rem;
+}
+
+.cardValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.table th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  color: #64748b;
+  font-style: italic;
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.column {
+  flex: 1 1 280px;
+}
+
+.columnTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #475569;
+  margin: 0 0 0.5rem;
+}

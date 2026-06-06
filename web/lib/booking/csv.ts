@@ -1,8 +1,7 @@
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
+import { toCsv } from '@/lib/format/csv';
 import { formatOperatorDateTime } from './today-range';
 import type { AdminExportRow } from './admin-types';
-
-const BOM = '﻿';
 
 const HEADER = [
   'booking_id',
@@ -22,12 +21,6 @@ const HEADER = [
   'check_in_at',
   'created_at',
 ];
-
-/** Escapa un campo CSV: entrecomilla si tiene coma, comilla o salto de línea. */
-function escape(value: string): string {
-  if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
-  return value;
-}
 
 const amount = (cents: number) => (cents / CENTS_PER_UNIT).toFixed(2);
 
@@ -55,6 +48,5 @@ function toCells(r: AdminExportRow): string[] {
 
 /** Serializa las reservas a CSV (UTF-8 con BOM para que Excel respete tildes). */
 export function bookingsToCsv(rows: AdminExportRow[]): string {
-  const lines = [HEADER, ...rows.map(toCells)].map((cells) => cells.map(escape).join(','));
-  return BOM + lines.join('\r\n');
+  return toCsv(HEADER, rows.map(toCells));
 }
