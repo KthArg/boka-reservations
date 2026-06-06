@@ -33,6 +33,7 @@ vi.mock('../../src/refunds/onvopay.js', () => ({
 }));
 
 const { processRefunds } = await import('../../src/jobs/process-refunds.js');
+const { claimForProcessing } = await import('../../src/refunds/repository.js');
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -89,7 +90,7 @@ afterAll(async () => {
     .select('id')
     .eq('tour_instance_id', instanceId);
   for (const b of bks ?? []) {
-    await admin.from('audit_logs').delete().eq('entity_id', b.id);
+    // audit_logs es append-only (trigger de inmutabilidad): no se borra.
     await admin.from('refunds').delete().eq('booking_id', b.id);
     await admin.from('notifications').delete().eq('booking_id', b.id);
     await admin.from('payments').delete().eq('booking_id', b.id);
@@ -138,6 +139,27 @@ async function seedRefund(): Promise<{ bookingId: string; refundId: string }> {
 }
 
 describe('processRefunds job (integración)', () => {
+  it('single-flight: dos claims concurrentes sobre la misma fila, solo uno gana', async () => {
+    const { refundId } = await seedRefund();
+
+    const [a, b] = await Promise.all([
+      claimForProcessing(admin as never, refundId, 1),
+      claimForProcessing(admin as never, refundId, 1),
+    ]);
+
+    // El UPDATE condicional WHERE status='pending' garantiza que solo un ciclo
+    // reclame la fila; el otro recibe 0 filas. Sin esto habría doble POST a
+    // OnvoPay (doble reembolso).
+    expect([a, b].filter(Boolean)).toHaveLength(1);
+
+    const { data: refund } = await admin
+      .from('refunds')
+      .select('status')
+      .eq('id', refundId)
+      .single();
+    expect(refund!.status).toBe('processing');
+  });
+
   it('acredita el refund: marca refunded, encola el email y audita', async () => {
     const { bookingId, refundId } = await seedRefund();
 
