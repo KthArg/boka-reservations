@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { BookingStatus } from '@shared/constants/enums';
 import type { BookingFilters } from '@/lib/booking/admin-types';
 import type { TourListItem } from '@/lib/tours/types';
@@ -14,6 +14,7 @@ const STATUS_OPTIONS = Object.values(BookingStatus);
 
 export async function BookingsFilters({ filters, tours, exportQuery }: Props) {
   const t = await getTranslations('bookings');
+  const locale = await getLocale();
   const canExport = Boolean(filters.dateFrom && filters.dateTo);
 
   return (
@@ -100,7 +101,10 @@ export async function BookingsFilters({ filters, tours, exportQuery }: Props) {
           {t('filter-apply')}
         </button>
         {canExport ? (
-          <a className={styles.secondaryBtn} href={`export${exportQuery}`}>
+          <a
+            className={styles.secondaryBtn}
+            href={`/${locale}/dashboard/bookings/export${exportQuery}`}
+          >
             {t('export-csv')}
           </a>
         ) : (
