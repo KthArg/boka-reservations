@@ -15,9 +15,11 @@ import styles from './reports.module.css';
 type SearchParams = { from?: string; to?: string };
 type Props = { params: Promise<{ locale: string }>; searchParams: Promise<SearchParams> };
 
-function exportHref(kind: ReportKind, range: ReportRange): string {
+function exportHref(locale: string, kind: ReportKind, range: ReportRange): string {
   const sp = new URLSearchParams({ report: kind, from: range.from, to: range.to });
-  return `export?${sp.toString()}`;
+  // Ruta absoluta con locale: un href relativo se resolvería contra
+  // /{locale}/dashboard/ (la página no lleva barra final) → 404.
+  return `/${locale}/dashboard/reports/export?${sp.toString()}`;
 }
 
 export default async function ReportsPage({ params, searchParams }: Props) {
@@ -47,17 +49,17 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         <RevenueSection
           rows={revenue}
           locale={locale}
-          exportHref={exportHref(ReportKind.Revenue, range)}
+          exportHref={exportHref(locale, ReportKind.Revenue, range)}
         />
         <OccupancySection
           rows={occupancy}
           locale={locale}
-          exportHref={exportHref(ReportKind.Occupancy, range)}
+          exportHref={exportHref(locale, ReportKind.Occupancy, range)}
         />
         <RefundsSection
           summary={refunds}
           locale={locale}
-          exportHref={exportHref(ReportKind.Refunds, range)}
+          exportHref={exportHref(locale, ReportKind.Refunds, range)}
         />
         <TopToursSection revenue={revenue} occupancy={occupancy} locale={locale} />
       </>

@@ -34,3 +34,7 @@ Rama: feat/0012-reportes-basicos
 
 - Nada para mergear. Pregunta abierta del spec (ingresos por fecha de pago vs fecha de salida) queda para confirmar con el cliente antes de usar los reportes para conciliación contable real; cambiarla es tocar solo la condición de fecha de `report_revenue`.
 - Roadmap pre-prod: ya estaba anotado que reportes financieros conviene validarlos con datos reales en staging.
+
+## 2026-06-07 — Fix: href relativo del export CSV (404 en navegador)
+
+Probando en navegador, el botón "Exportar CSV" tiraba 404: el `href` era relativo (`export?...`) y, como la página `/{locale}/dashboard/reports` no lleva barra final, el navegador lo resolvía contra `/{locale}/dashboard/` → `/{locale}/dashboard/export` (inexistente). Fix: ruta **absoluta con locale** (`/{locale}/dashboard/reports/export?...`). El mismo bug latente existía en el export de reservas del 0008 (`BookingsFilters`, nunca cazado por falta de test de navegador del link) → corregido también con `getLocale()` + ruta absoluta. Lección: los links a route handlers hermanos deben ser absolutos con locale, no relativos (la ruta de la página no tiene trailing slash).
