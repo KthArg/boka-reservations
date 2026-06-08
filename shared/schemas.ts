@@ -12,6 +12,35 @@ export const UserSchema = z.object({
   updated_at: z.coerce.date(),
 });
 
+const LocaleSchema = z.enum(['es', 'en']);
+const emptyToNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? null : v);
+
+// Alta de usuario interno (spec 0010). El teléfono es obligatorio para guías
+// (constraint guide_requires_phone de 0002); opcional para admin/staff.
+export const UserCreateSchema = z
+  .object({
+    email: z.string().email('email-invalid').max(255),
+    full_name: z.string().trim().min(1, 'full-name-required').max(120, 'full-name-too-long'),
+    role: z.nativeEnum(UserRole),
+    phone: z.preprocess(emptyToNull, z.string().trim().min(1).max(40).nullable()),
+    locale: LocaleSchema,
+  })
+  .refine((d) => d.role !== UserRole.Guide || d.phone !== null, {
+    message: 'phone-required-for-guide',
+    path: ['phone'],
+  });
+
+export type UserCreateInput = z.infer<typeof UserCreateSchema>;
+
+// Edición de usuario interno (rol y email son inmutables — ver spec 0010 §3).
+export const UserUpdateSchema = z.object({
+  full_name: z.string().trim().min(1, 'full-name-required').max(120, 'full-name-too-long'),
+  phone: z.preprocess(emptyToNull, z.string().trim().min(1).max(40).nullable()),
+  locale: LocaleSchema,
+});
+
+export type UserUpdateInput = z.infer<typeof UserUpdateSchema>;
+
 export const TourSchema = z.object({
   id: z.string().uuid(),
   slug: z.string().min(1).max(100),

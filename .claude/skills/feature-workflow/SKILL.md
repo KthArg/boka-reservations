@@ -101,7 +101,7 @@ El PR no se mergea sin review. Si estás operando como agente:
 
 Una vez aprobado:
 
-- Mergeá a `main` con **squash merge** por defecto. Esto mantiene la historia de `main` limpia, con un commit por feature.
+- Mergeá a `dev` con **squash merge** por defecto. Esto mantiene la historia de `dev` limpia, con un commit por feature. La promoción `dev → main` es un paso separado fuera del flujo de feature (ver skill `commit-and-pr`).
 - El mensaje del squash merge debe seguir Conventional Commits y referenciar el spec.
 - Borrá la rama de feature después del merge.
 

@@ -22,6 +22,16 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 
 ---
 
+## Estado actual (2026-06-01)
+
+- **Bloques 1–5 completos.** Specs 0001–0009 implementados y mergeados a `dev` (modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones, panel+check-in, asignación de guías).
+- **Checkpoints 1–5 pasados.** El Checkpoint 5 (2026-06-01) cerró el Bloque 5; su verificación de deliverability real (inbox vs spam) se difirió al Checkpoint 7 (requiere Resend+dominio).
+- **Spec 0010 — Gestión de usuarios internos**: escrito y aprobado, **sin implementar** (surgió como hallazgo del Checkpoint 5; lo arranca el usuario en una sesión futura). Es la **Etapa 12**, primera del Bloque 6.
+- **Renumeración**: al insertarse 0010 (usuarios), los specs planificados aguas abajo corrieron +1 (cancelaciones 0011, reportes 0012, i18n 0013, rate-limiting 0014, observabilidad 0015, e2e 0016, PayPal 0017).
+- Nota: algunos detalles de implementación divergieron de lo que decían las etapas viejas (rutas reales bajo `/dashboard/*` y en inglés; check-in a nivel reserva sin `booking_tickets`; `audit_logs` diferido a cancelaciones). Las etapas de abajo conservan su redacción original como plan; la fuente de verdad del estado real son los specs en `docs/specs/` y la memoria del proyecto.
+
+---
+
 ## BLOQUE 1 — Fundación (sin código de producto)
 
 ### Etapa 0 — Pre-trabajo externo
@@ -394,11 +404,31 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 
 ---
 
-## BLOQUE 6 — Cancelaciones, reportes, i18n
+## BLOQUE 6 — Usuarios internos, cancelaciones, reportes, i18n
 
-### Etapa 12 — Cancelaciones con refund automático
+### Etapa 12 — Gestión de usuarios internos
 
-**Spec asociado**: `0010-cancelaciones-refund-automatico`.
+**Spec asociado**: `0010-gestion-usuarios-internos` (escrito y aprobado; surgió del Checkpoint 5).
+
+**Objetivo**: el admin puede crear, editar y desactivar usuarios internos (admin, staff, guías) desde el panel, sin SQL crudo.
+
+**Entregables** (resumen; detalle en el spec):
+
+- Sección `/dashboard/users` (lista + alta + edición), admin-only.
+- Dos caminos de creación: guías = solo `public.users` (sin login, magic link de 0009); admin/staff = `auth.users` + `public.users` + email de invitación (reusa `resetPasswordForEmail`).
+- Baja = desactivar (`active=false`) con guards (no auto-baja, no dejar sin admin activo).
+- Sin migración (la tabla `users` ya tiene todo). Modifica `getGuideUpcomingTours` (0009) para chequear `active`.
+- Tests de integración de las Server Actions.
+
+**Criterios de done**:
+
+- [ ] Admin crea un guía y lo asigna en 0009 sin tocar la base.
+- [ ] Admin/staff nuevo recibe invitación, fija contraseña y loguea.
+- [ ] Desactivar bloquea acceso y conserva historial; reactivar funciona.
+
+### Etapa 13 — Cancelaciones con refund automático
+
+**Spec asociado**: `0011-cancelaciones-refund-automatico`.
 
 **Entregables**:
 
@@ -417,9 +447,9 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - [ ] Staff puede cancelar desde su panel (con auditoría).
 - [ ] Tests cubren el caso de OnvoPay respondiendo error al intentar refund.
 
-### Etapa 13 — Reportes básicos
+### Etapa 14 — Reportes básicos
 
-**Spec asociado**: `0011-reportes-basicos`.
+**Spec asociado**: `0012-reportes-basicos`.
 
 **Entregables**:
 
@@ -428,9 +458,9 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - Queries optimizadas con índices apropiados.
 - Exportación a CSV/Excel de reportes.
 
-### Etapa 14 — i18n completo
+### Etapa 15 — i18n completo
 
-**Spec asociado**: `0012-i18n-completo-es-en`.
+**Spec asociado**: `0013-i18n-completo-es-en`.
 
 **Entregables**:
 
@@ -452,9 +482,9 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 
 ## BLOQUE 7 — Hardening pre-lanzamiento
 
-### Etapa 15 — Rate limiting y seguridad
+### Etapa 16 — Rate limiting y seguridad
 
-**Spec asociado**: `0013-rate-limiting-security`.
+**Spec asociado**: `0014-rate-limiting-security`.
 
 **Entregables**:
 
@@ -464,9 +494,9 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - Revisión de RLS de todas las tablas.
 - Tests de penetración básicos.
 
-### Etapa 16 — Observabilidad
+### Etapa 17 — Observabilidad
 
-**Spec asociado**: `0014-observabilidad-logging-metricas`.
+**Spec asociado**: `0015-observabilidad-logging-metricas`.
 
 **Entregables**:
 
@@ -475,9 +505,9 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - Alertas básicas (Slack o email cuando algo falla repetidamente).
 - Sentry o similar para captura de errores no controlados (aplicar external-services-vetting si se elige Sentry).
 
-### Etapa 17 — Tests e2e
+### Etapa 18 — Tests e2e
 
-**Spec asociado**: `0015-tests-e2e-flujos-criticos`.
+**Spec asociado**: `0016-tests-e2e-flujos-criticos`.
 
 **Entregables**:
 
@@ -501,7 +531,7 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 
 ## BLOQUE 8 — Lanzamiento
 
-### Etapa 18 — Beta cerrada
+### Etapa 19 — Beta cerrada
 
 **Objetivo**: el cliente usa el sistema en producción con tráfico real pero acotado.
 
@@ -517,15 +547,15 @@ Si algo no está sólido aquí, **detenerse y arreglar** antes de seguir. Las fe
 - [ ] Los bugs encontrados se resolvieron en máximo 48h.
 - [ ] No hay disputes de tarjeta abiertos.
 
-### Etapa 19 — Apertura pública
+### Etapa 20 — Apertura pública
 
 **Objetivo**: el sitio del cliente es público y reservas reales fluyen sin intervención.
 
-### Etapa 20 — Operación continua + agregar PayPal
+### Etapa 21 — Operación continua + agregar PayPal
 
 A partir de acá, el trabajo se vuelve mantenimiento + nuevas features priorizadas. La primera feature post-MVP recomendada es:
 
-**Spec `0016-agregar-paypal-merchant`**: sumar PayPal Business CR como pasarela secundaria para turistas extranjeros. Aprovecha el adapter pattern ya implementado en MVP, agrega `lib/payments/adapters/paypal.ts`, no toca lógica de negocio.
+**Spec `0017-agregar-paypal-merchant`**: sumar PayPal Business CR como pasarela secundaria para turistas extranjeros. Aprovecha el adapter pattern ya implementado en MVP, agrega `lib/payments/adapters/paypal.ts`, no toca lógica de negocio.
 
 Otras features grandes a considerar después:
 

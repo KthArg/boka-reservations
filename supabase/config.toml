@@ -100,8 +100,9 @@ openai_api_key = "env(OPENAI_API_KEY)"
 enabled = true
 # Port to use for the email testing server web interface.
 port = 54324
-# Uncomment to expose additional ports for testing user applications that send emails.
-# smtp_port = 54325
+# Expuesto para que el worker (job send-notifications) entregue emails al
+# Mailpit local en dev y CI. Ver spec 0007.
+smtp_port = 54325
 # pop3_port = 54326
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
@@ -238,10 +239,11 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Template de invitación de usuario interno (spec 0010). Apunta a /auth/confirm
+# (verifyOtp con token_hash), no al flujo PKCE de /auth/callback.
+[auth.email.template.invite]
+subject = "Te invitaron a Boka Trails / You've been invited"
+content_path = "./supabase/templates/invite.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

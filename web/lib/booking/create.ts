@@ -13,6 +13,8 @@ export type PricingRow = {
   price_usd: number;
 };
 
+export type BookingLocale = 'es' | 'en';
+
 export type InitCheckoutParams = {
   instanceId: string;
   sessionToken: string;
@@ -21,6 +23,7 @@ export type InitCheckoutParams = {
   quantities: TicketQuantities;
   pricing: PricingRow[];
   tourName: string;
+  locale: BookingLocale;
 };
 
 export type InitCheckoutResult = {
@@ -39,8 +42,16 @@ export function calculateTotalCents(quantities: TicketQuantities, pricing: Prici
 }
 
 export async function initCheckout(params: InitCheckoutParams): Promise<InitCheckoutResult> {
-  const { instanceId, sessionToken, customerName, customerEmail, quantities, pricing, tourName } =
-    params;
+  const {
+    instanceId,
+    sessionToken,
+    customerName,
+    customerEmail,
+    quantities,
+    pricing,
+    tourName,
+    locale,
+  } = params;
 
   const totalSeats = quantities.adult + quantities.child + quantities.student;
   if (totalSeats === 0) throw new Error('CHECKOUT_NO_TICKETS');
@@ -64,6 +75,7 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
         tickets_child: quantities.child,
         tickets_student: quantities.student,
         total_amount_cents: totalAmountCents,
+        locale,
       })
       .select('id')
       .single();

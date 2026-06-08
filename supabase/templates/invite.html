@@ -1,0 +1,21 @@
+<!--
+  Template de invitación de usuario interno (spec 0010).
+  Apunta a /auth/confirm (verifyOtp con token_hash), no a /auth/callback (PKCE),
+  para que el link funcione sin depender del browser que lo abrió.
+  .Data.locale viene del user_metadata que setea inviteUserByEmail.
+-->
+<h2>
+  {{ if eq .Data.locale "en" }}You've been invited to Boka Trails{{ else }}Te invitaron a Boka
+  Trails{{ end }}
+</h2>
+<p>
+  {{ if eq .Data.locale "en" }}Set your password to access the operations panel:{{ else }}Fijá tu
+  contraseña para acceder al panel de operaciones:{{ end }}
+</p>
+<p>
+  <a
+    href="{{ .SiteURL }}/{{ .Data.locale }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password"
+  >
+    {{ if eq .Data.locale "en" }}Set password{{ else }}Fijar contraseña{{ end }}
+  </a>
+</p>

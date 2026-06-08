@@ -1,9 +1,147 @@
 // Tipos generados del schema de Supabase.
 // Regenerar cuando cambien las migraciones: supabase gen types typescript --local > web/types/database.ts
 
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
 export type Database = {
   public: {
     Tables: {
+      refunds: {
+        Row: {
+          id: string;
+          booking_id: string;
+          payment_id: string;
+          external_refund_id: string | null;
+          amount_cents: number;
+          currency: string;
+          status: 'pending' | 'processing' | 'succeeded' | 'failed';
+          reason: string | null;
+          failure_reason: string | null;
+          attempts: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          payment_id: string;
+          external_refund_id?: string | null;
+          amount_cents: number;
+          currency?: string;
+          status?: 'pending' | 'processing' | 'succeeded' | 'failed';
+          reason?: string | null;
+          failure_reason?: string | null;
+          attempts?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          booking_id?: string;
+          payment_id?: string;
+          external_refund_id?: string | null;
+          amount_cents?: number;
+          currency?: string;
+          status?: 'pending' | 'processing' | 'succeeded' | 'failed';
+          reason?: string | null;
+          failure_reason?: string | null;
+          attempts?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'refunds_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'refunds_payment_id_fkey';
+            columns: ['payment_id'];
+            isOneToOne: false;
+            referencedRelation: 'payments';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      audit_logs: {
+        Row: {
+          id: string;
+          actor_type: 'tourist' | 'staff' | 'admin' | 'system';
+          actor_id: string | null;
+          action: string;
+          entity_type: string;
+          entity_id: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_type: 'tourist' | 'staff' | 'admin' | 'system';
+          actor_id?: string | null;
+          action: string;
+          entity_type: string;
+          entity_id: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          actor_type?: 'tourist' | 'staff' | 'admin' | 'system';
+          actor_id?: string | null;
+          action?: string;
+          entity_type?: string;
+          entity_id?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'audit_logs_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      booking_access_tokens: {
+        Row: {
+          id: string;
+          booking_id: string;
+          token_hash: string;
+          expires_at: string;
+          created_at: string;
+          last_used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          token_hash: string;
+          expires_at: string;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          booking_id?: string;
+          token_hash?: string;
+          expires_at?: string;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'booking_access_tokens_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       users: {
         Row: {
           id: string;
@@ -12,6 +150,7 @@ export type Database = {
           full_name: string;
           phone: string | null;
           active: boolean;
+          locale: 'es' | 'en';
           created_at: string;
           updated_at: string;
         };
@@ -22,6 +161,7 @@ export type Database = {
           full_name: string;
           phone?: string | null;
           active?: boolean;
+          locale?: 'es' | 'en';
           created_at?: string;
           updated_at?: string;
         };
@@ -32,6 +172,7 @@ export type Database = {
           full_name?: string;
           phone?: string | null;
           active?: boolean;
+          locale?: 'es' | 'en';
           created_at?: string;
           updated_at?: string;
         };
@@ -299,6 +440,9 @@ export type Database = {
           total_amount_cents: number;
           currency: string;
           status: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          locale: 'es' | 'en';
+          checked_in_at: string | null;
+          checked_in_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -314,6 +458,9 @@ export type Database = {
           total_amount_cents: number;
           currency?: string;
           status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          locale?: 'es' | 'en';
+          checked_in_at?: string | null;
+          checked_in_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -329,6 +476,9 @@ export type Database = {
           total_amount_cents?: number;
           currency?: string;
           status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          locale?: 'es' | 'en';
+          checked_in_at?: string | null;
+          checked_in_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -392,6 +542,177 @@ export type Database = {
         Update: { id?: string; processed_at?: string };
         Relationships: [];
       };
+      notifications: {
+        Row: {
+          id: string;
+          booking_id: string | null;
+          tour_instance_id: string | null;
+          guide_id: string | null;
+          kind:
+            | 'booking_confirmation'
+            | 'reminder_24h'
+            | 'guide_assignment'
+            | 'cancellation_confirmation'
+            | 'refund_confirmation';
+          channel: 'email';
+          recipient_email: string;
+          locale: 'es' | 'en';
+          status: 'pending' | 'sent' | 'failed' | 'cancelled';
+          scheduled_for: string;
+          attempts: number;
+          provider: string | null;
+          provider_message_id: string | null;
+          last_error: string | null;
+          sent_at: string | null;
+          cancelled_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id?: string | null;
+          tour_instance_id?: string | null;
+          guide_id?: string | null;
+          kind:
+            | 'booking_confirmation'
+            | 'reminder_24h'
+            | 'guide_assignment'
+            | 'cancellation_confirmation'
+            | 'refund_confirmation';
+          channel?: 'email';
+          recipient_email: string;
+          locale: 'es' | 'en';
+          status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          scheduled_for: string;
+          attempts?: number;
+          provider?: string | null;
+          provider_message_id?: string | null;
+          last_error?: string | null;
+          sent_at?: string | null;
+          cancelled_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          booking_id?: string | null;
+          tour_instance_id?: string | null;
+          guide_id?: string | null;
+          kind?:
+            | 'booking_confirmation'
+            | 'reminder_24h'
+            | 'guide_assignment'
+            | 'cancellation_confirmation'
+            | 'refund_confirmation';
+          channel?: 'email';
+          recipient_email?: string;
+          locale?: 'es' | 'en';
+          status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          scheduled_for?: string;
+          attempts?: number;
+          provider?: string | null;
+          provider_message_id?: string | null;
+          last_error?: string | null;
+          sent_at?: string | null;
+          cancelled_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_tour_instance_id_fkey';
+            columns: ['tour_instance_id'];
+            isOneToOne: false;
+            referencedRelation: 'tour_instances';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_guide_id_fkey';
+            columns: ['guide_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      tour_instance_guides: {
+        Row: {
+          tour_instance_id: string;
+          guide_id: string;
+          assigned_at: string;
+          assigned_by: string | null;
+        };
+        Insert: {
+          tour_instance_id: string;
+          guide_id: string;
+          assigned_at?: string;
+          assigned_by?: string | null;
+        };
+        Update: {
+          tour_instance_id?: string;
+          guide_id?: string;
+          assigned_at?: string;
+          assigned_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tour_instance_guides_tour_instance_id_fkey';
+            columns: ['tour_instance_id'];
+            isOneToOne: false;
+            referencedRelation: 'tour_instances';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tour_instance_guides_guide_id_fkey';
+            columns: ['guide_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      guide_access_tokens: {
+        Row: {
+          id: string;
+          guide_id: string;
+          token_hash: string;
+          expires_at: string;
+          created_at: string;
+          last_used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          guide_id: string;
+          token_hash: string;
+          expires_at: string;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          guide_id?: string;
+          token_hash?: string;
+          expires_at?: string;
+          created_at?: string;
+          last_used_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'guide_access_tokens_guide_id_fkey';
+            columns: ['guide_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -414,6 +735,51 @@ export type Database = {
           p_total_seats: number;
         };
         Returns: void;
+      };
+      cancel_booking: {
+        Args: {
+          p_booking_id: string;
+          p_actor_type: string;
+          p_refund_amount_cents: number;
+          p_actor_id?: string;
+        };
+        Returns: void;
+      };
+      report_revenue: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          tour_id: string;
+          name_es: string;
+          name_en: string;
+          gross_cents: number;
+          refunded_cents: number;
+          net_cents: number;
+          currency: string;
+        }[];
+      };
+      report_occupancy: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          tour_id: string;
+          name_es: string;
+          name_en: string;
+          bookings_count: number;
+          tickets_sold: number;
+          capacity_total: number;
+          occupancy_pct: number | null;
+          no_show_count: number;
+          past_bookings_count: number;
+        }[];
+      };
+      report_refunds_summary: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          refunds_count: number;
+          refunds_amount_cents: number;
+          cancelled_count: number;
+          valid_bookings_count: number;
+          currency: string;
+        }[];
       };
     };
     Enums: {
