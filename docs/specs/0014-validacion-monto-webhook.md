@@ -5,7 +5,7 @@
 - **Creado**: 2026-06-08
 - **Última actualización**: 2026-06-08 (spec-reviewer incorporado; campo OnvoPay confirmado; aprobado)
 - **Rama**: feat/0014-validacion-monto-webhook
-- **PR**: # (cuando aplique)
+- **PR**: #29
 
 ## 1. Contexto y motivación
 
