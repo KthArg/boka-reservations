@@ -439,7 +439,7 @@ export type Database = {
           tickets_student: number;
           total_amount_cents: number;
           currency: string;
-          status: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          status: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded' | 'payment_mismatch';
           locale: 'es' | 'en';
           checked_in_at: string | null;
           checked_in_by: string | null;
@@ -457,7 +457,7 @@ export type Database = {
           tickets_student?: number;
           total_amount_cents: number;
           currency?: string;
-          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded' | 'payment_mismatch';
           locale?: 'es' | 'en';
           checked_in_at?: string | null;
           checked_in_by?: string | null;
@@ -475,7 +475,7 @@ export type Database = {
           tickets_student?: number;
           total_amount_cents?: number;
           currency?: string;
-          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded' | 'payment_mismatch';
           locale?: 'es' | 'en';
           checked_in_at?: string | null;
           checked_in_by?: string | null;
@@ -745,6 +745,15 @@ export type Database = {
           p_actor_id?: string;
         };
         Returns: void;
+      };
+      flag_payment_mismatch: {
+        Args: {
+          p_booking_id: string;
+          p_paid_amount_cents: number;
+          p_paid_currency: string;
+          p_source: string;
+        };
+        Returns: boolean;
       };
       report_revenue: {
         Args: { p_from: string; p_to: string };

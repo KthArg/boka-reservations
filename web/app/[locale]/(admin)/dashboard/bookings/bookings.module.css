@@ -160,6 +160,17 @@
   color: var(--color-success);
 }
 
+/* payment_mismatch (spec 0014): pago no coincidente, anomalía para revisión. */
+.badgeMismatch {
+  display: inline-block;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
 .checkedIn {
   color: var(--color-success);
   font-weight: 600;

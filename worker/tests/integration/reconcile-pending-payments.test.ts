@@ -5,10 +5,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../../../web/types/database.js';
 import { PaymentIntentOutcome } from '../../src/reconciliation/onvopay.js';
 
-const onvoState = vi.hoisted((): { outcome: string; rawStatus: string } => ({
-  outcome: 'pending',
-  rawStatus: 'processing',
-}));
+const onvoState = vi.hoisted(
+  (): { outcome: string; rawStatus: string; amountCents?: number; currency?: string } => ({
+    outcome: 'pending',
+    rawStatus: 'processing',
+    amountCents: undefined,
+    currency: undefined,
+  }),
+);
 
 vi.mock('../../src/env.js', () => ({
   env: {
@@ -28,6 +32,8 @@ vi.mock('../../src/reconciliation/onvopay.js', async (importActual) => {
         Promise.resolve({
           outcome: onvoState.outcome as PaymentIntentOutcome,
           rawStatus: onvoState.rawStatus,
+          amountCents: onvoState.amountCents,
+          currency: onvoState.currency,
         }),
     }),
   };
@@ -168,9 +174,11 @@ describe('reconcilePendingPayments job (integración)', () => {
     expect((audits ?? []).map((a) => a.action)).toContain('booking.expired_pending');
   });
 
-  it('pago succeeded en OnvoPay: recupera la reserva (confirma, reserva cupo, encola email, audita)', async () => {
+  it('pago succeeded con monto coincidente: recupera la reserva (confirma, cupo, email, audita)', async () => {
     onvoState.outcome = PaymentIntentOutcome.Paid;
     onvoState.rawStatus = 'succeeded';
+    onvoState.amountCents = 5000; // = monto sembrado por seedPending
+    onvoState.currency = 'USD';
     const before = await reservedSeats();
     const { bookingId } = await seedPending({ ageMs: THREE_HOURS_MS, withPayment: true });
 
@@ -191,6 +199,32 @@ describe('reconcilePendingPayments job (integración)', () => {
       .select('action')
       .eq('entity_id', bookingId);
     expect((audits ?? []).map((a) => a.action)).toContain('booking.recovered_via_reconcile');
+  });
+
+  it('pago succeeded con monto DISTINTO: marca payment_mismatch, no confirma ni cuenta como ingreso', async () => {
+    onvoState.outcome = PaymentIntentOutcome.Paid;
+    onvoState.rawStatus = 'succeeded';
+    onvoState.amountCents = 9999; // != 5000 sembrado
+    onvoState.currency = 'USD';
+    const before = await reservedSeats();
+    const { bookingId } = await seedPending({ ageMs: THREE_HOURS_MS, withPayment: true });
+
+    await reconcilePendingPayments();
+
+    expect(await bookingStatus(bookingId)).toBe('payment_mismatch');
+    expect(await reservedSeats()).toBe(before); // sin reservar cupo
+    const { data: payment } = await admin
+      .from('payments')
+      .select('status')
+      .eq('booking_id', bookingId)
+      .single();
+    expect(payment!.status).toBe('pending'); // no se cuenta como ingreso
+
+    const { data: audits } = await admin
+      .from('audit_logs')
+      .select('action')
+      .eq('entity_id', bookingId);
+    expect((audits ?? []).map((a) => a.action)).toContain('booking.payment_mismatch');
   });
 
   it('pago canceled en OnvoPay: cancela la reserva y marca el pago failed', async () => {
@@ -241,6 +275,8 @@ describe('reconcilePendingPayments job (integración)', () => {
   it('idempotente: cancel_stale_pending_booking sobre una reserva ya confirmada no la toca', async () => {
     onvoState.outcome = PaymentIntentOutcome.Paid;
     onvoState.rawStatus = 'succeeded';
+    onvoState.amountCents = 5000; // coincide con lo sembrado → recupera
+    onvoState.currency = 'USD';
     const { bookingId } = await seedPending({ ageMs: THREE_HOURS_MS, withPayment: true });
     await reconcilePendingPayments(); // queda confirmed
     expect(await bookingStatus(bookingId)).toBe('confirmed');

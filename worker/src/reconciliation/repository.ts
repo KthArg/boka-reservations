@@ -11,7 +11,14 @@ export type StalePendingBooking = {
   // Embed de PostgREST: hoy 0 o 1 fila de pago (el checkout inserta una sola). Es
   // un array porque la relación es 1-a-N a nivel schema; se ordena por created_at
   // desc para que payments[0] sea determinista si alguna vez hubiera más de una.
-  payments: { external_payment_id: string; status: string; created_at: string }[];
+  // amount_cents/currency = monto esperado, para validar contra OnvoPay (spec 0014).
+  payments: {
+    external_payment_id: string;
+    status: string;
+    created_at: string;
+    amount_cents: number;
+    currency: string;
+  }[];
 };
 
 /**
@@ -26,7 +33,7 @@ export async function fetchStalePendingBookings(
   const { data, error } = await db
     .from('bookings')
     .select(
-      'id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status, created_at)',
+      'id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status, created_at, amount_cents, currency)',
     )
     .eq('status', PENDING_PAYMENT_STATUS)
     .lt('created_at', olderThanIso)
@@ -74,6 +81,27 @@ export async function confirmRecoveredBooking(
     p_total_seats: totalSeats,
   });
   if (error) throw new Error(`confirm recovered booking: ${error.message}`);
+}
+
+/**
+ * Marca una reserva como pago no coincidente (spec 0014) vía la función DB
+ * `flag_payment_mismatch`. Devuelve true si la marcó, false si ya no estaba en
+ * `pending_payment` (idempotente / race con el webhook).
+ */
+export async function flagPaymentMismatch(
+  db: SupabaseClient,
+  bookingId: string,
+  paidAmountCents: number,
+  paidCurrency: string,
+): Promise<boolean> {
+  const { data, error } = (await db.rpc('flag_payment_mismatch', {
+    p_booking_id: bookingId,
+    p_paid_amount_cents: paidAmountCents,
+    p_paid_currency: paidCurrency,
+    p_source: 'reconcile',
+  })) as { data: boolean | null; error: { message: string } | null };
+  if (error) throw new Error(`flag payment mismatch: ${error.message}`);
+  return data === true;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { getPaymentProvider } from '@/lib/payments';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 
@@ -20,13 +21,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { data: payment } = await db
     .from('payments')
-    .select('booking_id')
+    .select('booking_id, amount_cents, currency')
     .eq('external_payment_id', payload.paymentId)
     .single();
 
   if (!payment) {
     console.error('webhook: payment not found for intent', payload.paymentId);
     return NextResponse.json({ error: 'payment_not_found' }, { status: 404 });
+  }
+
+  // Validación de monto (spec 0014): el pago es de monto fijo que armamos nosotros.
+  // Si lo que OnvoPay dice que se pagó no coincide EXACTO con lo esperado, NO se
+  // confirma: se marca payment_mismatch para revisión manual. Se responde 200 (no es
+  // transitorio; reintentar no lo arregla). El reconciliador (0013) es la red de
+  // respaldo si el flag fallara acá.
+  if (payload.amountCents !== payment.amount_cents || payload.currency !== payment.currency) {
+    const { error: flagError } = await db.rpc('flag_payment_mismatch', {
+      p_booking_id: payment.booking_id,
+      p_paid_amount_cents: payload.amountCents,
+      p_paid_currency: payload.currency,
+      p_source: 'webhook',
+    });
+    if (flagError) console.error('webhook: flag_payment_mismatch failed', flagError.message);
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning');
+      scope.setFingerprint(['webhook-payment-mismatch']);
+      scope.setExtra('bookingId', payment.booking_id);
+      Sentry.captureMessage('[webhook] pago con monto/moneda no coincidente');
+    });
+    return NextResponse.json({ received: true });
   }
 
   const { data: booking } = await db
