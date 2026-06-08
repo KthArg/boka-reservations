@@ -11,6 +11,13 @@ vi.mock('../../../src/env.js', () => ({
   },
 }));
 
+// createClient construye un RealtimeClient que lanza en Node < 22 sin WebSocket
+// nativo (CI corre en Node 20). El job nunca usa el cliente de verdad acá (el
+// repository está mockeado), así que se stubea su construcción.
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({})),
+}));
+
 const repoMocks = vi.hoisted(() => ({
   fetchStalePendingBookings: vi.fn(),
   cancelStaleBooking: vi.fn(),
