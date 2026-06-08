@@ -176,16 +176,20 @@ ya evaluadas. Fuente: https://docs.onvopay.com/ (Payment Intents).
 ### Umbral parametrizable
 
 `STALE_PENDING_PAYMENT_AFTER_MS = 2 * 60 * 60 * 1000` (2 horas) en
-`shared/constants/bookings.ts` (módulo que ya existe, exporta `ADMIN_PANEL_ROLES`),
-importable desde el worker y los tests. Se elige 2h por estar muy por encima de los
-15 min del hold y de la ventana de reintentos de webhook de OnvoPay. **Supuesto (no
+el propio job del worker (`worker/src/jobs/reconcile-pending-payments.ts`). **No van
+en `shared/constants`** (corrección durante la implementación): el worker es
+self-contained y **no resuelve el alias `@shared` en runtime** (`tsx`/`node dist`),
+solo en typecheck y en los configs de vitest; importar de shared pasaría typecheck y
+tests pero rompería en runtime (dev y Railway). Como solo el worker usa estos
+umbrales, viven en el worker. Se elige 2h por estar muy por encima de los 15 min del
+hold y de la ventana de reintentos de webhook de OnvoPay. **Supuesto (no
 verificado en la doc de OnvoPay)**: esa ventana de reintentos es del orden de minutos.
 Aunque fuera mayor, reconciliar antes es inocuo: `confirm_booking` es idempotente, así
 que a lo sumo se confirma una reserva que el webhook igual iba a confirmar. Cambiar la
 política es tocar solo esa constante.
 
-`STUCK_PROCESSING_ALERT_AFTER_MS = 24 * 60 * 60 * 1000` (24 horas) en la misma
-constante: umbral a partir del cual un pago estancado en `processing`/
+`STUCK_PROCESSING_ALERT_AFTER_MS = 24 * 60 * 60 * 1000` (24 horas) en el mismo
+módulo del worker: umbral a partir del cual un pago estancado en `processing`/
 `requires_action` se reporta a Sentry para revisión manual (sin auto-cancelar).
 
 ### Alertas (Sentry)
