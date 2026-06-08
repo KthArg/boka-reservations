@@ -5,7 +5,7 @@
 - **Creado**: 2026-06-07
 - **Última actualización**: 2026-06-08 (aprobado; revisión de spec-reviewer incorporada)
 - **Rama**: feat/0013-reconciliacion-pagos-pendientes
-- **PR**: # (cuando aplique)
+- **PR**: #26
 
 ## 1. Contexto y motivación
 
