@@ -19,15 +19,22 @@ const repoMocks = vi.hoisted(() => ({
 }));
 vi.mock('../../../src/reconciliation/repository.js', () => repoMocks);
 
-const sentryMocks = vi.hoisted(() => ({ captureMessage: vi.fn(), setFingerprint: vi.fn() }));
-vi.mock('@sentry/node', () => ({
+const sentryMocks = vi.hoisted(() => ({
+  captureMessage: vi.fn(),
   captureException: vi.fn(),
+  setFingerprint: vi.fn(),
+}));
+vi.mock('@sentry/node', () => ({
+  captureException: sentryMocks.captureException,
   captureMessage: sentryMocks.captureMessage,
   withScope: (cb: (scope: unknown) => void) =>
     cb({ setLevel: vi.fn(), setFingerprint: sentryMocks.setFingerprint, setExtra: vi.fn() }),
 }));
 
-import { __testing } from '../../../src/jobs/reconcile-pending-payments.js';
+import {
+  reconcilePendingPayments,
+  __testing,
+} from '../../../src/jobs/reconcile-pending-payments.js';
 const { reconcileOne } = __testing;
 
 const db = {} as never;
@@ -79,7 +86,10 @@ describe('reconcileOne — árbol de decisión', () => {
     await reconcileOne(db, c, booking());
 
     expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(db, 'b1', 'pi_x', 3);
-    expect(repoMocks.writeRecoveredAudit).toHaveBeenCalledWith(db, 'b1');
+    expect(repoMocks.writeRecoveredAudit).toHaveBeenCalledWith(db, 'b1', {
+      seats: 3,
+      external_payment_id: 'pi_x',
+    });
     expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(1);
     expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-recovered']);
     expect(repoMocks.cancelStaleBooking).not.toHaveBeenCalled();
@@ -112,5 +122,30 @@ describe('reconcileOne — árbol de decisión', () => {
     expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(1);
     expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-stuck-processing']);
     expect(repoMocks.cancelStaleBooking).not.toHaveBeenCalled();
+  });
+});
+
+describe('reconcilePendingPayments — aislamiento de fallos en el lote', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('un fallo en una reserva no aborta el lote: la siguiente se procesa y se reporta a Sentry', async () => {
+    const noPayment = (id: string) => ({
+      id,
+      tickets_adult: 1,
+      tickets_child: 0,
+      tickets_student: 0,
+      created_at: FRESH,
+      payments: [],
+    });
+    repoMocks.fetchStalePendingBookings.mockResolvedValue([noPayment('a'), noPayment('b')]);
+    repoMocks.cancelStaleBooking
+      .mockRejectedValueOnce(new Error('db transitorio'))
+      .mockResolvedValueOnce(true);
+
+    await reconcilePendingPayments();
+
+    // La reserva 'b' se procesó pese al fallo de 'a'; el fallo se reportó.
+    expect(repoMocks.cancelStaleBooking).toHaveBeenCalledTimes(2);
+    expect(sentryMocks.captureException).toHaveBeenCalledTimes(1);
   });
 });

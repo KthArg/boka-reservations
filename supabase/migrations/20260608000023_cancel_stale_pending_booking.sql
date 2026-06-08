@@ -7,6 +7,9 @@
 -- opera sobre reservas NO confirmadas: no hay cupo que liberar (una reserva
 -- pending_payment nunca incrementó capacity_reserved; solo confirm_booking lo
 -- hace), no hay refund, y no se notifica a nadie (el turista abandonó).
+--
+-- Reversibilidad: forward-only (función nueva, sin DDL destructivo ni backfill).
+-- Para revertir: DROP FUNCTION public.cancel_stale_pending_booking(uuid, text);
 
 CREATE OR REPLACE FUNCTION public.cancel_stale_pending_booking(
   p_booking_id uuid,

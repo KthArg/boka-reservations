@@ -123,9 +123,13 @@ async function recover(db: SupabaseClient, booking: StalePendingBooking): Promis
   if (!payment) return;
   const totalSeats = booking.tickets_adult + booking.tickets_child + booking.tickets_student;
   await confirmRecoveredBooking(db, booking.id, payment.external_payment_id, totalSeats);
-  await writeRecoveredAudit(db, booking.id);
   // Una recuperación = un webhook perdido. Señal de salud del sistema, agrupada.
+  // Se emite ANTES del audit (best-effort) para no perderla si el audit falla.
   alert('[reconcile] reserva recuperada (webhook perdido)', 'reconcile-recovered', booking.id);
+  await writeRecoveredAudit(db, booking.id, {
+    seats: totalSeats,
+    external_payment_id: payment.external_payment_id,
+  });
 }
 
 function alertIfStuck(booking: StalePendingBooking): void {

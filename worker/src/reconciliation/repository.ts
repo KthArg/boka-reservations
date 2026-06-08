@@ -1,14 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+const PENDING_PAYMENT_STATUS = 'pending_payment';
+
 export type StalePendingBooking = {
   id: string;
   tickets_adult: number;
   tickets_child: number;
   tickets_student: number;
   created_at: string;
-  // Embed de PostgREST: 0 o 1 fila de pago (el checkout inserta una sola). Es un
-  // array porque la relación es 1-a-N a nivel schema.
-  payments: { external_payment_id: string; status: string }[];
+  // Embed de PostgREST: hoy 0 o 1 fila de pago (el checkout inserta una sola). Es
+  // un array porque la relación es 1-a-N a nivel schema; se ordena por created_at
+  // desc para que payments[0] sea determinista si alguna vez hubiera más de una.
+  payments: { external_payment_id: string; status: string; created_at: string }[];
 };
 
 /**
@@ -23,11 +26,12 @@ export async function fetchStalePendingBookings(
   const { data, error } = await db
     .from('bookings')
     .select(
-      'id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status)',
+      'id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status, created_at)',
     )
-    .eq('status', 'pending_payment')
+    .eq('status', PENDING_PAYMENT_STATUS)
     .lt('created_at', olderThanIso)
     .order('created_at', { ascending: true })
+    .order('created_at', { referencedTable: 'payments', ascending: false })
     .limit(limit)
     .returns<StalePendingBooking[]>();
 
@@ -74,15 +78,23 @@ export async function confirmRecoveredBooking(
 
 /**
  * Bitácora de la recuperación. La escribe el job (no `confirm_booking`, que no
- * audita): best-effort y no transaccional con la confirmación. Si fallara, la
- * confirmación ya quedó firme.
+ * audita): best-effort y no transaccional con la confirmación. Un fallo del INSERT
+ * NO debe abortar la recuperación: si abortara, la reserva ya está `confirmed` y
+ * nunca se reintentaría, perdiendo la traza en silencio. Se loggea en su lugar.
  */
-export async function writeRecoveredAudit(db: SupabaseClient, bookingId: string): Promise<void> {
-  await db.from('audit_logs').insert({
+export async function writeRecoveredAudit(
+  db: SupabaseClient,
+  bookingId: string,
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await db.from('audit_logs').insert({
     actor_type: 'system',
     action: 'booking.recovered_via_reconcile',
     entity_type: 'booking',
     entity_id: bookingId,
-    metadata: {},
+    metadata,
   });
+  if (error) {
+    console.error('[reconcile] audit recovered falló (no aborta):', error.message);
+  }
 }

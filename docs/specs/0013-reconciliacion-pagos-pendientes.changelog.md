@@ -28,4 +28,21 @@ Rama: feat/0013-reconciliacion-pagos-pendientes
 
 **Pendiente**:
 
-- Nada para mergear. PR a `dev`.
+- Nada para mergear. PR #26 a `dev`.
+
+## 2026-06-08 — Review de subagentes (payment-flow-auditor, db-schema-guardian, code-reviewer) + ajustes
+
+Los tres subagentes corrieron sobre el diff del PR #26. **Sin bloqueantes.** Hallazgos de valor incorporados:
+
+- **Resiliencia del audit de recuperación** (payment-flow-auditor + code-reviewer): si `writeRecoveredAudit` fallaba tras un `confirm_booking` exitoso, la excepción abortaba `reconcileOne` y, como la reserva ya quedaba `confirmed`, nunca se reintentaba → se perdían el audit y la alerta Sentry en silencio. Ahora `writeRecoveredAudit` es best-effort real (chequea el error y loggea, no lanza), y la alerta `reconcile-recovered` se emite **antes** del audit.
+- **Metadata del audit recovered enriquecida**: `{ seats, external_payment_id }` (antes `{}`) para poder investigar una sobreventa al recuperar.
+- **`payments[0]` determinista**: `fetchStalePendingBookings` ordena el embed de `payments` por `created_at desc` (hoy hay una sola fila por reserva; blinda el futuro).
+- **Migración**: comentario de reversibilidad (`DROP FUNCTION ...`), alineado con 0020/0021.
+- **Constante local `PENDING_PAYMENT_STATUS`** en el repository (el worker no tiene `shared` en runtime).
+- **Tests nuevos**: borde del umbral (1h59m → no entra al lote, bracketea el 2h junto al de 3h) e **aislamiento de fallos del lote** (una reserva que lanza no aborta las demás y se reporta a Sentry). Worker unit **61**, integración **14**.
+
+**Diferido (anotado, no bloqueante)**:
+
+- Alerta Sentry para 404 persistente de OnvoPay (>24h), análoga a `reconcile-stuck-processing` — hoy un `external_payment_id` inválido se reintenta cada ciclo sin corte. Candidato a iteración.
+- Regenerar `web/types/database.ts` para incluir `cancel_stale_pending_booking` y quitar el cast en `cancelStaleBooking` — se difiere por el gotcha del CLI que ensancha los CHECK (ver tech-decisions); el cast está justificado.
+- El reconciliador es **OnvoPay-only** (no lee `payments.external_provider`): documentado para cuando entre PayPal post-MVP. El enum `PaymentIntentOutcome` ya es agnóstico y serviría de contrato común.

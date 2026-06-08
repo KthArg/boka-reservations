@@ -41,6 +41,8 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const admin = createClient<Database>(SUPABASE_URL, SERVICE_KEY);
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+// Justo bajo el umbral de 2h (1h59m): aún no debe entrar al lote.
+const JUST_UNDER_THRESHOLD_MS = (2 * 60 - 1) * 60 * 1000;
 const TEST_SLUG = `reconcile-${crypto.randomUUID().slice(0, 8)}`;
 let tourId: string;
 let instanceId: string;
@@ -219,6 +221,17 @@ describe('reconcilePendingPayments job (integración)', () => {
 
   it('reserva reciente (< umbral): no entra al lote', async () => {
     const { bookingId } = await seedPending({ ageMs: 60 * 1000, withPayment: false });
+
+    await reconcilePendingPayments();
+
+    expect(await bookingStatus(bookingId)).toBe('pending_payment');
+  });
+
+  it('borde del umbral: una reserva a 1h59m (justo bajo 2h) todavía no se procesa', async () => {
+    const { bookingId } = await seedPending({
+      ageMs: JUST_UNDER_THRESHOLD_MS,
+      withPayment: false,
+    });
 
     await reconcilePendingPayments();
 
