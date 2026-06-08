@@ -16,9 +16,29 @@ const admin = createClient<Database>(SUPABASE_URL, SERVICE_KEY);
 const TEST_SLUG = `webhook-idem-${crypto.randomUUID().slice(0, 8)}`;
 const TWENTY_FIVE_HOURS_MS = 25 * 60 * 60 * 1000;
 const eventIds: string[] = [];
+const instanceIds: string[] = [];
 
 let tourId: string;
-let instanceId: string;
+let scheduleId: string;
+
+// Cada test que asserta cupo usa su propia instancia, para que la verificación
+// sea exacta (=== 1) y no dependa del orden ni del estado de otros tests.
+async function createInstance(): Promise<string> {
+  const startsAt = new Date(Date.now() + TWENTY_FIVE_HOURS_MS).toISOString();
+  const { data } = await admin
+    .from('tour_instances')
+    .insert({
+      tour_id: tourId,
+      schedule_id: scheduleId,
+      starts_at: startsAt,
+      ends_at: startsAt,
+      capacity_total: 5,
+    })
+    .select('id')
+    .single();
+  instanceIds.push(data!.id);
+  return data!.id;
+}
 
 beforeAll(async () => {
   const { data: tour } = await admin
@@ -46,38 +66,29 @@ beforeAll(async () => {
     .insert({ tour_id: tourId, day_of_week: 1, start_time: '08:00', capacity: 5 })
     .select('id')
     .single();
-  const startsAt = new Date(Date.now() + TWENTY_FIVE_HOURS_MS).toISOString();
-  const { data: inst } = await admin
-    .from('tour_instances')
-    .insert({
-      tour_id: tourId,
-      schedule_id: sched!.id,
-      starts_at: startsAt,
-      ends_at: startsAt,
-      capacity_total: 5,
-    })
-    .select('id')
-    .single();
-  instanceId = inst!.id;
+  scheduleId = sched!.id;
 });
 
 afterAll(async () => {
   const { data: bks } = await admin
     .from('bookings')
     .select('id')
-    .eq('tour_instance_id', instanceId);
+    .in('tour_instance_id', instanceIds);
   for (const b of bks ?? []) {
     await admin.from('notifications').delete().eq('booking_id', b.id);
     await admin.from('payments').delete().eq('booking_id', b.id);
   }
-  await admin.from('bookings').delete().eq('tour_instance_id', instanceId);
+  await admin.from('bookings').delete().in('tour_instance_id', instanceIds);
   await admin.from('tour_instances').delete().eq('tour_id', tourId);
   await admin.from('tour_schedules').delete().eq('tour_id', tourId);
   await admin.from('tours').delete().eq('id', tourId);
   for (const id of eventIds) await admin.from('processed_webhook_events').delete().eq('id', id);
 });
 
-async function seedBooking(): Promise<{ bookingId: string; externalPaymentId: string }> {
+async function seedBooking(instanceId: string): Promise<{
+  bookingId: string;
+  externalPaymentId: string;
+}> {
   const externalPaymentId = `pi_${crypto.randomUUID()}`;
   const { data: booking } = await admin
     .from('bookings')
@@ -107,9 +118,19 @@ async function eventExists(id: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
+async function reservedSeats(instanceId: string): Promise<number> {
+  const { data } = await admin
+    .from('tour_instances')
+    .select('capacity_reserved')
+    .eq('id', instanceId)
+    .single();
+  return data!.capacity_reserved;
+}
+
 describe('idempotencia del webhook en confirm_booking', () => {
   it('confirma y registra el evento en la misma transacción', async () => {
-    const { bookingId, externalPaymentId } = await seedBooking();
+    const instanceId = await createInstance();
+    const { bookingId, externalPaymentId } = await seedBooking(instanceId);
     const eventId = `evt_ok_${crypto.randomUUID()}`;
     eventIds.push(eventId);
 
@@ -149,8 +170,9 @@ describe('idempotencia del webhook en confirm_booking', () => {
     expect(await eventExists(eventId)).toBe(false);
   });
 
-  it('reentrega del mismo evento: idempotente, sin error ni doble confirmación', async () => {
-    const { bookingId, externalPaymentId } = await seedBooking();
+  it('reentrega secuencial del mismo evento: idempotente, sin doble confirmación ni doble cupo', async () => {
+    const instanceId = await createInstance();
+    const { bookingId, externalPaymentId } = await seedBooking(instanceId);
     const eventId = `evt_dup_${crypto.randomUUID()}`;
     eventIds.push(eventId);
 
@@ -165,19 +187,37 @@ describe('idempotencia del webhook en confirm_booking', () => {
 
     expect(first.error).toBeNull();
     expect(second.error).toBeNull();
+    expect(await reservedSeats(instanceId)).toBe(1); // nunca 2 (no doble conteo)
 
-    const { count: eventCount } = await admin
+    const { count } = await admin
       .from('processed_webhook_events')
       .select('id', { count: 'exact', head: true })
       .eq('id', eventId);
-    expect(eventCount).toBe(1);
+    expect(count).toBe(1);
+  });
 
-    const { data: reserved } = await admin
-      .from('tour_instances')
-      .select('capacity_reserved')
-      .eq('id', instanceId)
-      .single();
-    // 1 de este test + 1 del primer test (mismo instance) = 2; nunca 3 (no doble conteo).
-    expect(reserved!.capacity_reserved).toBeLessThanOrEqual(2);
+  it('reentrega CONCURRENTE del mismo evento: el FOR UPDATE serializa, cupo = 1', async () => {
+    const instanceId = await createInstance();
+    const { bookingId, externalPaymentId } = await seedBooking(instanceId);
+    const eventId = `evt_concurrent_${crypto.randomUUID()}`;
+    eventIds.push(eventId);
+
+    const args = {
+      p_booking_id: bookingId,
+      p_external_payment_id: externalPaymentId,
+      p_total_seats: 1,
+      p_event_id: eventId,
+    };
+    // Dos entregas simultáneas del mismo webhook (lo que hace OnvoPay al reintentar
+    // sin recibir el 200 a tiempo). El SELECT ... FOR UPDATE sobre la reserva
+    // serializa: una confirma, la otra ve status='confirmed' y retorna.
+    const [a, b] = await Promise.all([
+      admin.rpc('confirm_booking', args),
+      admin.rpc('confirm_booking', args),
+    ]);
+
+    expect(a.error).toBeNull();
+    expect(b.error).toBeNull();
+    expect(await reservedSeats(instanceId)).toBe(1); // sin doble conteo de cupo
   });
 });

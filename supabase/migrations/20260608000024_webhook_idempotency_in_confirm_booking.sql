@@ -22,8 +22,10 @@
 -- Cuerpo basado en la definición VIGENTE (20260606000020, que encola
 -- confirmación + recordatorio 24h y fija search_path), no en la original.
 --
--- Reversibilidad: forward-only. Para revertir, recrear la firma de 3 args de
--- 20260606000020 y DROPear esta.
+-- Reversibilidad: forward-only. Una reversión completa requiere DOS cosas: (1)
+-- recrear la firma de 3 args de 20260606000020 y DROPear esta de 4 args, y (2)
+-- revertir el handler (route.ts), que ya pasa p_event_id — si no, llamaría con
+-- un argumento inexistente.
 
 DROP FUNCTION IF EXISTS public.confirm_booking(uuid, text, integer);
 
