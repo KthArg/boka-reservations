@@ -733,6 +733,7 @@ export type Database = {
           p_booking_id: string;
           p_external_payment_id: string;
           p_total_seats: number;
+          p_event_id?: string | null;
         };
         Returns: void;
       };

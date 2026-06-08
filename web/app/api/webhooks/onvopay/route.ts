@@ -18,14 +18,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const db = createSupabaseServiceClient();
 
-  const { error: conflictError } = await db
-    .from('processed_webhook_events')
-    .insert({ id: payload.eventId, processed_at: new Date().toISOString() });
-
-  if (conflictError) {
-    return NextResponse.json({ received: true });
-  }
-
   const { data: payment } = await db
     .from('payments')
     .select('booking_id')
@@ -47,10 +39,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ? (booking.tickets_adult ?? 0) + (booking.tickets_child ?? 0) + (booking.tickets_student ?? 0)
     : 0;
 
+  // La idempotencia la maneja confirm_booking en su propia transacción: registra
+  // el evento (p_event_id) en processed_webhook_events junto con la confirmación,
+  // así un fallo hace rollback de ambos y el retry de OnvoPay reprocesa limpio.
+  // confirm_booking es idempotente a nivel reserva (no reconfirma) y a nivel
+  // evento (ON CONFLICT), así que reenviar el mismo webhook es inocuo.
   const { error: rpcError } = await db.rpc('confirm_booking', {
     p_booking_id: payment.booking_id,
     p_external_payment_id: payload.paymentId,
     p_total_seats: totalSeats,
+    p_event_id: payload.eventId,
   });
 
   if (rpcError) {
