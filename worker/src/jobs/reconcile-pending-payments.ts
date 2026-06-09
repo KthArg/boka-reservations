@@ -139,7 +139,10 @@ async function recover(
     return;
   }
   // (b) Si el monto/moneda no coincide con lo esperado, marcar payment_mismatch.
-  if (result.amountCents !== payment.amount_cents || result.currency !== payment.currency) {
+  // Moneda normalizada a mayúsculas (ISO 4217 case-insensitive) para no marcar
+  // falso-mismatch por formato.
+  const currencyMismatch = result.currency.toUpperCase() !== payment.currency.toUpperCase();
+  if (result.amountCents !== payment.amount_cents || currencyMismatch) {
     await flagPaymentMismatch(db, booking.id, result.amountCents, result.currency);
     alert(
       '[reconcile] pago con monto/moneda no coincidente',

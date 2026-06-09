@@ -67,3 +67,27 @@ p_paid_amount_cents, p_paid_currency, p_source) RETURNS boolean` (SECURITY DEFIN
 - Nada para mergear. Manual sugerido en el PR (sandbox OnvoPay con monto alterado).
 - Deuda relacionada que NO cubre este spec (anotada en pre-production-checklist): el
   `eventId = data.id` de OnvoPay; este spec no lo toca.
+
+## 2026-06-08 — Review de subagentes (payment-flow-auditor, db-schema-guardian, code-reviewer) + ajustes
+
+Los tres corrieron sobre el diff. **Sin bloqueantes.** Incorporado:
+
+- **Normalización de moneda** (riesgo medio del payment-auditor): la comparación estricta
+  de `currency` era sensible a mayúsculas → si OnvoPay devolviera `'usd'` en vez de
+  `'USD'`, TODO pago legítimo se marcaría mismatch (falso positivo masivo). Ahora ambos
+  callers comparan `.toUpperCase()` (ISO 4217 es case-insensitive). Test nuevo lo cubre.
+- **Test del route handler del webhook** (lo marcaron 2 reviewers, dominio crítico):
+  `web/tests/integration/webhook-handler.test.ts` mockea el provider + Sentry y pega al
+  POST real contra la DB — monto distinto → 200 + `payment_mismatch` sin confirmar; monto
+  igual → confirma; **moneda `usd` → normaliza y confirma**.
+- **`flagError` → Sentry** en el webhook (antes solo `console.error`): se agrega al scope
+  de la alerta para no perder visibilidad de un fallo del flag.
+- **`DROP CONSTRAINT IF EXISTS`** en la migración (robustez ante drift, consistente con el
+  resto del repo).
+
+**Diferido (anotado, no alcanzable hoy)**: guard de `payment_mismatch` dentro de
+`confirm_booking` como defensa en profundidad (hoy ningún caller llega ahí con mismatch;
+relevante solo si se agregara un 3er caller, p. ej. "confirmar a mano" en el panel).
+
+Suite tras ajustes: web unit 92 / integ **109** (+3), worker unit 64 / integ 15. Lint 0,
+typecheck limpio.

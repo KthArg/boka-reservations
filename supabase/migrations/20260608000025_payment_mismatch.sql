@@ -11,7 +11,7 @@
 -- DROP FUNCTION public.flag_payment_mismatch(uuid, integer, text, text).
 
 -- Ampliar el CHECK de bookings.status con el estado nuevo.
-ALTER TABLE public.bookings DROP CONSTRAINT bookings_status_check;
+ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
 ALTER TABLE public.bookings ADD CONSTRAINT bookings_status_check
   CHECK (status IN ('pending_payment', 'confirmed', 'cancelled', 'refunded', 'payment_mismatch'));
 

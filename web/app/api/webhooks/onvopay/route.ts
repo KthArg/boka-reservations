@@ -34,8 +34,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Si lo que OnvoPay dice que se pagó no coincide EXACTO con lo esperado, NO se
   // confirma: se marca payment_mismatch para revisión manual. Se responde 200 (no es
   // transitorio; reintentar no lo arregla). El reconciliador (0013) es la red de
-  // respaldo si el flag fallara acá.
-  if (payload.amountCents !== payment.amount_cents || payload.currency !== payment.currency) {
+  // respaldo si el flag fallara acá. La moneda se compara normalizada a mayúsculas
+  // (ISO 4217 es case-insensitive) para no marcar falso-mismatch por formato.
+  const currencyMismatch = payload.currency.toUpperCase() !== payment.currency.toUpperCase();
+  if (payload.amountCents !== payment.amount_cents || currencyMismatch) {
     const { error: flagError } = await db.rpc('flag_payment_mismatch', {
       p_booking_id: payment.booking_id,
       p_paid_amount_cents: payload.amountCents,
@@ -47,6 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       scope.setLevel('warning');
       scope.setFingerprint(['webhook-payment-mismatch']);
       scope.setExtra('bookingId', payment.booking_id);
+      if (flagError) scope.setExtra('flagError', flagError.message);
       Sentry.captureMessage('[webhook] pago con monto/moneda no coincidente');
     });
     return NextResponse.json({ received: true });
