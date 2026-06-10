@@ -36,6 +36,13 @@ next-env.d.ts
 supabase/.branches/
 supabase/.temp/
 
+# Playwright (artefactos de navegación: snapshots, screenshots, console logs)
+.playwright-mcp/
+playwright-report/
+test-results/
+# Screenshots de verificación sueltos (se guardan en root al usar filename)
+/verify-*.png
+
 # OS
 .DS_Store
 Thumbs.db
