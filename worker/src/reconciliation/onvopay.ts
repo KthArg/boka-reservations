@@ -22,9 +22,14 @@ export type PaymentIntentResult = {
   // Estado crudo de OnvoPay; viaja como 'reason' al cancelar (es un dato, no una
   // comparación). Útil además para depurar.
   rawStatus: string;
+  // Monto/moneda reportados por OnvoPay (campos `amount` en unidad menor = céntimos,
+  // y `currency`). Opcionales: si faltan, el reconciliador NO puede validar el monto
+  // (spec 0014) y trata el pago como no verificable (saltea, no confirma a ciegas).
+  amountCents?: number;
+  currency?: string;
 };
 
-type OnvopayIntentBody = { id: string; status: string };
+type OnvopayIntentBody = { id: string; status: string; amount?: number; currency?: string };
 
 // Mapa estado de OnvoPay -> decisión. Lookup en vez de comparaciones con literal
 // para no chocar con la regla de lint (mismo patrón que el cliente de refunds).
@@ -58,7 +63,12 @@ export function createOnvopayPaymentIntentClient(secretKey: string) {
         throw new Error(`onvopay getPaymentIntent ${res.status}: ${await res.text()}`);
       }
       const body = (await res.json()) as OnvopayIntentBody;
-      return { outcome: mapOutcome(body.status), rawStatus: body.status };
+      return {
+        outcome: mapOutcome(body.status),
+        rawStatus: body.status,
+        amountCents: body.amount,
+        currency: body.currency,
+      };
     },
   };
 }

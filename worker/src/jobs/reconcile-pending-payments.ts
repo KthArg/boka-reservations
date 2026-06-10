@@ -5,11 +5,13 @@ import {
   createOnvopayPaymentIntentClient,
   PaymentIntentOutcome,
   type OnvopayPaymentIntentClient,
+  type PaymentIntentResult,
 } from '../reconciliation/onvopay.js';
 import {
   cancelStaleBooking,
   confirmRecoveredBooking,
   fetchStalePendingBookings,
+  flagPaymentMismatch,
   writeRecoveredAudit,
   type StalePendingBooking,
 } from '../reconciliation/repository.js';
@@ -96,21 +98,20 @@ async function reconcileOne(
   }
 
   const result = await client.getPaymentIntent(payment.external_payment_id);
-  await applyOutcome(db, booking, result.outcome, result.rawStatus);
+  await applyOutcome(db, booking, result);
 }
 
 async function applyOutcome(
   db: SupabaseClient,
   booking: StalePendingBooking,
-  outcome: PaymentIntentOutcome,
-  rawStatus: string,
+  result: PaymentIntentResult,
 ): Promise<void> {
-  switch (outcome) {
+  switch (result.outcome) {
     case PaymentIntentOutcome.Paid:
-      await recover(db, booking);
+      await recover(db, booking, result);
       return;
     case PaymentIntentOutcome.NotPaid:
-      await cancelStaleBooking(db, booking.id, rawStatus);
+      await cancelStaleBooking(db, booking.id, result.rawStatus);
       return;
     case PaymentIntentOutcome.Pending:
       alertIfStuck(booking);
@@ -118,9 +119,40 @@ async function applyOutcome(
   }
 }
 
-async function recover(db: SupabaseClient, booking: StalePendingBooking): Promise<void> {
+async function recover(
+  db: SupabaseClient,
+  booking: StalePendingBooking,
+  result: PaymentIntentResult,
+): Promise<void> {
   const payment = booking.payments[0];
   if (!payment) return;
+
+  // Validación de monto (spec 0014): no recuperar a ciegas un pago succeeded.
+  // (a) Si OnvoPay no devolvió monto/moneda, es no verificable: saltear sin tocar
+  // la reserva (igual que el principio de "nunca a ciegas" del 0013).
+  if (result.amountCents === undefined || result.currency === undefined) {
+    alert(
+      '[reconcile] pago no verificable (sin monto en el GET); revisión manual',
+      'reconcile-amount-unverifiable',
+      booking.id,
+    );
+    return;
+  }
+  // (b) Si el monto/moneda no coincide con lo esperado, marcar payment_mismatch.
+  // Moneda normalizada a mayúsculas (ISO 4217 case-insensitive) para no marcar
+  // falso-mismatch por formato.
+  const currencyMismatch = result.currency.toUpperCase() !== payment.currency.toUpperCase();
+  if (result.amountCents !== payment.amount_cents || currencyMismatch) {
+    await flagPaymentMismatch(db, booking.id, result.amountCents, result.currency);
+    alert(
+      '[reconcile] pago con monto/moneda no coincidente',
+      'reconcile-payment-mismatch',
+      booking.id,
+    );
+    return;
+  }
+
+  // (c) Coincide: recuperar (confirmar la reserva como lo haría el webhook).
   const totalSeats = booking.tickets_adult + booking.tickets_child + booking.tickets_student;
   await confirmRecoveredBooking(db, booking.id, payment.external_payment_id, totalSeats);
   // Una recuperación = un webhook perdido. Señal de salud del sistema, agrupada.

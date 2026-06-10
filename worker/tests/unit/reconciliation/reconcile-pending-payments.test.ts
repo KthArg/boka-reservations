@@ -22,6 +22,7 @@ const repoMocks = vi.hoisted(() => ({
   fetchStalePendingBookings: vi.fn(),
   cancelStaleBooking: vi.fn(),
   confirmRecoveredBooking: vi.fn(),
+  flagPaymentMismatch: vi.fn(),
   writeRecoveredAudit: vi.fn(),
 }));
 vi.mock('../../../src/reconciliation/repository.js', () => repoMocks);
@@ -48,10 +49,26 @@ const db = {} as never;
 const FRESH = new Date().toISOString();
 const OLD_36H = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
 
-type Outcome = { outcome: PaymentIntentOutcome; rawStatus: string };
+const EXPECTED_CENTS = 5000;
+const EXPECTED_CURRENCY = 'USD';
+
+type Outcome = {
+  outcome: PaymentIntentOutcome;
+  rawStatus: string;
+  amountCents?: number;
+  currency?: string;
+};
 function client(result: Outcome) {
   return { getPaymentIntent: vi.fn().mockResolvedValue(result) } as never;
 }
+
+// Resultado de OnvoPay 'succeeded' con monto que coincide con el esperado del fixture.
+const paidMatching: Outcome = {
+  outcome: PaymentIntentOutcome.Paid,
+  rawStatus: 'succeeded',
+  amountCents: EXPECTED_CENTS,
+  currency: EXPECTED_CURRENCY,
+};
 
 function booking(overrides: Record<string, unknown> = {}) {
   return {
@@ -60,7 +77,14 @@ function booking(overrides: Record<string, unknown> = {}) {
     tickets_child: 1,
     tickets_student: 0,
     created_at: FRESH,
-    payments: [{ external_payment_id: 'pi_x', status: 'pending' }],
+    payments: [
+      {
+        external_payment_id: 'pi_x',
+        status: 'pending',
+        amount_cents: EXPECTED_CENTS,
+        currency: EXPECTED_CURRENCY,
+      },
+    ],
     ...overrides,
   } as never;
 }
@@ -87,8 +111,8 @@ describe('reconcileOne — árbol de decisión', () => {
     expect(repoMocks.confirmRecoveredBooking).not.toHaveBeenCalled();
   });
 
-  it('OnvoPay succeeded: recupera (confirm + audit) y alerta a Sentry', async () => {
-    const c = client({ outcome: PaymentIntentOutcome.Paid, rawStatus: 'succeeded' });
+  it('OnvoPay succeeded con monto coincidente: recupera (confirm + audit) y alerta', async () => {
+    const c = client(paidMatching);
 
     await reconcileOne(db, c, booking());
 
@@ -100,6 +124,42 @@ describe('reconcileOne — árbol de decisión', () => {
     expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(1);
     expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-recovered']);
     expect(repoMocks.cancelStaleBooking).not.toHaveBeenCalled();
+    expect(repoMocks.flagPaymentMismatch).not.toHaveBeenCalled();
+  });
+
+  it('OnvoPay succeeded con monto distinto: marca payment_mismatch (no confirma) y alerta', async () => {
+    const c = client({ ...paidMatching, amountCents: EXPECTED_CENTS + 100 });
+
+    await reconcileOne(db, c, booking());
+
+    expect(repoMocks.flagPaymentMismatch).toHaveBeenCalledWith(
+      db,
+      'b1',
+      EXPECTED_CENTS + 100,
+      EXPECTED_CURRENCY,
+    );
+    expect(repoMocks.confirmRecoveredBooking).not.toHaveBeenCalled();
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-payment-mismatch']);
+  });
+
+  it('OnvoPay succeeded con moneda distinta: también marca payment_mismatch', async () => {
+    const c = client({ ...paidMatching, currency: 'CRC' });
+
+    await reconcileOne(db, c, booking());
+
+    expect(repoMocks.flagPaymentMismatch).toHaveBeenCalledWith(db, 'b1', EXPECTED_CENTS, 'CRC');
+    expect(repoMocks.confirmRecoveredBooking).not.toHaveBeenCalled();
+  });
+
+  it('OnvoPay succeeded sin monto en el GET: no verificable, saltea sin tocar la reserva', async () => {
+    const c = client({ outcome: PaymentIntentOutcome.Paid, rawStatus: 'succeeded' });
+
+    await reconcileOne(db, c, booking());
+
+    expect(repoMocks.confirmRecoveredBooking).not.toHaveBeenCalled();
+    expect(repoMocks.flagPaymentMismatch).not.toHaveBeenCalled();
+    expect(repoMocks.cancelStaleBooking).not.toHaveBeenCalled();
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-amount-unverifiable']);
   });
 
   it('OnvoPay canceled: cancela con el estado crudo como reason', async () => {

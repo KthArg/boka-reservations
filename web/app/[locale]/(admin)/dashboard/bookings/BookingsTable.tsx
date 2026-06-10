@@ -9,7 +9,10 @@ import styles from './bookings.module.css';
 type Props = { rows: AdminBookingRow[] };
 
 function badgeClass(status: string): string {
-  return status === BookingStatus.Confirmed ? styles.badgeConfirmed : styles.badge;
+  if (status === BookingStatus.Confirmed) return styles.badgeConfirmed;
+  // payment_mismatch (spec 0014): anomalía de dinero, badge propio destacado.
+  if (status === BookingStatus.PaymentMismatch) return styles.badgeMismatch;
+  return styles.badge;
 }
 
 function CheckInCell({ row, checkedInLabel }: { row: AdminBookingRow; checkedInLabel: string }) {
