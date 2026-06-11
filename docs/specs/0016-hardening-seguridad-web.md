@@ -448,9 +448,9 @@ No aplica. Ningún hallazgo introduce o modifica una máquina de estados.
       `getCurrentUser` → propia fila (`id=auth.uid()`); (b) `users/repository.ts` → panel
       `/dashboard/users` admin-only (admin ve todo); (c) `guides/repository.ts` →
       `role='guide'` (panel de salidas admin+staff); (d) `guides/guide-view.ts` y
-      `assign-action.ts` → service_role (ignoran RLS). El detalle de reserva
-      (`admin-detail.ts`) **NO** lee `users`: `checked_in_by` solo se usa en el _write_ de
-      check-in, nunca se resuelve a nombre vía cliente autenticado. Los 3 términos de la
+      `assign-action.ts` → `service_role` (ignoran RLS). El detalle de reserva
+      (`admin-detail.ts`) **NO** lee `users`: `checked_in_by` solo se usa en la escritura
+      del check-in, nunca se resuelve a nombre vía cliente autenticado. Los 3 términos de la
       política cubren todos los reads sin romper el panel de staff.
 - [x] **Pregunta**: ¿La CSP arranca en `Report-Only` por uno o dos deploys antes de
       enforcing, o se va directo a enforcing tras validar en el build de prod local?
