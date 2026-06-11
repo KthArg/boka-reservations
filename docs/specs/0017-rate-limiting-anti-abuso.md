@@ -361,12 +361,12 @@ opción más segura y menos propensa a otros problemas.
       y **10 / hora por IP**; checkout **10 / 10 min por IP**. Se afinan observando los
       eventos de "excedido" en Sentry. Kill-switch por env `RATE_LIMIT_ENABLED` para
       desactivar rápido si un umbral mal calibrado molestara en prod.
-- [x] **forgot-password** → **Opción (a)**: route handler propio (`POST
-    /api/rate-limit/forgot-password`) que el form llama ANTES del PKCE. Es la única que
-      da control por **email** (hash) además de por IP sin mover `resetPasswordForEmail`
-      fuera del browser (lo exige PKCE). En 429 el form muestra la **misma** respuesta
-      neutra que en el caso exitoso (anti-enumeración: no revela si se envió ni si se
-      throttleó).
+- [x] **forgot-password** → **Opción (a)**: route handler propio
+      (`POST /api/rate-limit/forgot-password`) que el form llama ANTES del PKCE. Es la
+      única que da control por **email** (hash) además de por IP sin mover
+      `resetPasswordForEmail` fuera del browser (lo exige PKCE). En 429 el form muestra la
+      **misma** respuesta neutra que en el caso exitoso (anti-enumeración: no revela si se
+      envió ni si se throttleó).
 - [x] **Ante caída del store** → **fail-open + alerta** en todos los endpoints (sección 8).
       Con la Opción A el store ES Postgres (la DB principal); si está caído, login/checkout
       ya no funcionan por otras razones, así que fail-closed sólo agregaría un modo de
