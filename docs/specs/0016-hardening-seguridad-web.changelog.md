@@ -38,5 +38,27 @@ hallazgo); **CSP directo a enforcing** tras validar en build de prod local. B-4 
 `users-rls.test.ts` — staff ve su fila + guías, NO la PII de otros admin/staff; admin ve
 todo). `db reset` reaplica la cadena completa (**26 migraciones**). Typecheck limpio.
 
-**Pendiente**: M-2 (headers de seguridad + CSP) con verificación en `pnpm build && start` +
-navegador (checkout/widget bajo la CSP).
+**M-2 (headers de seguridad + CSP) — hecho y verificado en build de prod**:
+
+- `web/next.config.ts`: nueva `async headers()` que aplica a todas las rutas:
+  `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy` (camera/microphone/geolocation/browsing-topics deshabilitados).
+- **CSP**: `default-src 'self'`; `script-src 'self' 'unsafe-inline' sdk.onvopay.com`
+  (en dev se agrega `'unsafe-eval'` para el HMR; en prod NO); `style-src 'self' 'unsafe-inline'`;
+  `connect-src` con Supabase (http+ws), `sdk/api.onvopay.com` y Sentry; `frame-src` OnvoPay;
+  `frame-ancestors 'none'`; `base-uri/form-action 'self'`; `object-src 'none'`.
+- **Verificación (decisión: build de prod local → enforcing)**: `pnpm build && pnpm start`,
+  `curl -I` confirma los 6 headers presentes con la CSP en modo prod (sin `'unsafe-eval'`);
+  navegador real → checkout: **0 violaciones de CSP en consola, el widget de OnvoPay carga
+  y crea el intent**, booking por $70 (precio autoritativo + email válido B-3). El único log
+  es del SDK de OnvoPay **dentro de su iframe** (online-metrix), gobernado por su propia CSP.
+- **Endurecimiento futuro (no en este PR)**: pasar `script-src`/`style-src` de `'unsafe-inline'`
+  a nonces (strict-dynamic) — requiere CSP por request vía middleware (pregunta abierta §13);
+  hoy la app no tiene XSS conocida (React escapa) y la CSP ya bloquea scripts externos no
+  permitidos + clickjacking.
+
+**Tests finales** (suite verde): web unit **120** (+15), integración **117** (+5),
+worker unit 64 / integ 15. Lint 0 err, typecheck limpio. `db reset` cadena completa
+(**26 migraciones**). M-2 verificado en runtime (curl + navegador en build de prod), no por
+unit test (asertar headers requiere server corriendo; la verificación en vivo es más fuerte).
