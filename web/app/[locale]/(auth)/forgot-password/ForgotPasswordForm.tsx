@@ -21,9 +21,25 @@ export default function ForgotPasswordForm({ locale, labels }: Props) {
     e.preventDefault();
     setPending(true);
     const email = (e.currentTarget.elements.namedItem('email') as HTMLInputElement).value;
-    const supabase = createSupabaseBrowserClient();
-    const redirectTo = `${window.location.origin}/${locale}/auth/callback`;
-    await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+    // Rate limit propio ANTES del PKCE (spec 0017): controla por IP y por email sin mover
+    // resetPasswordForEmail fuera del browser (lo exige PKCE). Si se excede (429), NO se
+    // llama a Supabase; igual se muestra la misma respuesta neutra (anti-enumeración). Si
+    // el chequeo fallara por red, se procede igual (fail-open del lado del cliente).
+    const limited = await fetch('/api/rate-limit/forgot-password', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+      .then((res) => !res.ok)
+      .catch(() => false);
+
+    if (!limited) {
+      const supabase = createSupabaseBrowserClient();
+      const redirectTo = `${window.location.origin}/${locale}/auth/callback`;
+      await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    }
+
     router.push('/forgot-password?sent=true');
   }
 
