@@ -4,8 +4,8 @@
 - **Autor**: Kenneth
 - **Creado**: 2026-06-10
 - **Última actualización**: 2026-06-11 (preguntas abiertas resueltas; aprobado — 1 PR con los 7, CSP verificada en local → enforcing)
-- **Rama**: feat/0016-hardening-seguridad-web (cuando aplique)
-- **PR**: # (cuando aplique)
+- **Rama**: feat/0016-hardening-seguridad-web
+- **PR**: #32 (mergeado a `dev` el 2026-06-11, merge `cd600dd`)
 
 > Este spec agrupa los hallazgos de **defensa en profundidad** de la auditoría de
 > seguridad del 2026-06-10: **M-1** (open redirect), **M-2** (headers de seguridad

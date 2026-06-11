@@ -22,13 +22,19 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 
 ---
 
-## Estado actual (2026-06-01)
+## Estado actual (2026-06-11)
 
-- **Bloques 1–5 completos.** Specs 0001–0009 implementados y mergeados a `dev` (modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones, panel+check-in, asignación de guías).
-- **Checkpoints 1–5 pasados.** El Checkpoint 5 (2026-06-01) cerró el Bloque 5; su verificación de deliverability real (inbox vs spam) se difirió al Checkpoint 7 (requiere Resend+dominio).
-- **Spec 0010 — Gestión de usuarios internos**: escrito y aprobado, **sin implementar** (surgió como hallazgo del Checkpoint 5; lo arranca el usuario en una sesión futura). Es la **Etapa 12**, primera del Bloque 6.
-- **Renumeración**: al insertarse 0010 (usuarios), los specs planificados aguas abajo corrieron +1 (cancelaciones 0011, reportes 0012, i18n 0013, rate-limiting 0014, observabilidad 0015, e2e 0016, PayPal 0017).
-- Nota: algunos detalles de implementación divergieron de lo que decían las etapas viejas (rutas reales bajo `/dashboard/*` y en inglés; check-in a nivel reserva sin `booking_tickets`; `audit_logs` diferido a cancelaciones). Las etapas de abajo conservan su redacción original como plan; la fuente de verdad del estado real son los specs en `docs/specs/` y la memoria del proyecto.
+> **La fuente de verdad del estado real son los specs en `docs/specs/`, sus changelogs, y la memoria del proyecto (`.claude/memory/`).** Este resumen es un snapshot; el plan de Bloques/Etapas de más abajo conserva su redacción original como referencia histórica.
+
+- **Specs 0001–0016 implementados y mergeados a `dev`**: modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones+recordatorio 24h, panel+check-in, asignación de guías, gestión de usuarios internos, cancelaciones+refund, reportes, reconciliación de pagos pendientes, validación de monto del webhook, precio autoritativo en checkout, hardening de seguridad web.
+- **`dev` está en 0016; `main` sigue en 0012** (no alimenta producción todavía). La promoción `dev → main` es un paso pendiente, no bloqueante mientras no haya prod.
+- **MVP verificado end-to-end** (navegador real + OnvoPay sandbox): checkout+webhook, cancelación+refund, reconciliador, panel completo. Checkpoints 1–6 cubiertos. El **Checkpoint 7 (pre-lanzamiento/cutover)** es el gran pendiente — ver `pre-production-checklist` en la memoria.
+- **Auditoría de seguridad (2026-06-10)** en curso: **0015** (precio autoritativo, hallazgo CRÍTICO C-1) y **0016** (hardening web: open redirect, headers/CSP, CSV injection, webhook constant-time, cookie Secure, email, RLS de users) **cerrados y mergeados**. Falta **0017 (rate limiting)** para cerrarla.
+
+**Divergencias del plan original (abajo) respecto a la realidad** — el plan conserva su redacción; la implementación divergió:
+
+- **Renumeración de specs**: el plan de los Bloques 6–8 listaba 0013=i18n, 0014=rate-limiting, 0015=observabilidad, 0016=e2e, 0017=paypal. En la práctica los números se reasignaron a: **0013=reconciliación de pagos pendientes, 0014=validación de monto del webhook, 0015=precio autoritativo (auditoría), 0016=hardening de seguridad (auditoría), 0017=rate limiting (auditoría)**. La observabilidad (Sentry) se implementó embebida en otras etapas (código listo, falta el DSN de prod); i18n ES/EN se hizo sobre la marcha desde el portal público; **e2e dedicado y PayPal siguen sin spec** (post-MVP).
+- Otros detalles divergieron: rutas reales bajo `/dashboard/*` y en inglés; check-in a nivel reserva (sin `booking_tickets`); `audit_logs` introducido en cancelaciones (0011). Ver specs + memoria.
 
 ---
 
