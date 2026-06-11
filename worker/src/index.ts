@@ -5,6 +5,7 @@ import { releaseExpiredHolds } from './jobs/release-expired-holds.js';
 import { sendNotifications } from './jobs/send-notifications.js';
 import { processRefunds } from './jobs/process-refunds.js';
 import { reconcilePendingPayments } from './jobs/reconcile-pending-payments.js';
+import { cleanupRateLimits } from './jobs/cleanup-rate-limits.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -18,6 +19,7 @@ const ALIVE_INTERVAL_MS = 30_000;
 const ONE_DAY_MS = 86_400_000;
 const ONE_MINUTE_MS = 60_000;
 const FIVE_MINUTES_MS = 300_000;
+const ONE_HOUR_MS = 3_600_000;
 
 function logAlive() {
   console.log(`[worker] alive — ${new Date().toISOString()}`);
@@ -68,6 +70,15 @@ async function runReconcilePendingPayments() {
   }
 }
 
+async function runCleanupRateLimits() {
+  try {
+    await cleanupRateLimits();
+  } catch (err) {
+    console.error('[cleanup-rate-limits] error:', err);
+    Sentry.captureException(err);
+  }
+}
+
 logAlive();
 setInterval(logAlive, ALIVE_INTERVAL_MS);
 
@@ -100,3 +111,9 @@ void runReconcilePendingPayments();
 setInterval(() => {
   void runReconcilePendingPayments();
 }, FIVE_MINUTES_MS);
+
+// cleanup-rate-limits: al inicio y luego cada hora (purga ventanas vencidas, spec 0017)
+void runCleanupRateLimits();
+setInterval(() => {
+  void runCleanupRateLimits();
+}, ONE_HOUR_MS);
