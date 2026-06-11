@@ -1,9 +1,12 @@
 'use server';
 
 import { getLocale } from 'next-intl/server';
+import { z } from 'zod';
 import { initCheckout } from '@/lib/booking/create';
 import type { BookingLocale } from '@/lib/booking/create';
 import { parseTicketQuantities } from '@/lib/booking/quantities';
+
+const EmailSchema = z.string().email();
 
 export type CheckoutFormState =
   | { error: string }
@@ -18,7 +21,11 @@ export async function checkoutAction(
   const customerName = ((formData.get('name') as string | null) ?? '').trim();
   const customerEmail = ((formData.get('email') as string | null) ?? '').trim().toLowerCase();
 
-  if (!customerName || !customerEmail || !instanceId) return { error: 'error-generic' };
+  // Valida formato del email (spec 0016, B-3): evita reservas con destinatario inválido
+  // que nunca recibe su confirmación, e higiene de input.
+  if (!customerName || !instanceId || !EmailSchema.safeParse(customerEmail).success) {
+    return { error: 'error-generic' };
+  }
 
   // Cantidades validadas server-side (enteros, tope, total > 0). El precio NO viene del
   // cliente: lo recalcula initCheckout desde tour_pricing (spec 0015).
