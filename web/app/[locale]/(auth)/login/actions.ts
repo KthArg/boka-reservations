@@ -1,6 +1,7 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
+import { safeRedirectPath } from '@/lib/auth/safe-redirect';
 import { getLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
@@ -32,5 +33,5 @@ export async function signIn(formData: FormData) {
     redirect(`/${locale}/login?error=invalid-credentials`);
   }
 
-  redirect(redirectTo ?? `/${locale}/dashboard`);
+  redirect(safeRedirectPath(redirectTo, `/${locale}/dashboard`));
 }
