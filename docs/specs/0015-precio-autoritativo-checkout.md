@@ -4,8 +4,8 @@
 - **Autor**: Kenneth
 - **Creado**: 2026-06-10
 - **Última actualización**: 2026-06-10 (preguntas abiertas resueltas — aprobado)
-- **Rama**: feat/0015-precio-autoritativo-checkout (cuando aplique)
-- **PR**: # (cuando aplique)
+- **Rama**: feat/0015-precio-autoritativo-checkout
+- **PR**: #30 (mergeado a `dev` el 2026-06-11, merge `763d2fe`)
 
 > **Severidad: CRÍTICA (fraude de pago directo).** Este spec corrige el hallazgo
 > **C-1** de la auditoría de seguridad del 2026-06-10. Es la única falla encontrada
