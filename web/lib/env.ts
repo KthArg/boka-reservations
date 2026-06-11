@@ -11,6 +11,9 @@ const envSchema = z.object({
   APP_URL: z.string().url(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  // Kill-switch del rate limiting (spec 0017). Permite desactivarlo rápido en prod si un
+  // umbral mal calibrado bloqueara usuarios legítimos, sin redeploy de lógica.
+  RATE_LIMIT_ENABLED: z.enum(['true', 'false']).default('true'),
 });
 
 function parseEnv() {
