@@ -3,9 +3,9 @@
 - **Estado**: approved
 - **Autor**: Kenneth
 - **Creado**: 2026-06-10
-- **Última actualización**: 2026-06-11 (preguntas abiertas resueltas — ver §13; aprobado para implementar)
+- **Última actualización**: 2026-06-11 (implementado, verificado por pentest + Playwright, y mergeado; ver changelog)
 - **Rama**: feat/0017-rate-limiting-anti-abuso
-- **PR**: # (cuando aplique)
+- **PR**: #34 (mergeado a `dev` el 2026-06-11, merge `4831abb`)
 
 > Corrige el hallazgo **M-3** de la auditoría de seguridad del 2026-06-10: el sistema
 > no tiene **ningún** rate limiting a nivel de aplicación. Se separa de los otros
