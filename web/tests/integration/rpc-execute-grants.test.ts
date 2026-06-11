@@ -91,4 +91,12 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     const { error } = await staff.rpc(fn, REPORT_ARGS);
     expect(error?.code).not.toBe(PERMISSION_DENIED);
   });
+
+  // Regresión no enumerativa: cubre funciones SECURITY DEFINER FUTURAS. Si alguien crea
+  // una nueva sin revocar anon/authenticated (el patrón que causó el bug), aparece acá.
+  it('ninguna función SECURITY DEFINER de public es ejecutable por anon/authenticated', async () => {
+    const { data, error } = await service.rpc('secdef_functions_public_executable');
+    expect(error).toBeNull();
+    expect(data ?? []).toEqual([]);
+  });
 });
