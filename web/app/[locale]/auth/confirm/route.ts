@@ -59,6 +59,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   const response = NextResponse.redirect(new URL(`/${locale}${target}`, origin));
   response.cookies.set(INVITE_SET_COOKIE, signInviteSet(data.user.id), {
     httpOnly: true,
+    // Secure en producción (HTTPS); en dev (HTTP) iría sin Secure para no romper el flujo
+    // de invitación local (spec 0016, B-2).
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge: INVITE_SET_TTL_MS / MS_PER_SECOND,
