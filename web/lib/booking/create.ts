@@ -1,17 +1,8 @@
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { createHold, releaseHold } from '@/lib/booking/availability';
+import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import { getPaymentProvider } from '@/lib/payments';
-
-export type TicketQuantities = {
-  adult: number;
-  child: number;
-  student: number;
-};
-
-export type PricingRow = {
-  ticket_type: 'adult' | 'child' | 'student';
-  price_usd: number;
-};
+import type { TicketQuantities } from '@/lib/booking/quantities';
 
 export type BookingLocale = 'es' | 'en';
 
@@ -21,8 +12,6 @@ export type InitCheckoutParams = {
   customerName: string;
   customerEmail: string;
   quantities: TicketQuantities;
-  pricing: PricingRow[];
-  tourName: string;
   locale: BookingLocale;
 };
 
@@ -31,39 +20,28 @@ export type InitCheckoutResult = {
   bookingId: string;
 };
 
-export function calculateTotalCents(quantities: TicketQuantities, pricing: PricingRow[]): number {
-  const priceMap = new Map(pricing.map((p) => [p.ticket_type, p.price_usd]));
-  const total =
-    (quantities.adult * (priceMap.get('adult') ?? 0) +
-      quantities.child * (priceMap.get('child') ?? 0) +
-      quantities.student * (priceMap.get('student') ?? 0)) *
-    100;
-  return Math.round(total);
-}
+const CHECKOUT_CURRENCY = 'USD';
 
 export async function initCheckout(params: InitCheckoutParams): Promise<InitCheckoutResult> {
-  const {
-    instanceId,
-    sessionToken,
-    customerName,
-    customerEmail,
-    quantities,
-    pricing,
-    tourName,
-    locale,
-  } = params;
+  const { instanceId, sessionToken, customerName, customerEmail, quantities, locale } = params;
 
   const totalSeats = quantities.adult + quantities.child + quantities.student;
   if (totalSeats === 0) throw new Error('CHECKOUT_NO_TICKETS');
 
-  const totalAmountCents = calculateTotalCents(quantities, pricing);
-  if (totalAmountCents === 0) throw new Error('CHECKOUT_ZERO_AMOUNT');
+  const db = createSupabaseServiceClient();
+
+  // Monto y descripción autoritativos: se calculan en el server desde tour_pricing,
+  // ignorando cualquier dato de precio del cliente (spec 0015).
+  const { tourName, totalAmountCents } = await resolveAuthoritativeCharge(
+    db,
+    instanceId,
+    quantities,
+    locale,
+  );
 
   const { holdId } = await createHold(instanceId, totalSeats, sessionToken);
 
   try {
-    const db = createSupabaseServiceClient();
-
     const { data: booking, error: bookingErr } = await db
       .from('bookings')
       .insert({
@@ -85,7 +63,7 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
     const provider = getPaymentProvider();
     const session = await provider.createPaymentSession({
       amountCents: totalAmountCents,
-      currency: 'USD',
+      currency: CHECKOUT_CURRENCY,
       description: tourName,
     });
 
@@ -93,7 +71,7 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
       booking_id: booking.id,
       external_payment_id: session.externalPaymentId,
       amount_cents: totalAmountCents,
-      currency: 'USD',
+      currency: CHECKOUT_CURRENCY,
     });
 
     return { externalPaymentId: session.externalPaymentId, bookingId: booking.id };

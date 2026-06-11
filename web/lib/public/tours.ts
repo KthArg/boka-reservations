@@ -1,4 +1,5 @@
 import { createSupabasePublicClient } from '@/lib/db/supabase-public';
+import { applyActivePricingFilter } from '@/lib/pricing/active-filter';
 import type { Tables } from '@/types/database';
 
 export type PublicTour = Tables<'tours'>;
@@ -57,15 +58,9 @@ export async function getTourBySlug(slug: string): Promise<PublicTour | null> {
 
 export async function getTourPricing(tourId: string): Promise<PublicPricing[]> {
   const db = createSupabasePublicClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const base = db.from('tour_pricing').select('*').eq('tour_id', tourId);
 
-  const { data } = await db
-    .from('tour_pricing')
-    .select('*')
-    .eq('tour_id', tourId)
-    .eq('active', true)
-    .or(`valid_from.is.null,and(valid_from.lte.${today},valid_until.gte.${today})`)
-    .order('ticket_type');
+  const { data } = await applyActivePricingFilter(base).order('ticket_type');
 
   return data ?? [];
 }

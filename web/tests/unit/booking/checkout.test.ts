@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateTotalCents } from '@/lib/booking/create';
-import type { PricingRow } from '@/lib/booking/create';
+import { calculateTotalCents, computeAuthoritativeTotal } from '@/lib/booking/pricing-math';
+import type { PricingRow } from '@/lib/booking/pricing-math';
 
 const pricing: PricingRow[] = [
   { ticket_type: 'adult', price_usd: 50 },
@@ -35,5 +35,30 @@ describe('calculateTotalCents', () => {
 
   it('devuelve 0 con pricing vacío', () => {
     expect(calculateTotalCents({ adult: 5, child: 5, student: 5 }, [])).toBe(0);
+  });
+});
+
+describe('computeAuthoritativeTotal', () => {
+  it('calcula el total desde los precios de la DB', () => {
+    expect(computeAuthoritativeTotal({ adult: 2, child: 1, student: 0 }, pricing)).toBe(12500);
+  });
+
+  it('lanza si un tipo pedido (cantidad > 0) no tiene precio activo (no cobra 0)', () => {
+    const onlyAdult: PricingRow[] = [{ ticket_type: 'adult', price_usd: 50 }];
+    expect(() => computeAuthoritativeTotal({ adult: 1, child: 2, student: 0 }, onlyAdult)).toThrow(
+      'CHECKOUT_TICKET_UNAVAILABLE',
+    );
+  });
+
+  it('no lanza por un tipo sin precio si su cantidad es 0', () => {
+    const onlyAdult: PricingRow[] = [{ ticket_type: 'adult', price_usd: 50 }];
+    expect(computeAuthoritativeTotal({ adult: 2, child: 0, student: 0 }, onlyAdult)).toBe(10000);
+  });
+
+  it('lanza CHECKOUT_ZERO_AMOUNT si el total da 0 (precio configurado en 0)', () => {
+    const freeAdult: PricingRow[] = [{ ticket_type: 'adult', price_usd: 0 }];
+    expect(() => computeAuthoritativeTotal({ adult: 1, child: 0, student: 0 }, freeAdult)).toThrow(
+      'CHECKOUT_ZERO_AMOUNT',
+    );
   });
 });
