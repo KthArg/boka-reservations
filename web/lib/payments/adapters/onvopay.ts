@@ -8,6 +8,11 @@ import type {
 } from '../types';
 
 const ONVOPAY_API_BASE = 'https://api.onvopay.com/v1';
+// Timeout defensivo del fetch de creación del payment intent (spec 0020, L-1). Sin esto, una
+// conexión colgada de OnvoPay ataría la función serverless del checkout hasta el timeout de
+// plataforma. Espejo de los clientes del worker (refunds/reconciliación, 15 s). Constante local
+// del módulo (los adapters de OnvoPay viven separados por capa; el worker la duplica igual).
+const HTTP_TIMEOUT_MS = 15_000;
 
 type OnvopayCreateResponse = {
   id: string;
@@ -48,6 +53,7 @@ export function createOnvopayAdapter(secretKey: string, webhookSecret: string): 
           currency: params.currency,
           description: params.description,
         }),
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });
 
       if (!res.ok) {
