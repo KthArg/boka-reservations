@@ -104,6 +104,14 @@ public.is_public_request() FROM anon, authenticated;`. La función es `SECURITY 
 y se invoca solo desde dentro de las funciones de dinero (que corren como su owner) y
 desde `service_role`, así que el revoke no rompe ningún camino.
 
+**F-3 (red de regresión) — migración `20260611000031`.**
+`audit_public_executable_functions()`: auditoría no enumerativa AMPLIA que lista toda
+función de `public` ejecutable por `anon`/`authenticated`, excluyendo (1) funciones de
+trigger (return type `trigger`, no invocables como RPC) y (2) una allowlist explícita de
+funciones intencionalmente públicas (hoy solo los `report_*` para `authenticated`). El
+test exige 0 filas → cubre el agujero que dejaba `secdef_functions_public_executable()`
+(solo DEFINER). Complementa, no reemplaza, a esa auditoría.
+
 ### Diagrama de capas
 
 No aplica (cambios puntuales en helpers/guards existentes, sin nuevas capas).
@@ -161,11 +169,16 @@ No aplica. Ningún fix introduce o modifica máquinas de estado.
   test automatizado del path de denegación (un rol no-panel → redirect), porque los
   únicos roles que pueden autenticarse hoy son admin/staff. Gap conocido y aceptado.
 - **F-3**: re-pentest en vivo (anon → 401; service_role y funciones de dinero → operan)
-  - suite de integración `rpc-execute-grants`. _Gap_: la regresión no enumerativa
-    `secdef_functions_public_executable()` NO cubre `is_public_request()` por ser
-    `SECURITY INVOKER` → ver §13.
-- **Regresión global** (tras `supabase db reset`, 30 migraciones): web unit **139**,
-  web integ **149**, worker unit **64**, worker integ **16**; lint 0 err; typecheck OK.
+  - suite de integración `rpc-execute-grants`. El gap de regresión (la auditoría
+    `secdef_functions_public_executable()` solo cubre `SECURITY DEFINER`, no INVOKER) se
+    **cerró** con la migración `…031` `audit_public_executable_functions()`: auditoría
+    AMPLIA (DEFINER + INVOKER, no enumerativa) con allowlist de las funciones
+    intencionalmente públicas (`report_*`) y exclusión de triggers. Tests nuevos: pin de
+    `is_public_request` (anon/auth → 401) + aserción de que la auditoría amplia da vacío.
+    Demostrado en vivo: al re-otorgar EXECUTE a anon, la auditoría amplia lo lista y la
+    vieja no (ver §13).
+- **Regresión global** (tras `supabase db reset`, 31 migraciones): web unit **139**,
+  web integ **151**, worker unit **64**, worker integ **16**; lint 0 err; typecheck OK.
 
 ## 11. Plan de rollout
 
@@ -187,9 +200,12 @@ No aplica. Ningún fix introduce o modifica máquinas de estado.
   explotable en prod (la ruta `redirectTo` viaja por query), aunque `main` no alimenta
   producción todavía. El fix ya está en este PR, así que se resuelve al promover; queda
   decidir si se trackea explícitamente.
-- **¿Se extiende `secdef_functions_public_executable()` para cubrir helpers
-  `SECURITY INVOKER` conocidos (como `is_public_request`)?** Hoy el REVOKE de F-3 no
-  tiene red de regresión en CI: si una migración futura volviera a otorgar EXECUTE,
-  nada lo cazaría. Dado que es la 2ª vez que aparece el patrón `REVOKE FROM PUBLIC`
-  insuficiente, vale evaluar una guardia (decisión del usuario; no se hizo en este PR
-  para no ampliar el alcance).
+- ~~**¿Se extiende `secdef_functions_public_executable()` para cubrir helpers
+  `SECURITY INVOKER`?**~~ **RESUELTO** en este PR (migración `…031`,
+  `audit_public_executable_functions()`): auditoría AMPLIA que cubre DEFINER + INVOKER
+  con allowlist explícita (`report_*`) y exclusión de triggers; test de integración
+  exige 0 filas. Demostrado en vivo que atrapa un re-GRANT a anon de `is_public_request`
+  (la auditoría vieja, solo-DEFINER, no lo veía). La regla pasa de "evaluar" a "guardia
+  activa en CI". **Decisión de diseño**: la allowlist se mantiene a mano — agregar una
+  función pública legítima nueva obliga a sumarla (acto deliberado y reviewable, no un
+  olvido silencioso).
