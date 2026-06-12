@@ -99,4 +99,23 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     expect(error).toBeNull();
     expect(data ?? []).toEqual([]);
   });
+
+  // F-3 (spec 0019): is_public_request es SECURITY INVOKER y la auditoría de DEFINER de
+  // arriba NO la cubre. Pin explícito de que quedó cerrada para roles públicos.
+  it('anon/authenticated NO pueden ejecutar is_public_request (F-3)', async () => {
+    const fromAnon = await anon.rpc('is_public_request');
+    const fromStaff = await staff.rpc('is_public_request');
+    expect(fromAnon.error?.code).toBe(PERMISSION_DENIED);
+    expect(fromStaff.error?.code).toBe(PERMISSION_DENIED);
+  });
+
+  // Regresión AMPLIA (DEFINER + INVOKER, no enumerativa): cubre el agujero de F-3. Lista
+  // toda función de public ejecutable por anon/authenticated, salvo triggers y la allowlist
+  // de funciones intencionalmente públicas (los report_*). Si una migración futura abre una
+  // función INVOKER nueva (o re-otorga EXECUTE), aparece acá y este test falla.
+  it('ninguna función de public (DEFINER o INVOKER) es ejecutable por un rol público fuera de la allowlist', async () => {
+    const { data, error } = await service.rpc('audit_public_executable_functions');
+    expect(error).toBeNull();
+    expect(data ?? []).toEqual([]);
+  });
 });
