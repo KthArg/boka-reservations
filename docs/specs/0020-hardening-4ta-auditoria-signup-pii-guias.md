@@ -106,16 +106,25 @@ Criterios de aceptación:
 
 ## 5. Diseño técnico
 
-**M-1(A) — deshabilitar signup.** En `supabase/config.toml`, poner en `false` **ambos**
-toggles de signup (hoy en `true`):
+**M-1(A) — deshabilitar signup.** En `supabase/config.toml`:
 
-- `[auth].enable_signup` (línea ~172) → `false`
-- `[auth.email].enable_signup` (línea ~217) → `false`
+- `[auth].enable_signup` (línea ~172) → `false`. Es el switch **global** de signup (mapea a
+  `GOTRUE_DISABLE_SIGNUP=true`): bloquea el endpoint público `POST /auth/v1/signup` —incluido
+  el de email— **sin** afectar el login.
+- `[auth.email].enable_signup` (línea ~217) → **se deja en `true`**.
 
-`[auth.sms].enable_signup` (línea ~256) ya está en `false` y no se toca. No tocar otros
-bloques de `[auth]`.
+> **Corrección durante la implementación (gotcha del CLI, verificado en vivo).** El plan
+> original (y el comentario del propio `config.toml`) sugería poner **ambos** toggles en
+> `false`. Al hacerlo, el login por email se rompió con `422 email_provider_disabled`
+> ("Email logins are disabled"): en esta versión del CLI (2.101), poner
+> `[auth.email].enable_signup` en `false` deshabilita el **proveedor de email completo**
+> (login incluido), no solo el signup.
+> Por eso se usa **solo** el switch global `[auth].enable_signup = false`, que bloquea el
+> signup (probado: `POST /auth/v1/signup` → `422 signup_disabled`) y mantiene el login de
+> admin/staff intacto (probado: token emitido con claim `user_role`). `[auth.sms].enable_signup`
+> ya está en `false` y no se toca.
 
-`enable_signup=false` bloquea únicamente el endpoint público `POST /auth/v1/signup` de GoTrue.
+`[auth].enable_signup=false` bloquea el endpoint público `POST /auth/v1/signup` de GoTrue.
 **No afecta** a `auth.admin.inviteUserByEmail` (admin API, la usa `createInternalUser` /
 `resendInvite`) ni al flujo de recovery (`resetPasswordForEmail`), que son las dos únicas vías
 de alta/credenciales que la app usa. El seed inserta usuarios por SQL/admin, también ajeno al
