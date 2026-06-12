@@ -1,0 +1,23 @@
+-- Migration: cerrar la ejecución de is_public_request() a anon/authenticated (spec 0019, F-3)
+--
+-- HALLAZGO (re-auditoría 2026-06-11): la migración 20260611000029 creó el helper
+-- public.is_public_request() y lo blindó solo con `REVOKE EXECUTE ... FROM PUBLIC` — el
+-- MISMO patrón insuficiente que causó el hallazgo CRÍTICO que esa migración venía a tapar.
+-- Verificado en vivo: anon podía ejecutarla (POST /rest/v1/rpc/is_public_request -> 200 true).
+--
+-- IMPACTO: nulo en la práctica. is_public_request() es SECURITY INVOKER (corre con los
+-- privilegios del llamador, no del owner), solo lee el GUC `request.jwt.claims` y devuelve un
+-- booleano; no expone datos ni muta estado. Por ser INVOKER tampoco la detecta la auditoría
+-- de regresión secdef_functions_public_executable() (que solo enumera funciones SECURITY
+-- DEFINER). Se cierra por CONSISTENCIA con el patrón correcto del proyecto (least-privilege):
+-- toda función que la app no invoca con sesión pública debe revocar anon/authenticated, no
+-- solo PUBLIC.
+--
+-- POR QUÉ NO ROMPE NADA: is_public_request() se invoca ÚNICAMENTE desde dentro de otras
+-- funciones SECURITY DEFINER (confirm_booking/cancel_booking/settle_refund/
+-- flag_payment_mismatch), que corren como su owner (no como anon/authenticated). Ese contexto
+-- conserva el privilegio de ejecutarla. Ningún camino legítimo la llama directo vía PostgREST.
+--
+-- Reversibilidad: forward-only. Revertir = re-GRANT (no recomendado).
+
+REVOKE EXECUTE ON FUNCTION public.is_public_request() FROM anon, authenticated;
