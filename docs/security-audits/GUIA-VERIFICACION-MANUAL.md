@@ -10,10 +10,21 @@ Cada reporte del council remite a esta guía en su sección "Límites de esta au
 
 ### Supabase
 
+> **La config de Auth está versionada en `supabase/config.toml` → aplicarla con `supabase config push`, no a mano.** Los settings de Auth (auto-registro, hook de token, expiración de JWT, política de password) ya tienen el valor correcto en el repo. Al provisionar el proyecto de **producción**, enlazalo y empujá la config para que esos defaults se apliquen solos, en vez de depender de clics manuales (que arrancan con valores inseguros por defecto):
+>
+> ```
+> supabase link --project-ref <ref-del-proyecto-de-produccion>
+> supabase config push
+> ```
+>
+> Después, confirmá en el dashboard que quedó como dicen los ítems de abajo. Esto convierte el cierre del auto-registro (P1-2 de la auditoría) en algo **enforced desde el repo**, no en un recordatorio frágil.
+
+- [ ] **Auto-registro deshabilitado (P1-2 de la auditoría)**: confirmar que **"Allow new users to sign up" está OFF** (Authentication → Sign In / Providers). Corresponde a `[auth].enable_signup = false` en `config.toml` (spec 0020); `config push` lo aplica. ⚠️ Si quedara ON, se reabre el vector por el que un `authenticated` auto-registrado podía leer la PII de los guías. (Nota: `[auth.email].enable_signup = true` es intencional y NO es un agujero — el switch global ya bloquea el signup; ver comentario en `config.toml`.)
+- [ ] **Auth hook**: `custom_access_token_hook` está declarado y habilitado en `config.toml` (`[auth.hook.custom_access_token] enabled = true`), así que `config push` lo aplica. Confirmá en Authentication → Hooks que quedó **activo** y apuntando a la función; si el panel no lo muestra activo, registralo a mano. El claim `user_role` depende de este hook: sin él, `requireRole/requireAnyRole` rompen el panel. (En local, re-registrar tras cada `db reset` si hace falta.)
+- [ ] **Política de contraseñas**: subir `minimum_password_length` a ≥8 con complejidad (hoy 6; P2/INFRA-02). Es `[auth]` en `config.toml` → también viaja por `config push`.
+- [ ] **Resto de config de Auth**: expiración de sesiones/JWT, confirmación de email, rate limits de auth.
 - [ ] **RLS a nivel proyecto**: confirmar que RLS está habilitado en todas las tablas sensibles (el código define las políticas, pero confirmá el estado real en el dashboard → Database → Tables).
 - [ ] **Políticas de Storage buckets**: revisar cada bucket; confirmar cuáles son públicos vs privados y que ninguno exponga archivos que deban ser privados.
-- [ ] **Configuración de Auth**: expiración de sesiones/JWT, política de contraseñas, confirmación de email, rate limits de auth.
-- [ ] **Auth hook**: confirmar que `custom_access_token_hook` está registrado (requiere registro manual en el dashboard después de cada `db reset` — ver notas de `project-state.md`).
 - [ ] **Connection pooling**: confirmar que está activo y bien dimensionado para el worker + web.
 - [ ] **API auto-generada**: confirmar que no haya tablas expuestas vía la API REST/GraphQL auto-generada sin protección de RLS.
 - [ ] **Logs de acceso**: revisar por anomalías o accesos inesperados.

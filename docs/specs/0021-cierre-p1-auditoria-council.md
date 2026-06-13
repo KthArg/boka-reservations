@@ -3,7 +3,7 @@
 - **Estado**: approved
 - **Autor**: kenneth
 - **Creado**: 2026-06-12
-- **Última actualización**: 2026-06-13 (aprobado; decisiones de las preguntas abiertas resueltas: email enmascarado, consent versionado, páginas legales in-repo)
+- **Última actualización**: 2026-06-13 (aprobado e implementado; P1-2 se aplica con `supabase config push`, no a mano)
 - **Rama**: fix/0021-cierre-p1-auditoria-council (cuando aplique)
 - **PR**: #<número> (cuando aplique)
 
@@ -133,10 +133,7 @@ Según `testing-practices`:
 
 - **No requiere feature flag.**
 - **Migración de DB**: sí — `20260612000033_add_booking_consent.sql` (alter aditivo, no destructivo, sin migración de datos: las filas previas quedan con `consent_at`/`consent_version` en `NULL`).
-- **Acción manual obligatoria antes del go-live (P1-2)**: en el dashboard de Supabase del proyecto de **producción**, confirmar que el auto-registro está deshabilitado:
-  - Authentication → Sign In / Providers (o Settings) → **Allow new users to sign up = OFF**.
-  - Confirmar además que el hook `custom_access_token_hook` está registrado (Authentication → Hooks), o el claim `user_role` no se inyecta.
-  - Marcar el ítem correspondiente en `docs/security-audits/GUIA-VERIFICACION-MANUAL.md §1 (Supabase)`.
+- **Acción obligatoria antes del go-live (P1-2)**: el `enable_signup = false` ya está versionado en `supabase/config.toml`. Al provisionar el Supabase de **producción**, aplicarlo con `supabase config push` (tras `supabase link`) en vez de editar el dashboard a mano, para que el default del repo se aplique solo (el hook `custom_access_token_hook`, también en `config.toml` con `enabled = true`, viaja por el mismo push). Después confirmar en el dashboard que el auto-registro quedó OFF y el hook activo. Procedimiento detallado en `docs/security-audits/GUIA-VERIFICACION-MANUAL.md §1 (Supabase)`.
 - **Contenido legal (cliente)**: el operador debe reemplazar el placeholder de `/privacy` y `/terms` con el texto definitivo y completar el registro ante PRODHAB si aplica, antes de operar con datos reales.
 - **Reversibilidad**: los cambios de código son reversibles por revert del PR; la migración es aditiva y no requiere rollback de datos.
 
