@@ -113,6 +113,7 @@
     "your-info": "Tus datos",
     "field-name": "Nombre completo",
     "field-email": "Correo electrónico",
+    "consent-label": "Acepto el <privacy>aviso de privacidad</privacy> y los <terms>términos y condiciones</terms>.",
     "total-label": "Total",
     "submit": "Pagar ahora",
     "submitting": "Redirigiendo al pago...",
@@ -122,13 +123,19 @@
     "success-booking": "Reserva #",
     "success-tour": "Tour:",
     "success-date": "Fecha:",
-    "success-name": "Nombre:",
     "success-email": "Confirmación enviada a:",
     "success-back": "Ver más tours",
     "cancel-title": "Pago cancelado",
     "cancel-body": "No se realizó ningún cobro. Podés intentar reservar de nuevo.",
     "cancel-back": "Volver al tour",
     "cancel-retry": "Reintentar"
+  },
+  "legal": {
+    "privacy-title": "Aviso de privacidad",
+    "privacy-body": "[PENDIENTE — el operador debe reemplazar este texto con su aviso de privacidad conforme a la Ley 8968 de Costa Rica: qué datos personales se recolectan, con qué finalidad, por cuánto tiempo se conservan, con quién se comparten, y cómo ejercer los derechos de acceso, rectificación y eliminación ante el responsable de la base de datos.]",
+    "terms-title": "Términos y condiciones",
+    "terms-body": "[PENDIENTE — el operador debe reemplazar este texto con sus términos y condiciones: política de cancelación y reembolsos, responsabilidades de las partes, y condiciones del servicio.]",
+    "back": "Volver al inicio"
   },
   "public": {
     "nav-tours": "Tours",

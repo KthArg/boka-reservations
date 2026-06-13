@@ -1,0 +1,28 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1rem 4rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 1.5rem;
+}
+
+.body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-muted, #6b7280);
+  white-space: pre-line;
+  margin-bottom: 2rem;
+}
+
+.back {
+  display: inline-block;
+  color: var(--color-primary, #1d9e75);
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: underline;
+}

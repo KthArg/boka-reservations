@@ -3,6 +3,7 @@ import { createHold, releaseHold } from '@/lib/booking/availability';
 import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import { getPaymentProvider } from '@/lib/payments';
 import type { TicketQuantities } from '@/lib/booking/quantities';
+import { PRIVACY_NOTICE_VERSION } from '@shared/constants/legal';
 
 export type BookingLocale = 'es' | 'en';
 
@@ -13,6 +14,8 @@ export type InitCheckoutParams = {
   customerEmail: string;
   quantities: TicketQuantities;
   locale: BookingLocale;
+  /** El turista aceptó el aviso de privacidad y los términos (spec 0021, P1-3). */
+  consentAccepted: boolean;
 };
 
 export type InitCheckoutResult = {
@@ -23,7 +26,15 @@ export type InitCheckoutResult = {
 const CHECKOUT_CURRENCY = 'USD';
 
 export async function initCheckout(params: InitCheckoutParams): Promise<InitCheckoutResult> {
-  const { instanceId, sessionToken, customerName, customerEmail, quantities, locale } = params;
+  const {
+    instanceId,
+    sessionToken,
+    customerName,
+    customerEmail,
+    quantities,
+    locale,
+    consentAccepted,
+  } = params;
 
   const totalSeats = quantities.adult + quantities.child + quantities.student;
   if (totalSeats === 0) throw new Error('CHECKOUT_NO_TICKETS');
@@ -54,6 +65,10 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
         tickets_student: quantities.student,
         total_amount_cents: totalAmountCents,
         locale,
+        // Evidencia de consentimiento (spec 0021, P1-3). El llamador ya lo exigió; la versión
+        // del aviso la estampa el server (PRIVACY_NOTICE_VERSION), no el cliente.
+        consent_at: consentAccepted ? new Date().toISOString() : null,
+        consent_version: consentAccepted ? PRIVACY_NOTICE_VERSION : null,
       })
       .select('id')
       .single();

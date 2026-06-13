@@ -113,6 +113,7 @@
     "your-info": "Your details",
     "field-name": "Full name",
     "field-email": "Email address",
+    "consent-label": "I accept the <privacy>privacy notice</privacy> and the <terms>terms and conditions</terms>.",
     "total-label": "Total",
     "submit": "Pay now",
     "submitting": "Redirecting to payment...",
@@ -122,13 +123,19 @@
     "success-booking": "Booking #",
     "success-tour": "Tour:",
     "success-date": "Date:",
-    "success-name": "Name:",
     "success-email": "Confirmation sent to:",
     "success-back": "See more tours",
     "cancel-title": "Payment cancelled",
     "cancel-body": "You have not been charged. You can try booking again.",
     "cancel-back": "Back to tour",
     "cancel-retry": "Try again"
+  },
+  "legal": {
+    "privacy-title": "Privacy notice",
+    "privacy-body": "[PENDING — the operator must replace this text with its privacy notice in line with Costa Rica's Law 8968: what personal data is collected, for what purpose, how long it is retained, with whom it is shared, and how to exercise the rights of access, rectification and deletion before the data controller.]",
+    "terms-title": "Terms and conditions",
+    "terms-body": "[PENDING — the operator must replace this text with its terms and conditions: cancellation and refund policy, responsibilities of the parties, and conditions of service.]",
+    "back": "Back to home"
   },
   "public": {
     "nav-tours": "Tours",
