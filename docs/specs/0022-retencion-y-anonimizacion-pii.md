@@ -76,7 +76,7 @@ Las FKs hacia `bookings` no son uniformes: `notifications` y `booking_access_tok
 ### PRIV-02 — Anonimización por titular (on-request)
 
 - **Función SQL** `anonymize_booking_pii_by_email(p_email text, p_actor_id uuid)` (`SECURITY DEFINER`, `search_path=''` con todas las referencias calificadas como `public.*`, `REVOKE EXECUTE FROM anon, authenticated`, guard `is_public_request()` — consistente con las funciones de dinero). Normaliza el email (trim + minúsculas) y, en una transacción:
-  - Reservas del email **con** rastro financiero y `anonymized_at IS NULL`: setea `customer_name='ANONIMIZADO'`, `customer_email='anonimizado@anonimizado.local'`, `anonymized_at=now()`; y en sus `notifications`, `recipient_email='anonimizado@anonimizado.local'`.
+  - Reservas del email **con** rastro financiero **o en `payment_mismatch`**, y `anonymized_at IS NULL`: setea `customer_name='ANONIMIZADO'`, `customer_email='anonimizado@anonimizado.local'`, `anonymized_at=now()`; y en sus `notifications`, `recipient_email='anonimizado@anonimizado.local'`. (Las `payment_mismatch` no se pueden borrar —son una anomalía a conservar— pero sí se anonimizan acá para honrar el derecho de eliminación del titular.)
   - Reservas del email **sin** rastro financiero (excluyendo `payment_mismatch`): borrado físico con el orden de dependencias de arriba.
   - Inserta en `audit_logs` una fila agregada: `entity_type='privacy_erasure'`, `entity_id=gen_random_uuid()`, `action='privacy.anonymized_by_email'`, `actor_type='admin'`, `actor_id=p_actor_id`, `metadata={ anonymized_count, deleted_count }` (sin el email ni PII).
   - Devuelve `(anonymized_count int, deleted_count int)`.
@@ -133,7 +133,7 @@ No aplica. No se introducen ni modifican estados de `bookings`, `payments` ni `n
 - **Reserva sin pago con consentimiento registrado**: si nunca pagó y supera los 90 días, se borra junto con su evidencia de consentimiento (no hubo tratamiento comercial; aceptable).
 - **Notificación vieja de una reserva aún dentro de la ventana de PII**: la notificación se purga a los 90 días aunque la reserva conserve su PII (la notificación es un log operacional de un email ya enviado).
 - **Token aún vigente**: no se toca (solo `expires_at < cutoff`).
-- **Reserva en `payment_mismatch`**: se conserva siempre — no se borra como "sin pago" ni se anonimiza por antigüedad. Es una anomalía marcada para revisión del operador; tanto `purge_unpaid_bookings` como la operación on-request la excluyen explícitamente.
+- **Reserva en `payment_mismatch`**: la retención **automática** la conserva (ni la borra ni la anonimiza por antigüedad — es una anomalía a revisar). La operación **on-request** la **anonimiza** (no la borra): honra el derecho de eliminación del titular sin perder la anomalía. `purge_unpaid_bookings` la excluye siempre.
 - **Borrado con dependientes no-cascade**: al borrar una reserva, la función elimina primero sus `refunds`, luego sus `payments`, y por último la fila de `bookings`. Una reserva "sin pago" igual tiene su `payments` en `pending`/`failed` (creada en el checkout), que se borra explícitamente; sin este orden el `DELETE` fallaría por FK.
 - **Operación on-request con el email-placeholder** (`anonimizado@anonimizado.local`): no toca nada, porque esas reservas ya tienen `anonymized_at` no nulo y la guarda de idempotencia las omite (no se "re-anonimiza" en masa).
 - **`audit_logs`**: no se purga (trigger de inmutabilidad). Documentado fuera de alcance.

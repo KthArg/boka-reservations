@@ -6,6 +6,7 @@ import { sendNotifications } from './jobs/send-notifications.js';
 import { processRefunds } from './jobs/process-refunds.js';
 import { reconcilePendingPayments } from './jobs/reconcile-pending-payments.js';
 import { cleanupRateLimits } from './jobs/cleanup-rate-limits.js';
+import { applyRetention } from './jobs/apply-retention.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -79,6 +80,15 @@ async function runCleanupRateLimits() {
   }
 }
 
+async function runApplyRetention() {
+  try {
+    await applyRetention();
+  } catch (err) {
+    console.error('[apply-retention] error:', err);
+    Sentry.captureException(err);
+  }
+}
+
 logAlive();
 setInterval(logAlive, ALIVE_INTERVAL_MS);
 
@@ -117,3 +127,9 @@ void runCleanupRateLimits();
 setInterval(() => {
   void runCleanupRateLimits();
 }, ONE_HOUR_MS);
+
+// apply-retention: al inicio y luego una vez al día (retención de datos / PII, spec 0022)
+void runApplyRetention();
+setInterval(() => {
+  void runApplyRetention();
+}, ONE_DAY_MS);

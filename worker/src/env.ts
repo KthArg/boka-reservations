@@ -18,6 +18,10 @@ const envSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((v) => v === 'true'),
+    RETENTION_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
   })
   .superRefine((v, ctx) => {
     if (v.EMAIL_PROVIDER === 'resend' && !v.RESEND_API_KEY) {
