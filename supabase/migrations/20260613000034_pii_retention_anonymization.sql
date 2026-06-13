@@ -29,6 +29,12 @@
 ALTER TABLE public.bookings
   ADD COLUMN anonymized_at timestamptz;
 
+-- Índices de apoyo para los filtros por fecha de las funciones de purga. Ambas tablas solo
+-- crecen (las reservas pagadas se conservan anonimizadas para contabilidad; notifications es
+-- la de mayor volumen), así que el barrido diario por created_at necesita índice.
+CREATE INDEX bookings_created_at_idx ON public.bookings (created_at);
+CREATE INDEX notifications_created_at_idx ON public.notifications (created_at);
+
 -- ----------------------------------------------------------------
 -- PRIV-02: anonimización por titular (on-request). La dispara una server action
 -- admin-only con el service client. Anonimiza las reservas con rastro financiero o en

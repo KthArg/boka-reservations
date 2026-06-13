@@ -64,6 +64,13 @@ Otras decisiones:
 - **Cutoffs de los tests** con fechas muy lejanas (3 años / 400 días) para no tocar datos de
   otras suites en la DB de integración compartida.
 
+**Revisión db-schema-guardian:** veredicto **APTO PARA MERGE**, sin bloqueantes (hardening
+doble barrera verificado en las 5, orden de borrado correcto vs FKs sin cascade, append-only de
+audit_logs respetado, clasificación disjunta, tipos sin ensanchar). Se incorporaron sus dos
+recomendaciones de performance: índices `bookings_created_at_idx` y `notifications_created_at_idx`
+para los filtros por fecha de los purges (ambas tablas solo crecen). Nota operativa del guardian:
+correr el primer purge de producción monitoreado por posible lock sobre histórico inicial.
+
 **Pendiente (no bloqueante, en pre-production-checklist):** el cliente confirma los plazos con
 su contador; las constantes se ajustan si difieren. Texto legal de `/privacy` y `/terms` y
 registro PRODHAB son responsabilidad del cliente.
