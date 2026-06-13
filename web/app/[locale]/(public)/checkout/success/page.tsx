@@ -1,6 +1,7 @@
 import { getTranslations, getLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
+import { maskEmail } from '@/lib/format/mask-email';
 import styles from './success.module.css';
 
 type Props = { searchParams: Promise<{ booking?: string }> };
@@ -15,9 +16,11 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
 
   if (bookingId) {
     const db = createSupabaseServiceClient();
+    // PII (spec 0021, P1-1): NO se selecciona `customer_name` ni se renderiza el email completo.
+    // `customer_email` se lee solo para enmascararlo server-side; el valor crudo no llega al HTML.
     const { data } = await db
       .from('bookings')
-      .select('id, customer_name, customer_email, tour_instance_id, status')
+      .select('id, customer_email, tour_instance_id, status')
       .eq('id', bookingId)
       .single();
 
@@ -72,12 +75,11 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
               <strong>{t('success-date')}</strong> {dateLabel}
             </p>
           )}
-          <p>
-            <strong>{t('success-name')}</strong> {booking.customer_name}
-          </p>
-          <p>
-            <strong>{t('success-email')}</strong> {booking.customer_email}
-          </p>
+          {maskEmail(booking.customer_email) && (
+            <p>
+              <strong>{t('success-email')}</strong> {maskEmail(booking.customer_email)}
+            </p>
+          )}
         </div>
       ) : null}
       <Link href={`/${locale}/tours`} className={styles.link}>

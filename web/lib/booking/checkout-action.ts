@@ -42,9 +42,20 @@ export async function checkoutAction(
   const customerName = ((formData.get('name') as string | null) ?? '').trim();
   const customerEmail = ((formData.get('email') as string | null) ?? '').trim().toLowerCase();
 
+  // Consentimiento obligatorio (spec 0021, P1-3): se exige server-side, sin confiar en el
+  // atributo `required` del cliente. Se valida ANTES de rate-limit/hold/booking para que una
+  // request sin consentimiento no consuma cupo ni cree inventario. El checkbox solo llega
+  // presente en el FormData cuando el turista lo marcó.
+  const consentAccepted = formData.get('consent') != null;
+
   // Valida formato del email (spec 0016, B-3): evita reservas con destinatario inválido
   // que nunca recibe su confirmación, e higiene de input.
-  if (!customerName || !instanceId || !EmailSchema.safeParse(customerEmail).success) {
+  if (
+    !consentAccepted ||
+    !customerName ||
+    !instanceId ||
+    !EmailSchema.safeParse(customerEmail).success
+  ) {
     return { error: 'error-generic' };
   }
 
@@ -72,6 +83,7 @@ export async function checkoutAction(
       customerEmail,
       quantities,
       locale,
+      consentAccepted,
     });
     return { paymentIntentId: result.externalPaymentId, bookingId: result.bookingId };
   } catch (err) {

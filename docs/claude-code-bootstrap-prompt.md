@@ -94,7 +94,7 @@ Empezá por el Paso 1. Avisame cuando termines cada paso.
 A partir de la segunda sesión, el prompt corto que basta es:
 
 ```
-Retomamos trabajo en booking-platform. Seguí el procedimiento estándar: leé la memoria primero (.claude/memory/), después las skills relevantes, y avisame cuando estés listo.
+Retomamos trabajo en booking-platform. Seguí el procedimiento estándar: leé la memoria primero (.claude/memory/), después las skills relevantes, revise los agentes, y avisame cuando estés listo.
 ```
 
 La memoria persistente y las skills se encargan del resto del onboarding automáticamente.

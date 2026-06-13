@@ -461,6 +461,8 @@ export type Database = {
           locale: 'es' | 'en';
           checked_in_at: string | null;
           checked_in_by: string | null;
+          consent_at: string | null;
+          consent_version: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -479,6 +481,8 @@ export type Database = {
           locale?: 'es' | 'en';
           checked_in_at?: string | null;
           checked_in_by?: string | null;
+          consent_at?: string | null;
+          consent_version?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -497,6 +501,8 @@ export type Database = {
           locale?: 'es' | 'en';
           checked_in_at?: string | null;
           checked_in_by?: string | null;
+          consent_at?: string | null;
+          consent_version?: string | null;
           created_at?: string;
           updated_at?: string;
         };

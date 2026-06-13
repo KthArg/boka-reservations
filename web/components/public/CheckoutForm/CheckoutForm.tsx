@@ -121,6 +121,42 @@ export function CheckoutForm({ instanceId, pricing }: Props) {
         </div>
       </section>
 
+      <section className={styles.section}>
+        <label className={styles.consent}>
+          <input
+            type="checkbox"
+            name="consent"
+            value="accepted"
+            required
+            className={styles.consentCheckbox}
+          />
+          <span className={styles.consentText}>
+            {t.rich('consent-label', {
+              privacy: (chunks) => (
+                <a
+                  href={`/${locale}/privacy`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.consentLink}
+                >
+                  {chunks}
+                </a>
+              ),
+              terms: (chunks) => (
+                <a
+                  href={`/${locale}/terms`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.consentLink}
+                >
+                  {chunks}
+                </a>
+              ),
+            })}
+          </span>
+        </label>
+      </section>
+
       {state && 'error' in state && (
         <p className={styles.error} role="alert">
           {t(state.error as Parameters<typeof t>[0])}
