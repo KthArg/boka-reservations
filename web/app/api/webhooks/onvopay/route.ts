@@ -57,7 +57,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { data: booking } = await db
     .from('bookings')
-    .select('tickets_adult, tickets_child, tickets_student')
+    .select('tickets_adult, tickets_child, tickets_student, tour_instance_id')
     .eq('id', payment.booking_id)
     .single();
 
@@ -80,6 +80,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (rpcError) {
     console.error('confirm_booking failed:', rpcError.message);
     return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
+
+  // Alerta de sobrecupo (spec 0023): confirm_booking honra el pago aunque supere el cupo y
+  // registra el audit `booking.overbooked`; acá avisamos a Sentry para revisión proactiva.
+  if (booking?.tour_instance_id) {
+    const { data: instance } = await db
+      .from('tour_instances')
+      .select('capacity_reserved, capacity_total')
+      .eq('id', booking.tour_instance_id)
+      .single();
+    if (instance && instance.capacity_reserved > instance.capacity_total) {
+      Sentry.withScope((scope) => {
+        scope.setLevel('warning');
+        scope.setFingerprint(['booking-overbooked']);
+        scope.setExtra('bookingId', payment.booking_id);
+        Sentry.captureMessage('[webhook] reserva confirmada en sobrecupo');
+      });
+    }
   }
 
   return NextResponse.json({ received: true });

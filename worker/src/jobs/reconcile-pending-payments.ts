@@ -10,6 +10,7 @@ import {
 import {
   cancelStaleBooking,
   confirmRecoveredBooking,
+  fetchInstanceCapacity,
   fetchStalePendingBookings,
   flagPaymentMismatch,
   writeRecoveredAudit,
@@ -162,6 +163,13 @@ async function recover(
     seats: totalSeats,
     external_payment_id: payment.external_payment_id,
   });
+
+  // Sobrecupo (spec 0023): confirm_booking honra el pago aunque supere el cupo; si la
+  // recuperación dejó capacity_reserved por encima del total, avisar para revisión.
+  const instance = await fetchInstanceCapacity(db, booking.tour_instance_id);
+  if (instance && instance.capacity_reserved > instance.capacity_total) {
+    alert('[reconcile] reserva recuperada en sobrecupo', 'booking-overbooked', booking.id);
+  }
 }
 
 function alertIfStuck(booking: StalePendingBooking): void {

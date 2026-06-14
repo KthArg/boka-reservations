@@ -4,6 +4,7 @@ const PENDING_PAYMENT_STATUS = 'pending_payment';
 
 export type StalePendingBooking = {
   id: string;
+  tour_instance_id: string;
   tickets_adult: number;
   tickets_child: number;
   tickets_student: number;
@@ -33,7 +34,7 @@ export async function fetchStalePendingBookings(
   const { data, error } = await db
     .from('bookings')
     .select(
-      'id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status, created_at, amount_cents, currency)',
+      'id, tour_instance_id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status, created_at, amount_cents, currency)',
     )
     .eq('status', PENDING_PAYMENT_STATUS)
     .lt('created_at', olderThanIso)
@@ -44,6 +45,23 @@ export async function fetchStalePendingBookings(
 
   if (error) throw new Error(`fetch stale pending bookings: ${error.message}`);
   return data ?? [];
+}
+
+/**
+ * Capacidad actual de una instancia, para detectar sobrecupo tras una recuperación
+ * (spec 0023). Devuelve null si no se puede leer (no se alerta en ese caso).
+ */
+export async function fetchInstanceCapacity(
+  db: SupabaseClient,
+  instanceId: string,
+): Promise<{ capacity_reserved: number; capacity_total: number } | null> {
+  const { data, error } = await db
+    .from('tour_instances')
+    .select('capacity_reserved, capacity_total')
+    .eq('id', instanceId)
+    .single();
+  if (error) return null;
+  return data;
 }
 
 /**
