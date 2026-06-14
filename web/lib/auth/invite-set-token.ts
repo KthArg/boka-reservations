@@ -5,8 +5,9 @@ const SEPARATOR = '.';
 const EXPECTED_PARTS = 3;
 
 function secret(): string {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY ausente');
+  // ACCESS-04 (spec 0023): secreto dedicado, no el service role key (la clave más sensible).
+  const key = process.env.INVITE_SIGNING_SECRET;
+  if (!key) throw new Error('INVITE_SIGNING_SECRET ausente');
   return key;
 }
 

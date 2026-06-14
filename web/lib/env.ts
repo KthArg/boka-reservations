@@ -14,6 +14,9 @@ const envSchema = z.object({
   // Kill-switch del rate limiting (spec 0017). Permite desactivarlo rápido en prod si un
   // umbral mal calibrado bloqueara usuarios legítimos, sin redeploy de lógica.
   RATE_LIMIT_ENABLED: z.enum(['true', 'false']).default('true'),
+  // Secreto dedicado para firmar el token de invitación (spec 0023, ACCESS-04). Antes se
+  // reutilizaba SUPABASE_SERVICE_ROLE_KEY; un secreto propio desacopla la clave más sensible.
+  INVITE_SIGNING_SECRET: z.string().min(1),
 });
 
 function parseEnv() {

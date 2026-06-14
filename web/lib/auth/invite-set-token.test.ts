@@ -4,7 +4,7 @@ import { signInviteSet, verifyInviteSet } from './invite-set-token';
 
 describe('invite-set-token', () => {
   beforeAll(() => {
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test-secret-key';
+    process.env.INVITE_SIGNING_SECRET ??= 'test-invite-secret-key';
   });
 
   const uid = '11111111-1111-1111-1111-111111111111';
@@ -30,6 +30,17 @@ describe('invite-set-token', () => {
     const past = Date.now() - INVITE_SET_TTL_MS - 1000;
     const token = signInviteSet(uid, past);
     expect(verifyInviteSet(token)).toBeNull();
+  });
+
+  it('rejects a token signed with a different secret (uses the dedicated INVITE_SIGNING_SECRET)', () => {
+    const token = signInviteSet(uid);
+    const original = process.env.INVITE_SIGNING_SECRET;
+    process.env.INVITE_SIGNING_SECRET = 'a-completely-different-secret';
+    try {
+      expect(verifyInviteSet(token)).toBeNull();
+    } finally {
+      process.env.INVITE_SIGNING_SECRET = original;
+    }
   });
 
   it('returns null for missing or malformed tokens', () => {

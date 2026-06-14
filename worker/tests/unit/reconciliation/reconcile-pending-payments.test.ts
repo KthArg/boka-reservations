@@ -24,6 +24,8 @@ const repoMocks = vi.hoisted(() => ({
   confirmRecoveredBooking: vi.fn(),
   flagPaymentMismatch: vi.fn(),
   writeRecoveredAudit: vi.fn(),
+  // spec 0023: lectura de capacidad para detectar sobrecupo. Default null = sin alerta.
+  fetchInstanceCapacity: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('../../../src/reconciliation/repository.js', () => repoMocks);
 
