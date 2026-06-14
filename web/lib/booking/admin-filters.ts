@@ -4,6 +4,9 @@ import type { BookingFilters } from './admin-types';
 
 const MS_PER_DAY = 86_400_000;
 const FIRST_PAGE = 1;
+// APPSEC-01 (spec 0023): formato estricto YYYY-MM-DD. `Date.parse` es laxo y acepta basura
+// como `2026-01-01"` (válido), que llegaría al header Content-Disposition del export.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const BOOKING_STATUSES = new Set<string>(Object.values(BookingStatus));
 
@@ -53,6 +56,9 @@ export function filtersToSearchParams(filters: BookingFilters, page?: number): s
  */
 export function validateExportRange(filters: BookingFilters): ExportRangeError | null {
   if (!filters.dateFrom || !filters.dateTo) return ExportRangeError.Missing;
+  if (!ISO_DATE.test(filters.dateFrom) || !ISO_DATE.test(filters.dateTo)) {
+    return ExportRangeError.Missing;
+  }
   const from = Date.parse(filters.dateFrom);
   const to = Date.parse(filters.dateTo);
   if (Number.isNaN(from) || Number.isNaN(to)) return ExportRangeError.Missing;

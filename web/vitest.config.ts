@@ -14,6 +14,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, '.'),
       '@shared': path.resolve(__dirname, '../shared'),
+      // INFRA-03 (spec 0023): `server-only` es un guard de build de Next no resolvable en vitest.
+      'server-only': path.resolve(__dirname, 'tests/server-only-stub.ts'),
     },
   },
 });

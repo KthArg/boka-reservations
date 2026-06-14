@@ -5,7 +5,10 @@
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/lib/booking/create', () => ({ initCheckout: vi.fn() }));
-vi.mock('next/headers', () => ({ headers: vi.fn(async () => ({ get: () => null })) }));
+vi.mock('next/headers', () => ({
+  headers: vi.fn(async () => ({ get: () => null })),
+  cookies: vi.fn(async () => ({ set: vi.fn() })),
+}));
 vi.mock('next-intl/server', () => ({ getLocale: vi.fn(async () => 'es') }));
 vi.mock('@/lib/security/rate-limit', () => ({ checkRateLimit: vi.fn(async () => ({ ok: true })) }));
 vi.mock('@/lib/security/client-ip', () => ({ getClientIp: vi.fn(() => '1.2.3.4') }));
@@ -26,6 +29,16 @@ function buildForm(overrides: Record<string, string> = {}): FormData {
 describe('checkoutAction — consentimiento (spec 0021, P1-3)', () => {
   it('rechaza la reserva si falta el consentimiento, sin invocar initCheckout', async () => {
     const result = await checkoutAction(null, buildForm());
+
+    expect(result).toEqual({ error: 'error-generic' });
+    expect(initCheckout).not.toHaveBeenCalled();
+  });
+
+  it('rechaza un nombre demasiado largo (APPSEC-02), sin invocar initCheckout', async () => {
+    const result = await checkoutAction(
+      null,
+      buildForm({ name: 'a'.repeat(121), consent: 'accepted' }),
+    );
 
     expect(result).toEqual({ error: 'error-generic' });
     expect(initCheckout).not.toHaveBeenCalled();

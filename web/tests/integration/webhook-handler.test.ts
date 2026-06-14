@@ -176,6 +176,16 @@ describe('webhook handler — validación de monto (spec 0014)', () => {
     expect(await bookingStatus(bookingId)).toBe('confirmed');
   });
 
+  it('status no succeeded (PAYSEC-01): responde 200 y NO confirma', async () => {
+    const { bookingId, externalPaymentId } = await seedBooking();
+    providerState.payload = payload({ paymentId: externalPaymentId, status: 'failed' });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await bookingStatus(bookingId)).toBe('pending_payment');
+  });
+
   it('moneda en minúsculas (usd): se normaliza y confirma, no marca mismatch', async () => {
     const { bookingId, externalPaymentId } = await seedBooking();
     const p = payload({ paymentId: externalPaymentId, currency: 'usd' });

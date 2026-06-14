@@ -17,6 +17,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ received: true });
   }
 
+  // PAYSEC-01 (spec 0023): exigir status 'succeeded' además del eventType. No inducible sin el
+  // secreto del webhook; defensa extra ante un evento 'succeeded' con un status no exitoso.
+  if (payload.status !== 'succeeded') {
+    return NextResponse.json({ received: true });
+  }
+
   const db = createSupabaseServiceClient();
 
   const { data: payment } = await db

@@ -2,6 +2,45 @@
 
 Registro vivo de la implementación. Lo más reciente arriba.
 
+## 2026-06-14 — Tanda B (P3) implementada (todos los checks verdes)
+
+- **APPSEC-01** (`admin-filters.ts`): regex estricta `^\d{4}-\d{2}-\d{2}$` en `validateExportRange`
+  (`Date.parse` aceptaba `2026-01-01"` → rompía el header `Content-Disposition`). +test.
+- **APPSEC-02** (`checkout-action.ts`): `customer_name` con cota `max(120)` (`NameSchema`). +test.
+- **APPSEC-03** — **DIFERIDO**: `postcss@8.4.31` está pineado por `next@15.5.18` (transitiva
+  directa); el override `>=8.5.10` no lo mueve sin re-resolver y arriesga el build. CVE
+  moderate **no alcanzable en runtime** (la app no procesa CSS de usuario; vite ya usa 8.5.15).
+  Se cierra al subir Next. Se revirtió el override para no dejar el lockfile a medias.
+- **PRIV-04** (`sentry.client.config.ts` + `instrumentation.ts`): `sendDefaultPii:false` +
+  `beforeSend` que recorta PII de usuario (client y server/edge).
+- **PRIV-06** (`checkout-action.ts`): `console.error` ya no vuelca el objeto `err` completo.
+- **PRIV-07** (`resend.ts`): `redactErrorBody` redacta emails + acota a 300 chars antes de
+  propagar a `notifications.last_error`. +test.
+- **PAYSEC-01** (`webhooks/onvopay/route.ts`): guard `payload.status === 'succeeded'` además del
+  `eventType`. +test de regresión (status `failed` → 200 sin confirmar).
+- **PAYSEC-03** — revisado: no hay log de éxito con el payment-intent id; solo logs de error
+  donde el id es necesario para debugging. Retención de logs = ítem de INFRA/dashboard. Sin cambio.
+- **INFRA-03**: `import 'server-only'` en `supabase-service`, `supabase-server`, `payments/index`,
+  `payments/adapters/onvopay`, `invite-set-token`. Requirió un **stub de `server-only`** aliaseado
+  en ambos configs de vitest (`server-only` no es resolvable en el runtime de vitest).
+- **INFRA-04** (`client-ip.ts`): `getClientIp(headers)` prefiere `x-vercel-forwarded-for` /
+  `x-real-ip` y cae a `x-forwarded-for`. Callers (forgot-password, login, checkout) + test
+  actualizados a la nueva firma.
+- **INFRA-05** — **DIFERIDO al edge**: `checkAvailability` solo lo usa el checkout (ya
+  rate-limited); el browsing público es SSR con RLS + `max_rows`, sin entry point limpio para un
+  rate-limit de app sin dañar UX. Se cubre con Vercel Firewall (ítem de cutover).
+- **ACCESS-03** (`checkout-action.ts` + `checkout/cancel/page.tsx`): cookie HttpOnly
+  `hold_session` con el `session_token` del hold; la cancelación libera el hold **solo si la
+  cookie coincide** (no por el UUID crudo). TTL de 15 min como red de respaldo.
+
+**Revisión:** payment-flow-auditor → **APTO** (PAYSEC-01 estrictamente defensivo, no rompe el
+camino feliz ni la validación de monto/idempotencia; PRIV-07 no altera la clasificación
+transient/permanent).
+
+**Checks:** typecheck OK · lint 0 err · `db reset` 35 migraciones · web 151 unit + 178
+integration · worker 72 unit + 18 integration. (Nota: la integración web emite ruido
+`ERR_IPC_CHANNEL_CLOSED` en el teardown de vitest en Windows; los 178 tests pasan.)
+
 ## 2026-06-14 — Tanda A (P2) implementada (todos los checks verdes)
 
 **ACCESS-02 — rol en el middleware** (`web/middleware.ts`): además de autenticar, exige
