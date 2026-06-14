@@ -25,7 +25,7 @@ const SignInSchema = z.object({
  * inexistente.
  */
 async function isLoginThrottled(email: string): Promise<boolean> {
-  const ip = getClientIp((await headers()).get('x-forwarded-for'));
+  const ip = getClientIp(await headers());
   const [byIp, byEmail] = await Promise.all([
     checkRateLimit(
       rateLimitKey(RATE_LIMIT_KEY_PREFIX.loginIp, ip),

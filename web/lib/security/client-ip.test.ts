@@ -2,32 +2,44 @@ import { describe, expect, it } from 'vitest';
 import { getClientIp } from './client-ip';
 import { UNKNOWN_IP } from '@shared/constants/rate-limit';
 
-describe('getClientIp', () => {
-  it('devuelve la única IP del header', () => {
-    expect(getClientIp('203.0.113.7')).toBe('203.0.113.7');
-  });
+function headers(map: Record<string, string>): { get(name: string): string | null } {
+  return { get: (name) => map[name] ?? null };
+}
 
-  it('toma el PRIMER elemento de una cadena x-forwarded-for (la IP real en Vercel)', () => {
-    expect(getClientIp('203.0.113.7, 70.41.3.18, 150.172.238.178')).toBe('203.0.113.7');
+describe('getClientIp', () => {
+  it('toma el PRIMER elemento de x-forwarded-for (la IP real en Vercel)', () => {
+    expect(
+      getClientIp(headers({ 'x-forwarded-for': '203.0.113.7, 70.41.3.18, 150.172.238.178' })),
+    ).toBe('203.0.113.7');
   });
 
   it('hace trim del valor', () => {
-    expect(getClientIp('  203.0.113.7  ')).toBe('203.0.113.7');
+    expect(getClientIp(headers({ 'x-forwarded-for': '  203.0.113.7  ' }))).toBe('203.0.113.7');
   });
 
-  it('ignora IPs spoofeadas que el cliente intente anteponer después de la real', () => {
-    // En Vercel el primer elemento lo pone la plataforma; lo que el cliente agregue
-    // queda detrás y nunca se usa como identidad.
-    expect(getClientIp('1.2.3.4, 9.9.9.9')).toBe('1.2.3.4');
+  it('prefiere x-vercel-forwarded-for sobre x-forwarded-for', () => {
+    expect(
+      getClientIp(
+        headers({ 'x-vercel-forwarded-for': '198.51.100.9', 'x-forwarded-for': '1.2.3.4' }),
+      ),
+    ).toBe('198.51.100.9');
   });
 
-  it('devuelve UNKNOWN_IP cuando el header está ausente', () => {
-    expect(getClientIp(null)).toBe(UNKNOWN_IP);
-    expect(getClientIp(undefined)).toBe(UNKNOWN_IP);
+  it('usa x-real-ip cuando no hay x-vercel-forwarded-for, antes que x-forwarded-for', () => {
+    expect(
+      getClientIp(headers({ 'x-real-ip': '198.51.100.10', 'x-forwarded-for': '1.2.3.4' })),
+    ).toBe('198.51.100.10');
   });
 
-  it('devuelve UNKNOWN_IP cuando el header está vacío o es solo espacios', () => {
-    expect(getClientIp('')).toBe(UNKNOWN_IP);
-    expect(getClientIp('   ')).toBe(UNKNOWN_IP);
+  it('ignora IPs spoofeadas que el cliente anteponga después de la real', () => {
+    expect(getClientIp(headers({ 'x-forwarded-for': '1.2.3.4, 9.9.9.9' }))).toBe('1.2.3.4');
+  });
+
+  it('devuelve UNKNOWN_IP cuando no hay headers de IP', () => {
+    expect(getClientIp(headers({}))).toBe(UNKNOWN_IP);
+  });
+
+  it('devuelve UNKNOWN_IP cuando el valor está vacío o es solo espacios', () => {
+    expect(getClientIp(headers({ 'x-forwarded-for': '   ' }))).toBe(UNKNOWN_IP);
   });
 });

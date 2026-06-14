@@ -1,3 +1,4 @@
+import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { INVITE_SET_TTL_MS } from '@shared/constants/users';
 

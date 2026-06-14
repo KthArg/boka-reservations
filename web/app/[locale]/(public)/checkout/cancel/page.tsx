@@ -1,7 +1,10 @@
 import { getTranslations, getLocale } from 'next-intl/server';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import styles from './cancel.module.css';
+
+const HOLD_SESSION_COOKIE = 'hold_session';
 
 type Props = { searchParams: Promise<{ booking?: string }> };
 
@@ -20,12 +23,25 @@ export default async function CheckoutCancelPage({ searchParams }: Props) {
       .single();
 
     if (booking) {
+      // ACCESS-03 (spec 0023): liberar el hold SOLO si la cookie HttpOnly del checkout coincide
+      // con el session_token del hold (prueba de propiedad), no solo por el UUID crudo en la URL.
+      // Si no coincide o falta, no se toca: el hold expira por su TTL de 15 min igual.
       if (booking.hold_id && booking.status === 'pending_payment') {
-        await db
-          .from('tour_holds')
-          .update({ status: 'released' })
-          .eq('id', booking.hold_id)
-          .eq('status', 'active');
+        const cookieToken = (await cookies()).get(HOLD_SESSION_COOKIE)?.value;
+        if (cookieToken) {
+          const { data: hold } = await db
+            .from('tour_holds')
+            .select('session_token')
+            .eq('id', booking.hold_id)
+            .single();
+          if (hold?.session_token === cookieToken) {
+            await db
+              .from('tour_holds')
+              .update({ status: 'released' })
+              .eq('id', booking.hold_id)
+              .eq('status', 'active');
+          }
+        }
       }
 
       const { data: instance } = await db

@@ -21,7 +21,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  const ip = getClientIp(req.headers.get('x-forwarded-for'));
+  const ip = getClientIp(req.headers);
   const [byIp, byEmail] = await Promise.all([
     checkRateLimit(
       rateLimitKey(RATE_LIMIT_KEY_PREFIX.forgotIp, ip),
