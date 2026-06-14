@@ -46,7 +46,7 @@ Cada reporte del council remite a esta guía en su sección "Límites de esta au
 ### OnvoPay
 
 - [ ] **Configuración de webhooks** _(sandbox vía ngrok verificado e2e 2026-06-14: webhook real de OnvoPay confirmó la reserva y el secreto coincide con el local; FALTA la config de PROD —URL + secreto live)_: URL del endpoint correcta (`/api/webhooks/onvopay`), **secreto del webhook configurado** y coincidente con `ONVOPAY_WEBHOOK_SECRET`.
-- [ ] **Llaves live vs test** _(2026-06-14: el pentest usó solo llaves `onvo_test_`en sandbox)_: confirmar que las llaves`onvo*live*` **no se usaron en testing** y que producción usa live, no test.
+- [ ] **Llaves live vs test** (nota 2026-06-14: el pentest usó solo llaves `onvo_test_` en sandbox): confirmar que las llaves `onvo_live_` **no se usaron en testing** y que producción usa live, no test.
 - [ ] **Cuenta del cliente**: confirmar que la cuenta OnvoPay del cliente está activa, verificada (KYC) y configurada para recibir los pagos.
 
 ### Resend
