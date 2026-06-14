@@ -19,7 +19,7 @@ Cada reporte del council remite a esta guía en su sección "Límites de esta au
 >
 > Después, confirmá en el dashboard que quedó como dicen los ítems de abajo. Esto convierte el cierre del auto-registro (P1-2 de la auditoría) en algo **enforced desde el repo**, no en un recordatorio frágil.
 
-- [ ] **Auto-registro deshabilitado (P1-2 de la auditoría)**: confirmar que **"Allow new users to sign up" está OFF** (Authentication → Sign In / Providers). Corresponde a `[auth].enable_signup = false` en `config.toml` (spec 0020); `config push` lo aplica. ⚠️ Si quedara ON, se reabre el vector por el que un `authenticated` auto-registrado podía leer la PII de los guías. (Nota: `[auth.email].enable_signup = true` es intencional y NO es un agujero — el switch global ya bloquea el signup; ver comentario en `config.toml`.)
+- [ ] **Auto-registro deshabilitado (P1-2 de la auditoría)** _(local OK 2026-06-14: `POST /auth/v1/signup` → `422 signup_disabled`; FALTA confirmar en el dashboard del proyecto hosted de PROD)_: confirmar que **"Allow new users to sign up" está OFF** (Authentication → Sign In / Providers). Corresponde a `[auth].enable_signup = false` en `config.toml` (spec 0020); `config push` lo aplica. ⚠️ Si quedara ON, se reabre el vector por el que un `authenticated` auto-registrado podía leer la PII de los guías. (Nota: `[auth.email].enable_signup = true` es intencional y NO es un agujero — el switch global ya bloquea el signup; ver comentario en `config.toml`.)
 - [ ] **Auth hook**: `custom_access_token_hook` está declarado y habilitado en `config.toml` (`[auth.hook.custom_access_token] enabled = true`), así que `config push` lo aplica. Confirmá en Authentication → Hooks que quedó **activo** y apuntando a la función; si el panel no lo muestra activo, registralo a mano. El claim `user_role` depende de este hook: sin él, `requireRole/requireAnyRole` rompen el panel. (En local, re-registrar tras cada `db reset` si hace falta.)
 - [ ] **Política de contraseñas**: subir `minimum_password_length` a ≥8 con complejidad (hoy 6; P2/INFRA-02). Es `[auth]` en `config.toml` → también viaja por `config push`.
 - [ ] **Resto de config de Auth**: expiración de sesiones/JWT, confirmación de email, rate limits de auth.
@@ -45,8 +45,8 @@ Cada reporte del council remite a esta guía en su sección "Límites de esta au
 
 ### OnvoPay
 
-- [ ] **Configuración de webhooks**: URL del endpoint correcta (`/api/webhooks/onvopay`), **secreto del webhook configurado** y coincidente con `ONVOPAY_WEBHOOK_SECRET`.
-- [ ] **Llaves live vs test**: confirmar que las llaves `onvo_live_` **no se usaron en testing** y que producción usa live, no test.
+- [ ] **Configuración de webhooks** _(sandbox vía ngrok verificado e2e 2026-06-14: webhook real de OnvoPay confirmó la reserva y el secreto coincide con el local; FALTA la config de PROD —URL + secreto live)_: URL del endpoint correcta (`/api/webhooks/onvopay`), **secreto del webhook configurado** y coincidente con `ONVOPAY_WEBHOOK_SECRET`.
+- [ ] **Llaves live vs test** (nota 2026-06-14: el pentest usó solo llaves `onvo_test_` en sandbox): confirmar que las llaves `onvo_live_` **no se usaron en testing** y que producción usa live, no test.
 - [ ] **Cuenta del cliente**: confirmar que la cuenta OnvoPay del cliente está activa, verificada (KYC) y configurada para recibir los pagos.
 
 ### Resend
@@ -61,14 +61,14 @@ Cada reporte del council remite a esta guía en su sección "Límites de esta au
 
 Requieren el sistema desplegado (o local con datos de prueba) y, en pagos, tarjetas de prueba de OnvoPay.
 
-- [ ] **Tampering de montos en pago**: ejecutar el flujo de pago completo con tarjeta de prueba e intentar **manipular el monto** desde las herramientas de desarrollador del browser (editar el body del request, el precio en el DOM). Confirmar que el server recalcula y rechaza/ignora el valor del cliente.
-- [ ] **Acceso a reservas ajenas (IDOR)**: intentar acceder a reservas de otros modificando IDs o tokens en las URLs (magic link de otra reserva, IDs incrementales).
-- [ ] **Rutas de admin sin autorización**: intentar acceder a rutas `(admin)` **sin sesión** y **con sesión de rol bajo** (staff, guide). Confirmar redirect/403.
-- [ ] **Webhooks falsificados**: enviar al endpoint `/api/webhooks/onvopay` un POST **sin el secreto válido** (o con uno incorrecto) y confirmar que se rechaza sin tocar la DB. Probar también **replay** del mismo evento válido dos veces y confirmar idempotencia.
-- [ ] **Rate limiting**: hacer requests repetidos a login, magic link y creación de reserva; confirmar que el límite se activa y no es trivial de evadir (probar variar `X-Forwarded-For`).
+- [x] **Tampering de montos en pago** ✅ (2026-06-14, pentest activo — ver `2026-06-14-pentest-activo.md`): ejecutar el flujo de pago completo con tarjeta de prueba e intentar **manipular el monto** desde las herramientas de desarrollador del browser (editar el body del request, el precio en el DOM). Confirmar que el server recalcula y rechaza/ignora el valor del cliente.
+- [ ] **Acceso a reservas ajenas (IDOR)** _(parcial 2026-06-14: P1-1 enmascarado en checkout/success + RLS bloquea lectura anon/staff de reservas ajenas; falta swap de tokens de magic link entre reservas)_: intentar acceder a reservas de otros modificando IDs o tokens en las URLs (magic link de otra reserva, IDs incrementales).
+- [ ] **Rutas de admin sin autorización** _(parcial 2026-06-14: denegación de privilegios de anon/staff verificada vía API —RPC 401/403, RLS, INSERT bloqueado— + open-redirect F-1 OK; falta caminar los guards de UI sin sesión y con rol guide)_: intentar acceder a rutas `(admin)` **sin sesión** y **con sesión de rol bajo** (staff, guide). Confirmar redirect/403.
+- [x] **Webhooks falsificados** ✅ (2026-06-14: secreto malo/ausente → 400 en localhost y ngrok; replay idempotente; mismatch de monto → payment_mismatch): enviar al endpoint `/api/webhooks/onvopay` un POST **sin el secreto válido** (o con uno incorrecto) y confirmar que se rechaza sin tocar la DB. Probar también **replay** del mismo evento válido dos veces y confirmar idempotencia.
+- [x] **Rate limiting** ✅ (2026-06-14: forgot-password corta al 4º intento → 429; spoofing de `X-Forwarded-For` no probado en local —Vercel lo reescribe en prod): hacer requests repetidos a login, magic link y creación de reserva; confirmar que el límite se activa y no es trivial de evadir (probar variar `X-Forwarded-For`).
 - [ ] **Secretos en el cliente**: revisar el HTML/JS servido al browser (ver source, bundle de Next) buscando secretos filtrados (service role key, claves de OnvoPay/Resend, connection strings).
-- [ ] **Headers de seguridad en runtime**: con devtools o `curl -I`, confirmar que CSP, HSTS, X-Frame-Options/frame-ancestors, X-Content-Type-Options, Referrer-Policy y Permissions-Policy llegan en las respuestas reales.
-- [ ] **PII en emails reales**: enviar los emails transaccionales (confirmación, cancelación, recordatorio, asignación de guía, refund) y confirmar que no filtran datos de terceros ni de otras reservas.
+- [x] **Headers de seguridad en runtime** ✅ (2026-06-14: CSP/HSTS/X-Frame DENY/nosniff/Referrer-Policy/Permissions-Policy presentes en `curl -I`): con devtools o `curl -I`, confirmar que CSP, HSTS, X-Frame-Options/frame-ancestors, X-Content-Type-Options, Referrer-Policy y Permissions-Policy llegan en las respuestas reales.
+- [x] **PII en emails reales** ✅ (2026-06-14: confirmación + cancelación entregados a Mailpit con datos solo de la propia reserva; refund e2e real OK. Pendiente con Resend real en prod): enviar los emails transaccionales (confirmación, cancelación, recordatorio, asignación de guía, refund) y confirmar que no filtran datos de terceros ni de otras reservas.
 
 ---
 

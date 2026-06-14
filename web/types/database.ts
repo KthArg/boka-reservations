@@ -463,6 +463,7 @@ export type Database = {
           checked_in_by: string | null;
           consent_at: string | null;
           consent_version: string | null;
+          anonymized_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -483,6 +484,7 @@ export type Database = {
           checked_in_by?: string | null;
           consent_at?: string | null;
           consent_version?: string | null;
+          anonymized_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -503,6 +505,7 @@ export type Database = {
           checked_in_by?: string | null;
           consent_at?: string | null;
           consent_version?: string | null;
+          anonymized_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -778,6 +781,26 @@ export type Database = {
           p_source: string;
         };
         Returns: boolean;
+      };
+      anonymize_booking_pii_by_email: {
+        Args: { p_email: string; p_actor_id: string };
+        Returns: { anonymized_count: number; deleted_count: number }[];
+      };
+      anonymize_bookings_past_retention: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_unpaid_bookings: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_expired_access_tokens: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_old_notifications: {
+        Args: { p_cutoff: string };
+        Returns: number;
       };
       report_revenue: {
         Args: { p_from: string; p_to: string };
