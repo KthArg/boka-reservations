@@ -86,17 +86,26 @@ export async function cancelStaleBooking(
  * Recupera una reserva pagada cuyo webhook se perdió, reusando la MISMA RPC que
  * el webhook (`confirm_booking`). El llamador calcula los asientos, igual que el
  * handler del webhook. Idempotente: si ya está confirmada, no hace nada.
+ *
+ * Pasa el monto/moneda pagados al guard de payment_mismatch interno de confirm_booking
+ * (spec 0026, defensa en profundidad). `recover()` ya valida el monto antes de llegar acá:
+ * pasarlos es redundante pero inofensivo. Sigue llamando SIN p_event_id (la idempotencia en
+ * este camino la da el guard por estado del booking, no processed_webhook_events).
  */
 export async function confirmRecoveredBooking(
   db: SupabaseClient,
   bookingId: string,
   externalPaymentId: string,
   totalSeats: number,
+  paidAmountCents: number,
+  paidCurrency: string,
 ): Promise<void> {
   const { error } = await db.rpc('confirm_booking', {
     p_booking_id: bookingId,
     p_external_payment_id: externalPaymentId,
     p_total_seats: totalSeats,
+    p_paid_amount_cents: paidAmountCents,
+    p_paid_currency: paidCurrency,
   });
   if (error) throw new Error(`confirm recovered booking: ${error.message}`);
 }
