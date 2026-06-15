@@ -3,6 +3,23 @@
 Spec: [0025-prevencion-de-sobreventa.md](./0025-prevencion-de-sobreventa.md)
 Rama: feat/0025-prevencion-sobreventa
 
+## 2026-06-15 — Verificación en navegador (Playwright) — lista para PR
+
+**Hecho**:
+
+- Verificación de estabilidad con Playwright contra `next dev` (servidor propio en :3001) sobre la DB reseteada (36 migraciones):
+  - Portal público (lista de tours, detalle) y login: render OK, 0 errores de consola.
+  - Panel completo (bookings lista + detalle, departures, reports, users, tours): render OK, 0 errores de app.
+  - **Estado nuevo en vivo**: sembré una reserva `overbooked_refunded` real (instancia llena → `confirm_booking`); el panel muestra el badge "Cupo agotado (reembolsada)" en lista, detalle, el dropdown de filtro de estado, la sección Reembolso "En cola" y la notificación "Cupo agotado + reembolso". i18n resuelve en ES y EN ("Sold out (refunded)").
+  - **Proceso de checkout end-to-end**: completé el form y "Pagar ahora" → el hold pasó a `paying` en la DB (Capa 1 confirmada en vivo), reserva `pending_payment`, payment `pending`, y el widget de OnvoPay cargó bajo la CSP sin romper.
+  - `report_refunds_summary` (modificado) computa sin error en la página de Reportes.
+- Único error de consola observado: un `429` del ingest de Sentry (telemetría de terceros), ajeno a 0025.
+- Limpié las filas de verificación de la DB local; el repo quedó sin artefactos (solo el archivo ajeno pre-existente, no tocado).
+
+**Pendiente**:
+
+- Nada — feature lista para PR (lo abre el usuario).
+
 ## 2026-06-15 — Implementación completa + revisión de subagentes
 
 **Hecho**:
