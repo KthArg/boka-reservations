@@ -6,6 +6,7 @@ import { parseBookingFilters, filtersToSearchParams } from '@/lib/booking/admin-
 import { ADMIN_BOOKINGS_PAGE_SIZE } from '@shared/constants/bookings';
 import { BookingsFilters } from './BookingsFilters';
 import { BookingsTable } from './BookingsTable';
+import { RefreshButton } from './RefreshButton';
 import styles from './bookings.module.css';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -38,6 +39,7 @@ export default async function BookingsPage({ searchParams }: Props) {
       <div className={styles.header}>
         <h1 className={styles.title}>{t('page-title')}</h1>
         <div className={styles.headerActions}>
+          <RefreshButton />
           <Link href="/dashboard/bookings/hoy" className={styles.secondaryBtn}>
             {t('today-link')}
           </Link>
