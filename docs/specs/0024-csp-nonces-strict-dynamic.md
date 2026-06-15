@@ -5,7 +5,7 @@
 - **Creado**: 2026-06-14
 - **Última actualización**: 2026-06-15 (2ª y 3ª ronda de spec-reviewer: se cerró con un spike el mecanismo de propagación del nonce — verificado contra el código de `next` y `next-intl` instalados, ver §5; se corrigió la codificación base64 edge-safe; se documentó el `getSession()` extra de ACCESS-02 y el orden frente al cliente de Supabase; paridad completa de directivas en los tests; se reconcilió el criterio de Sentry y el rollout report-only. Ronda final del spec-reviewer: "Sin correcciones pendientes / listo para aprobar")
 - **Rama**: feat/0024-csp-nonces
-- **PR**: #<número> (cuando aplique)
+- **PR**: #47
 
 ## 1. Contexto y motivación
 
