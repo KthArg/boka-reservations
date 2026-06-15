@@ -48,20 +48,20 @@ export async function fetchStalePendingBookings(
 }
 
 /**
- * Capacidad actual de una instancia, para detectar sobrecupo tras una recuperación
- * (spec 0023). Devuelve null si no se puede leer (no se alerta en ese caso).
+ * Estado actual de una reserva, para detectar el camino de sobreventa tras una recuperación
+ * (spec 0025): si quedó en `overbooked_refunded`, el cupo se agotó al confirmar. Devuelve null
+ * si no se puede leer (no se alerta en ese caso).
  */
-export async function fetchInstanceCapacity(
+export async function fetchBookingStatus(
   db: SupabaseClient,
-  instanceId: string,
-): Promise<{ capacity_reserved: number; capacity_total: number } | null> {
-  const { data, error } = await db
-    .from('tour_instances')
-    .select('capacity_reserved, capacity_total')
-    .eq('id', instanceId)
-    .single();
-  if (error) return null;
-  return data;
+  bookingId: string,
+): Promise<string | null> {
+  const { data } = await db
+    .from('bookings')
+    .select('status')
+    .eq('id', bookingId)
+    .maybeSingle<{ status: string }>();
+  return data?.status ?? null;
 }
 
 /**

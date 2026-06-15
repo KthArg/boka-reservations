@@ -10,7 +10,7 @@ import {
 import {
   cancelStaleBooking,
   confirmRecoveredBooking,
-  fetchInstanceCapacity,
+  fetchBookingStatus,
   fetchStalePendingBookings,
   flagPaymentMismatch,
   writeRecoveredAudit,
@@ -18,9 +18,11 @@ import {
 } from '../reconciliation/repository.js';
 
 // Umbrales (worker self-contained: no importa @shared en runtime).
-// Antigüedad mínima en pending_payment para procesar una reserva. 2h: muy por
-// encima del hold (15 min, spec 0005) y de los reintentos de webhook de OnvoPay.
-const STALE_PENDING_PAYMENT_AFTER_MS = 2 * 60 * 60 * 1000;
+// Antigüedad mínima en pending_payment para procesar una reserva. Con la Capa 1 anti-sobreventa
+// (spec 0025) el hold queda `paying` y reserva el cupo durante todo el ciclo de pago, así que
+// ESTE umbral define la "ventana de pago" efectiva: hasta cancelar una pending abandonada se le
+// retiene el cupo. 30 min: holgado para tarjeta y SINPE Móvil, sin atar inventario de más.
+const STALE_PENDING_PAYMENT_AFTER_MS = 30 * 60 * 1000;
 // Antigüedad a partir de la cual un pago estancado en processing/requires_action
 // se reporta a Sentry para revisión manual (nunca se auto-cancela).
 const STUCK_PROCESSING_ALERT_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -164,11 +166,12 @@ async function recover(
     external_payment_id: payment.external_payment_id,
   });
 
-  // Sobrecupo (spec 0023): confirm_booking honra el pago aunque supere el cupo; si la
-  // recuperación dejó capacity_reserved por encima del total, avisar para revisión.
-  const instance = await fetchInstanceCapacity(db, booking.tour_instance_id);
-  if (instance && instance.capacity_reserved > instance.capacity_total) {
-    alert('[reconcile] reserva recuperada en sobrecupo', 'booking-overbooked', booking.id);
+  // Sobreventa (spec 0025): confirm_booking ya NO confirma en sobrecupo; si el cupo estaba
+  // agotado dejó la reserva en `overbooked_refunded` con refund total encolado. Se re-lee el
+  // estado para alertar (el audit `booking.overbooked_refunded` lo emite la RPC).
+  const recovered = await fetchBookingStatus(db, booking.id);
+  if (recovered === 'overbooked_refunded') {
+    alert('[reconcile] recuperada sin cupo', 'booking-overbooked-refunded', booking.id);
   }
 }
 

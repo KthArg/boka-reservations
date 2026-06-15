@@ -1,7 +1,9 @@
-// Guard de sobreventa en confirm_booking (spec 0023, P2). Verifica el borde exacto de la
-// comparación de capacidad: confirmar justo HASTA capacity_total NO marca sobrecupo; el primer
-// asiento que lo EXCEDE marca audit_logs `booking.overbooked` y confirma igual (nunca rechaza el
-// pago); y la idempotencia se mantiene (reconfirmar no duplica cupo ni audit).
+// Prevención de sobreventa en confirm_booking (spec 0025). Reemplaza el comportamiento del
+// 0023 (confirmaba igual + audit `booking.overbooked`): ahora, si confirmar superaría
+// capacity_total, la reserva pasa al terminal `overbooked_refunded`, NO incrementa
+// capacity_reserved, marca el pago succeeded, encola un refund TOTAL, audita
+// `booking.overbooked_refunded` y notifica. Verifica el borde de capacidad, la idempotencia
+// del camino del reconciliador (sin event_id) y la concurrencia por el último cupo.
 // Requiere: supabase start. Ejecutar: pnpm test:integration
 
 import { createClient } from '@supabase/supabase-js';
@@ -16,6 +18,7 @@ const admin = createClient<Database>(SUPABASE_URL, SERVICE_KEY);
 
 const TEST_SLUG = `overbook-${crypto.randomUUID().slice(0, 8)}`;
 const TWENTY_FIVE_HOURS_MS = 25 * 60 * 60 * 1000;
+const SEAT_PRICE_CENTS = 5000;
 const instanceIds: string[] = [];
 const eventIds: string[] = [];
 let tourId: string;
@@ -50,7 +53,7 @@ async function seedBooking(
       customer_name: 'Overbook Test',
       customer_email: `ob-${crypto.randomUUID().slice(0, 8)}@example.com`,
       tickets_adult: seats,
-      total_amount_cents: 5000,
+      total_amount_cents: SEAT_PRICE_CENTS,
       locale: 'es',
     })
     .select('id')
@@ -58,7 +61,7 @@ async function seedBooking(
   await admin.from('payments').insert({
     booking_id: booking!.id,
     external_payment_id: externalPaymentId,
-    amount_cents: 5000,
+    amount_cents: SEAT_PRICE_CENTS,
   });
   return { bookingId: booking!.id, externalPaymentId };
 }
@@ -80,19 +83,19 @@ async function confirm(
   return eventId;
 }
 
-async function reconfirm(
+/** Camino del reconciliador: confirm_booking SIN event_id (la idempotencia recae solo en el
+ * guard por estado del booking, no en processed_webhook_events). */
+async function confirmNoEvent(
   bookingId: string,
   externalPaymentId: string,
   seats: number,
-  eventId: string,
 ): Promise<void> {
   const { error } = await admin.rpc('confirm_booking', {
     p_booking_id: bookingId,
     p_external_payment_id: externalPaymentId,
     p_total_seats: seats,
-    p_event_id: eventId,
   });
-  if (error) throw new Error(`reconfirm: ${error.message}`);
+  if (error) throw new Error(`confirm (no event): ${error.message}`);
 }
 
 async function reserved(instanceId: string): Promise<number> {
@@ -104,18 +107,37 @@ async function reserved(instanceId: string): Promise<number> {
   return data!.capacity_reserved;
 }
 
-async function overbookedCount(bookingId: string): Promise<number> {
+async function bookingStatus(bookingId: string): Promise<string> {
+  const { data } = await admin.from('bookings').select('status').eq('id', bookingId).single();
+  return data!.status;
+}
+
+async function paymentStatus(bookingId: string): Promise<string> {
+  const { data } = await admin
+    .from('payments')
+    .select('status')
+    .eq('booking_id', bookingId)
+    .single();
+  return data!.status;
+}
+
+async function overbookedAuditCount(bookingId: string): Promise<number> {
   const { count } = await admin
     .from('audit_logs')
     .select('id', { count: 'exact', head: true })
     .eq('entity_id', bookingId)
-    .eq('action', 'booking.overbooked');
+    .eq('action', 'booking.overbooked_refunded');
   return count ?? 0;
 }
 
-async function status(bookingId: string): Promise<string> {
-  const { data } = await admin.from('bookings').select('status').eq('id', bookingId).single();
-  return data!.status;
+async function refunds(
+  bookingId: string,
+): Promise<{ amount_cents: number; reason: string | null }[]> {
+  const { data } = await admin
+    .from('refunds')
+    .select('amount_cents, reason')
+    .eq('booking_id', bookingId);
+  return data ?? [];
 }
 
 beforeAll(async () => {
@@ -154,6 +176,7 @@ afterAll(async () => {
     .in('tour_instance_id', instanceIds);
   for (const b of bks ?? []) {
     await admin.from('notifications').delete().eq('booking_id', b.id);
+    await admin.from('refunds').delete().eq('booking_id', b.id);
     await admin.from('payments').delete().eq('booking_id', b.id);
   }
   await admin.from('bookings').delete().in('tour_instance_id', instanceIds);
@@ -163,34 +186,105 @@ afterAll(async () => {
   for (const id of eventIds) await admin.from('processed_webhook_events').delete().eq('id', id);
 });
 
-describe('confirm_booking — guard de sobreventa (spec 0023)', () => {
-  it('confirmar justo HASTA capacity_total NO marca sobrecupo', async () => {
+describe('confirm_booking — prevención de sobreventa (spec 0025)', () => {
+  it('confirmar justo HASTA capacity_total confirma sin sobreventa', async () => {
     const instanceId = await createInstance(2);
     const { bookingId, externalPaymentId } = await seedBooking(instanceId, 2);
 
-    await confirm(bookingId, externalPaymentId, 2); // 0 + 2 == 2, no excede
+    await confirm(bookingId, externalPaymentId, 2); // 0 + 2 == 2, hay cupo
 
     expect(await reserved(instanceId)).toBe(2);
-    expect(await status(bookingId)).toBe('confirmed');
-    expect(await overbookedCount(bookingId)).toBe(0);
+    expect(await bookingStatus(bookingId)).toBe('confirmed');
+    expect(await overbookedAuditCount(bookingId)).toBe(0);
+    expect(await refunds(bookingId)).toHaveLength(0);
   });
 
-  it('el asiento que EXCEDE el cupo marca booking.overbooked, confirma igual y es idempotente', async () => {
+  it('el pago que excede el cupo NO confirma: overbooked_refunded + refund total, idempotente', async () => {
     const instanceId = await createInstance(1);
     const a = await seedBooking(instanceId, 1);
     const b = await seedBooking(instanceId, 1);
 
-    await confirm(a.bookingId, a.externalPaymentId, 1); // 0 + 1 == 1, no excede
-    expect(await overbookedCount(a.bookingId)).toBe(0);
+    await confirm(a.bookingId, a.externalPaymentId, 1); // 0 + 1 == 1, confirma
+    expect(await bookingStatus(a.bookingId)).toBe('confirmed');
+    expect(await reserved(instanceId)).toBe(1);
 
-    const eventB = await confirm(b.bookingId, b.externalPaymentId, 1); // 1 + 1 = 2 > 1, excede
-    expect(await status(b.bookingId)).toBe('confirmed'); // nunca se rechaza el pago
-    expect(await reserved(instanceId)).toBe(2); // refleja la realidad, no se capea
-    expect(await overbookedCount(b.bookingId)).toBe(1);
+    await confirm(b.bookingId, b.externalPaymentId, 1); // 1 + 1 > 1, sobreventa
 
-    // Idempotencia: reconfirmar el mismo evento no duplica cupo ni audit.
-    await reconfirm(b.bookingId, b.externalPaymentId, 1, eventB);
-    expect(await reserved(instanceId)).toBe(2);
-    expect(await overbookedCount(b.bookingId)).toBe(1);
+    expect(await bookingStatus(b.bookingId)).toBe('overbooked_refunded');
+    expect(await reserved(instanceId)).toBe(1); // NO se incrementa: el asiento no se entrega
+    expect(await paymentStatus(b.bookingId)).toBe('succeeded'); // el turista pagó
+    expect(await overbookedAuditCount(b.bookingId)).toBe(1);
+    const r = await refunds(b.bookingId);
+    expect(r).toHaveLength(1);
+    expect(r[0].amount_cents).toBe(SEAT_PRICE_CENTS); // refund TOTAL
+    expect(r[0].reason).toBe('overbooked_refunded');
+
+    // Idempotencia del camino del reconciliador (sin event_id): no debe encolar un 2º refund.
+    await confirmNoEvent(b.bookingId, b.externalPaymentId, 1);
+    expect(await bookingStatus(b.bookingId)).toBe('overbooked_refunded');
+    expect(await reserved(instanceId)).toBe(1);
+    expect(await refunds(b.bookingId)).toHaveLength(1);
+    expect(await overbookedAuditCount(b.bookingId)).toBe(1);
+  });
+
+  it('dos pagos concurrentes por el último cupo: exactamente uno confirma, el otro se auto-reembolsa', async () => {
+    const instanceId = await createInstance(1);
+    const a = await seedBooking(instanceId, 1);
+    const b = await seedBooking(instanceId, 1);
+
+    await Promise.all([
+      confirm(a.bookingId, a.externalPaymentId, 1),
+      confirm(b.bookingId, b.externalPaymentId, 1),
+    ]);
+
+    const statuses = [await bookingStatus(a.bookingId), await bookingStatus(b.bookingId)].sort();
+    expect(statuses).toEqual(['confirmed', 'overbooked_refunded']);
+    expect(await reserved(instanceId)).toBe(1); // invariante: nunca supera capacity_total
+
+    // El que quedó overbooked_refunded tiene un refund total encolado.
+    const overbookedId =
+      (await bookingStatus(a.bookingId)) === 'overbooked_refunded' ? a.bookingId : b.bookingId;
+    const r = await refunds(overbookedId);
+    expect(r).toHaveLength(1);
+    expect(r[0].amount_cents).toBe(SEAT_PRICE_CENTS);
+  });
+
+  // Capa 1: el hold queda `paying` durante el pago; si la reserva se abandona, la
+  // reconciliación (cancel_stale_pending_booking) debe liberar ese hold para no atar el cupo.
+  it('cancel_stale_pending_booking libera el hold paying de una reserva abandonada', async () => {
+    const instanceId = await createInstance(1);
+    const { data: hold } = await admin
+      .from('tour_holds')
+      .insert({
+        tour_instance_id: instanceId,
+        session_token: `sess-${crypto.randomUUID().slice(0, 8)}`,
+        held_seats: 1,
+        status: 'paying',
+      })
+      .select('id')
+      .single();
+    const { data: booking } = await admin
+      .from('bookings')
+      .insert({
+        tour_instance_id: instanceId,
+        hold_id: hold!.id,
+        customer_name: 'Abandono',
+        customer_email: `ab-${crypto.randomUUID().slice(0, 8)}@example.com`,
+        tickets_adult: 1,
+        total_amount_cents: SEAT_PRICE_CENTS,
+        locale: 'es',
+      })
+      .select('id')
+      .single();
+
+    const { error } = await admin.rpc('cancel_stale_pending_booking', {
+      p_booking_id: booking!.id,
+      p_reason: 'no_payment',
+    });
+    expect(error).toBeNull();
+
+    expect(await bookingStatus(booking!.id)).toBe('cancelled');
+    const { data: h } = await admin.from('tour_holds').select('status').eq('id', hold!.id).single();
+    expect(h!.status).toBe('expired'); // el hold paying se liberó, no quedó atado
   });
 });
