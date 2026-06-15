@@ -22,19 +22,47 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 
 ---
 
-## Estado actual (2026-06-11)
+## Estado actual (2026-06-14)
 
-> **La fuente de verdad del estado real son los specs en `docs/specs/`, sus changelogs, y la memoria del proyecto (`.claude/memory/`).** Este resumen es un snapshot; el plan de Bloques/Etapas de más abajo conserva su redacción original como referencia histórica.
+> **La fuente de verdad del estado real son los specs en `docs/specs/`, sus changelogs, las auditorías en `docs/security-audits/`, y la memoria del proyecto (`.claude/memory/`).** Este resumen es un snapshot; el plan de Bloques/Etapas de más abajo conserva su redacción original como referencia histórica.
 
-- **Specs 0001–0018 implementados y mergeados a `dev`**: modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones+recordatorio 24h, panel+check-in, asignación de guías, gestión de usuarios internos, cancelaciones+refund, reportes, reconciliación de pagos pendientes, validación de monto del webhook, precio autoritativo en checkout, hardening de seguridad web, rate limiting / anti-abuso, y cierre de ejecución de RPC privilegiadas (hotfix de la 2da auditoría).
-- **`dev` está en 0018; `main` sigue en 0012** (no alimenta producción todavía). La promoción `dev → main` es un paso pendiente, no bloqueante mientras no haya prod — y ahora que las dos auditorías están cerradas, es el próximo candidato natural.
-- **MVP verificado end-to-end** (navegador real + OnvoPay sandbox): checkout+webhook, cancelación+refund, reconciliador, panel completo. Checkpoints 1–6 cubiertos. El **Checkpoint 7 (pre-lanzamiento/cutover)** es el gran pendiente — ver `pre-production-checklist` en la memoria.
-- **Primera auditoría de seguridad (2026-06-10) — CERRADA**: **0015** (precio autoritativo, hallazgo CRÍTICO C-1), **0016** (hardening web: open redirect, headers/CSP, CSV injection, webhook constant-time, cookie Secure, email, RLS de users) y **0017** (rate limiting / anti-abuso, hallazgo M-3: throttling en login/forgot/checkout sobre store Postgres, fail-open, sin vendor nuevo) — los tres **cerrados y mergeados** (PRs #30, #32, #34).
-- **Segunda auditoría de seguridad (2026-06-11) — CERRADA**: auditoría completa desde cero + pentest activo (invocando las RPC como `anon`). Halló **1 CRÍTICO que la primera no cazó**: las funciones `SECURITY DEFINER` eran ejecutables por `anon`/`authenticated` vía PostgREST (`REVOKE … FROM PUBLIC` no cierra esos roles en Supabase) → bypass de pago, refund de monto arbitrario, DoS de cupo, lockout. **Fix mergeado** (spec **0018**, PR #36): dos capas — `REVOKE EXECUTE … FROM anon, authenticated` (migración `…028`) + guard de identidad in-función `is_public_request()` en las funciones de dinero (migración `…029`). Todo lo demás se re-verificó empíricamente y aguantó (RLS, C-1, webhook, refunds, tokens, headers/CSP, inyección, `pnpm audit` limpio). **Único pendiente: desplegar las migraciones `…028`/`…029` a la DB de prod** en el cutover — la vulnerabilidad es explotable mientras la anon key pública apunte a una DB sin el fix.
+### Producto
+
+- **Specs 0001–0023 implementados y mergeados a `dev`**: modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones+recordatorio 24h, panel+check-in, asignación de guías, gestión de usuarios internos, cancelaciones+refund, reportes, reconciliación de pagos pendientes, validación de monto del webhook, precio autoritativo en checkout, y la cadena completa de hardening de seguridad y privacidad (0015–0023).
+- **MVP verificado end-to-end** (navegador real + OnvoPay sandbox): checkout+webhook, cancelación+refund, reconciliador, panel completo. Checkpoints 1–6 cubiertos. El **Checkpoint 7 (cutover a producción)** es el gran pendiente — ver `pre-production-checklist` en la memoria.
+- **`dev` está en 0023; `main` sigue en 0012** (no alimenta producción todavía). La promoción `dev → main` es un paso pendiente no bloqueante mientras no haya prod, y es el candidato natural ahora que todas las auditorías están cerradas.
+
+### Seguridad y privacidad — siete rondas de auditoría, todas cerradas salvo un P3 documentado
+
+1. **1ra auditoría (2026-06-10)** — 1 CRÍTICO (C-1: precio manipulable desde el cliente) + hardening web → specs **0015/0016/0017** (PRs #30/#32/#34).
+2. **2da auditoría (2026-06-11)** — 1 CRÍTICO nuevo: funciones `SECURITY DEFINER` ejecutables por `anon`/`authenticated` vía PostgREST (`REVOKE … FROM PUBLIC` no cierra esos roles en Supabase) → spec **0018** (PR #36): `REVOKE EXECUTE … FROM anon, authenticated` (migración `…028`) + guard `is_public_request()` (migración `…029`).
+3. **3ra auditoría (2026-06-11)** — 3 LOW (open-redirect por chars de control, guard de rol en el panel, cierre de `is_public_request` + auditoría amplia de funciones públicas) → spec **0019** (PR #38, migraciones `…030`/`…031`).
+4. **4ta auditoría (2026-06-12)** — cierre del auto-registro (signup) y PII de guías → spec **0020** (PR #39).
+5. **Auditoría Final del Security Council (2026-06-12)** — primera auditoría formal del council, pre-producción; re-verificó todo el código desde cero. Sus condiciones **P1** → spec **0021** (PR #40).
+6. **Re-auditoría #1 del council (2026-06-13)** — veredicto GO CON CONDICIONES; cola de P2/P3 **no bloqueantes** → spec **0022** (PRIV-02 anonimización + PRIV-03 retención, Ley 8968, PR #42, migración `…034`) y spec **0023** (resto de P2/P3 solucionable en código, PRs #43 Tanda A / #44 Tanda B / #45 cierre de P3 diferidos; migración `…035` guard de sobreventa).
+7. **Pentest activo (2026-06-14)** — ataque al sistema corriendo, incluido un pago real por ngrok contra OnvoPay sandbox: **cero hallazgos nuevos**.
+
+**Estado de la deuda de auditoría:**
+
+- **P1**: cerrados. Único pendiente operativo = verificar `enable_signup=false` en el dashboard de Supabase de prod (cutover; se aplica con `supabase config push`).
+- **P2**: 7/7 cerrados (spec 0022 + Tanda A de 0023).
+- **P3**: todos los solucionables cerrados. **APPSEC-03** (postcss vulnerable que Next vendoriza — CVE-2026-41305) e **INFRA-05** (rate-limit holgado de las lecturas públicas) se cerraron en código en el PR #45. **Queda solo implementar el spec 0024** (CSP con nonces + `strict-dynamic`) — escrito y aprobado por spec-reviewer, sin implementar todavía.
+- **Privacidad (Ley 8968 / PRODHAB)**: anonimización y retención implementadas (0022). Pendientes de **cutover, no de código**: el **texto legal de privacidad** y el **registro de la base de datos ante PRODHAB** (ver `pre-production-checklist`).
+
+### Migraciones de seguridad/privacidad pendientes de desplegar a prod (cutover)
+
+Están todas en `dev` pero **deben aplicarse a la DB de prod** en el cutover (la anon key pública es explotable contra una DB sin los fixes): `…028`/`…029` (RPC privilegiadas), `…030`/`…031` (auditoría de funciones públicas), `…034` (retención/anonimización PII), `…035` (guard de sobreventa). Se aplican con `supabase db push` (+ `supabase config push` para la password policy del 0023).
+
+### Trabajo pendiente identificado (no bloqueante)
+
+- **Implementar el spec 0024** (CSP con nonces + strict-dynamic) — último P3 de seguridad.
+- **Prevención de sobreventa** — el 0023 dejó _detección + confirmación + alerta a Sentry_; la prevención real ("evitarla a todo costo", pedido del usuario) —auto-refund de la reserva sobrante o rediseño de la ventana hold/pago— es un follow-up dedicado sin spec aún.
+- **Promoción `dev → main`** y **cutover (Checkpoint 7)**.
+- **Spec de design system / rebrand** (la app es funcional pero "plana" a propósito; requiere insumos del cliente).
 
 **Divergencias del plan original (abajo) respecto a la realidad** — el plan conserva su redacción; la implementación divergió:
 
-- **Renumeración de specs**: el plan de los Bloques 6–8 listaba 0013=i18n, 0014=rate-limiting, 0015=observabilidad, 0016=e2e, 0017=paypal. En la práctica los números se reasignaron a: **0013=reconciliación de pagos pendientes, 0014=validación de monto del webhook, 0015=precio autoritativo (auditoría), 0016=hardening de seguridad (auditoría), 0017=rate limiting (auditoría)**. La observabilidad (Sentry) se implementó embebida en otras etapas (código listo, falta el DSN de prod); i18n ES/EN se hizo sobre la marcha desde el portal público; **e2e dedicado y PayPal siguen sin spec** (post-MVP).
+- **Renumeración de specs**: el plan de los Bloques 6–8 listaba 0013=i18n, 0014=rate-limiting, 0015=observabilidad, 0016=e2e, 0017=paypal. En la práctica: **0013=reconciliación de pagos pendientes, 0014=validación de monto del webhook, y 0015–0023 = la cadena de auditorías/hardening de seguridad y privacidad**. La observabilidad (Sentry) se implementó embebida (código listo, falta el DSN de prod); i18n ES/EN se hizo sobre la marcha desde el portal público; **e2e dedicado y PayPal siguen sin spec** (post-MVP).
 - Otros detalles divergieron: rutas reales bajo `/dashboard/*` y en inglés; check-in a nivel reserva (sin `booking_tickets`); `audit_logs` introducido en cancelaciones (0011). Ver specs + memoria.
 
 ---

@@ -1,11 +1,11 @@
 # 0020 — Hardening de la 4ta auditoría: cierre de auto-registro y PII de guías
 
-- **Estado**: approved
+- **Estado**: implemented
 - **Autor**: claude (4ta auditoría de seguridad completa)
 - **Creado**: 2026-06-12
-- **Última actualización**: 2026-06-12
-- **Rama**: fix/0020-hardening-signup-pii-guias (cuando aplique)
-- **PR**: (pendiente)
+- **Última actualización**: 2026-06-14 (mergeado a `dev`)
+- **Rama**: fix/0020-hardening-signup-pii-guias
+- **PR**: #39
 
 ## 1. Contexto y motivación
 

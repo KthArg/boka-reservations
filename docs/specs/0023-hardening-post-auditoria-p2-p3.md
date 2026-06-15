@@ -1,11 +1,11 @@
 # 0023 — Hardening post-auditoría (P2 y P3)
 
-- **Estado**: approved
+- **Estado**: implemented
 - **Autor**: kenneth
 - **Creado**: 2026-06-14
-- **Última actualización**: 2026-06-14 (aprobado por spec-reviewer; decisiones de §13 resueltas, 2 bloqueantes incorporados)
+- **Última actualización**: 2026-06-14 (mergeado a `dev`; P2 + P3, incl. cierre de APPSEC-03/INFRA-05; CSP-nonces derivado al spec 0024)
 - **Rama**: feat/0023-hardening-post-auditoria
-- **PR**: #<número> (cuando aplique)
+- **PR**: #43, #44, #45
 
 ## 1. Contexto y motivación
 
