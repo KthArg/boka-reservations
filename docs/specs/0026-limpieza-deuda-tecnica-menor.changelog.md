@@ -3,6 +3,23 @@
 Spec: [0026-limpieza-deuda-tecnica-menor.md](./0026-limpieza-deuda-tecnica-menor.md)
 Rama: chore/0026-deuda-tecnica-menor
 
+## 2026-06-15 — Revisión de subagentes + verificación en navegador — lista para PR
+
+**Hecho**:
+
+- **Subagentes** (payment-flow-auditor, db-schema-guardian, code-reviewer): **sin bloqueantes**. Incorporé dos recomendaciones:
+  - **Endurecimiento del gate de estado de `confirm_booking`** (convergente de los dos auditores de DB/pagos): de `IF status IN ('confirmed','overbooked_refunded','payment_mismatch') THEN RETURN` a `IF status <> 'pending_payment' THEN RETURN`. Espeja fielmente el gate de `flag_payment_mismatch` (0014) y cierra el fall-through latente de 0025 (una reserva `cancelled`/`refunded` caía al guard y podía pisar un terminal o reconfirmarse por un webhook tardío). Commit `fix(db): confirm_booking solo actua sobre reservas pending_payment`.
+  - **Test del caso §8** (code-reviewer): reconfirmar una reserva ya `confirmed` con monto incorrecto → sigue `confirmed`, sin audit espurio, sin duplicar cupo (prueba que la idempotencia va antes del mismatch). + assert de `metadata.source='confirm_booking'` en el caso de mismatch.
+- **Verificación en navegador (Playwright)** contra `next dev` (servidor propio en :3100, DB reseteada con 37 migraciones):
+  - Portal público (lista + detalle de tour), login admin, y panel completo (bookings, departures, reports, users, tours): render OK, **0 errores de consola**.
+  - **Ítem 1 en vivo**: el botón "Actualizar" aparece en el header de `/dashboard/bookings`; con filtros activos (`?status=confirmed&search=ana`), al pulsarlo el URL y los filtros se **conservan** (combobox "Confirmada" + búsqueda "ana" intactos). i18n correcto: "Actualizar" (ES) / "Refresh" (EN).
+  - **Ítem 3 en vivo**: el portal muestra solo los 2 tours del seed (sin "Tour notif"/"Catarata ES"/"Salida ES"); la limpieza por teardown quedó confirmada también visualmente.
+  - Reports computa sus 3 RPCs sin error (incluida `report_refunds_summary`, tocada por 0025).
+
+**Pendiente**:
+
+- Nada — feature lista para PR (lo abre el usuario).
+
 ## 2026-06-15 — Implementación de los 3 ítems + verificación de suites
 
 **Hecho**:

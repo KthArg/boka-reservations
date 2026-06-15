@@ -22,15 +22,15 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 
 ---
 
-## Estado actual (2026-06-14)
+## Estado actual (2026-06-15)
 
 > **La fuente de verdad del estado real son los specs en `docs/specs/`, sus changelogs, las auditorías en `docs/security-audits/`, y la memoria del proyecto (`.claude/memory/`).** Este resumen es un snapshot; el plan de Bloques/Etapas de más abajo conserva su redacción original como referencia histórica.
 
 ### Producto
 
-- **Specs 0001–0023 implementados y mergeados a `dev`**: modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones+recordatorio 24h, panel+check-in, asignación de guías, gestión de usuarios internos, cancelaciones+refund, reportes, reconciliación de pagos pendientes, validación de monto del webhook, precio autoritativo en checkout, y la cadena completa de hardening de seguridad y privacidad (0015–0023).
+- **Specs 0001–0025 implementados y mergeados a `dev`**: modelo de datos, auth interna, CRUD tours, portal público, disponibilidad/holds, checkout+OnvoPay, notificaciones+recordatorio 24h, panel+check-in, asignación de guías, gestión de usuarios internos, cancelaciones+refund, reportes, reconciliación de pagos pendientes, validación de monto del webhook, precio autoritativo en checkout, la cadena completa de hardening de seguridad y privacidad (0015–0023), **CSP con nonces + strict-dynamic (0024, #47)** y **prevención de sobreventa (0025, #49)**. El spec **0026** (limpieza de deuda técnica menor) está **implementado, PR pendiente de abrir**.
 - **MVP verificado end-to-end** (navegador real + OnvoPay sandbox): checkout+webhook, cancelación+refund, reconciliador, panel completo. Checkpoints 1–6 cubiertos. El **Checkpoint 7 (cutover a producción)** es el gran pendiente — ver `pre-production-checklist` en la memoria.
-- **`dev` está en 0023; `main` sigue en 0012** (no alimenta producción todavía). La promoción `dev → main` es un paso pendiente no bloqueante mientras no haya prod, y es el candidato natural ahora que todas las auditorías están cerradas.
+- **`dev` está en 0025; `main` sigue en 0012** (no alimenta producción todavía). 0026 va en la rama `chore/0026-deuda-tecnica-menor`. La promoción `dev → main` es un paso pendiente no bloqueante mientras no haya prod, y es el candidato natural ahora que todas las auditorías están cerradas.
 
 ### Seguridad y privacidad — siete rondas de auditoría, todas cerradas salvo un P3 documentado
 
@@ -46,17 +46,17 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 
 - **P1**: cerrados. Único pendiente operativo = verificar `enable_signup=false` en el dashboard de Supabase de prod (cutover; se aplica con `supabase config push`).
 - **P2**: 7/7 cerrados (spec 0022 + Tanda A de 0023).
-- **P3**: todos los solucionables cerrados. **APPSEC-03** (postcss vulnerable que Next vendoriza — CVE-2026-41305) e **INFRA-05** (rate-limit holgado de las lecturas públicas) se cerraron en código en el PR #45. **Queda solo implementar el spec 0024** (CSP con nonces + `strict-dynamic`) — escrito y aprobado por spec-reviewer, sin implementar todavía.
+- **P3**: todos cerrados. **APPSEC-03** (postcss vulnerable que Next vendoriza — CVE-2026-41305) e **INFRA-05** (rate-limit holgado de las lecturas públicas) se cerraron en código en el PR #45. El último P3 de seguridad, **0024 (CSP con nonces + `strict-dynamic`), está implementado y mergeado (#47)** → toda la deuda de auditoría queda cerrada.
 - **Privacidad (Ley 8968 / PRODHAB)**: anonimización y retención implementadas (0022). Pendientes de **cutover, no de código**: el **texto legal de privacidad** y el **registro de la base de datos ante PRODHAB** (ver `pre-production-checklist`).
 
 ### Migraciones de seguridad/privacidad pendientes de desplegar a prod (cutover)
 
-Están todas en `dev` pero **deben aplicarse a la DB de prod** en el cutover (la anon key pública es explotable contra una DB sin los fixes): `…028`/`…029` (RPC privilegiadas), `…030`/`…031` (auditoría de funciones públicas), `…034` (retención/anonimización PII), `…035` (guard de sobreventa). Se aplican con `supabase db push` (+ `supabase config push` para la password policy del 0023).
+Están todas en `dev` pero **deben aplicarse a la DB de prod** en el cutover (la anon key pública es explotable contra una DB sin los fixes): `…028`/`…029` (RPC privilegiadas), `…030`/`…031` (auditoría de funciones públicas), `…034` (retención/anonimización PII), `…035` (detección de sobreventa, reemplazada por…), `…036` (prevención de sobreventa: hold `paying` + `overbooked_refunded` + auto-refund, spec 0025) y, cuando se mergee 0026, `…037` (guard de `payment_mismatch` dentro de `confirm_booking`). Se aplican con `supabase db push` (+ `supabase config push` para la password policy del 0023).
 
 ### Trabajo pendiente identificado (no bloqueante)
 
-- **Implementar el spec 0024** (CSP con nonces + strict-dynamic) — último P3 de seguridad.
-- **Prevención de sobreventa** — el 0023 dejó _detección + confirmación + alerta a Sentry_; la prevención real ("evitarla a todo costo", pedido del usuario) —auto-refund de la reserva sobrante o rediseño de la ventana hold/pago— es un follow-up dedicado sin spec aún.
+- **Prevención de sobreventa — RESUELTA (spec 0025, #49).** El 0023 dejaba _detección + confirmación + alerta a Sentry_; el 0025 implementó la prevención real ("evitarla a todo costo"): el hold pasa a `paying` y reserva el cupo durante todo el ciclo de pago, y `confirm_booking` ya NO confirma en sobrecupo → estado terminal `overbooked_refunded` con auto-refund total. El 0026 le sumó el guard de `payment_mismatch` dentro de `confirm_booking` (defensa en profundidad de 0014).
+- **Mergear el PR de 0026** (limpieza de deuda menor: botón "Actualizar" del panel, guard de mismatch, teardown de tours de tests) — lo abre/mergea el usuario.
 - **Promoción `dev → main`** y **cutover (Checkpoint 7)**.
 - **Spec de design system / rebrand** (la app es funcional pero "plana" a propósito; requiere insumos del cliente).
 
