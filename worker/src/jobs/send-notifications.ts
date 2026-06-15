@@ -4,6 +4,7 @@ import { getEmailAdapter } from '../notifications/adapters/index.js';
 import { prepareBookingEmail, prepareGuideEmail } from '../notifications/prepare.js';
 import {
   prepareCancellationEmail,
+  prepareOverbookedEmail,
   prepareRefundEmail,
 } from '../notifications/prepare-cancellation.js';
 import {
@@ -19,6 +20,7 @@ import {
   EmailPermanentError,
   EmailTransientError,
   GUIDE_ASSIGNMENT_KIND,
+  OVERBOOKED_REFUNDED_KIND,
   REFUND_CONFIRMATION_KIND,
   type EmailAdapter,
   type RenderedEmail,
@@ -62,6 +64,8 @@ function prepareForKind(db: SupabaseClient, notif: NotificationRow) {
       return prepareCancellationEmail(db, notif, env.APP_URL);
     case REFUND_CONFIRMATION_KIND:
       return prepareRefundEmail(db, notif);
+    case OVERBOOKED_REFUNDED_KIND:
+      return prepareOverbookedEmail(db, notif);
     default:
       return prepareBookingEmail(db, notif, env.APP_URL);
   }

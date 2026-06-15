@@ -119,3 +119,25 @@ describe('createHold — concurrencia', () => {
     await admin.from('tour_instances').delete().eq('id', instanceId);
   });
 });
+
+// Capa 1 anti-sobreventa (spec 0025): un hold en estado `paying` (pago en curso) reserva el
+// cupo aunque su expires_at ya haya pasado — create_hold_atomic lo cuenta como ocupado, así un
+// segundo turista no puede tomar el asiento mientras el primer pago vive.
+describe('createHold — holds en pago (paying) reservan el cupo (spec 0025)', () => {
+  it('un hold paying EXPIRADO sigue ocupando el cupo: el segundo session no puede tomarlo', async () => {
+    const instanceId = await createInstance(1);
+
+    const first = await createHold(instanceId, 1, 'paying-session-A');
+    // Simula initCheckout tras crear el payment intent, y fuerza expires_at en el pasado para
+    // probar que `paying` cuenta SIN mirar expires_at (la garantía de cupo del spec).
+    const pastExpiry = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await admin
+      .from('tour_holds')
+      .update({ status: 'paying', expires_at: pastExpiry })
+      .eq('id', first.holdId);
+
+    await expect(createHold(instanceId, 1, 'paying-session-B')).rejects.toThrow('HOLD_NO_CAPACITY');
+
+    await admin.from('tour_instances').delete().eq('id', instanceId);
+  });
+});

@@ -89,6 +89,17 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
       currency: CHECKOUT_CURRENCY,
     });
 
+    // Capa 1 anti-sobreventa (spec 0025): con el payment intent creado, el hold pasa de
+    // `active` a `paying`. release-expired-holds (que solo toca `active`) ya no lo libera, así
+    // el cupo queda reservado durante todo el ciclo de pago aunque supere el TTL de 15 min.
+    // Se hace al final: si algo falla antes, el hold sigue `active` y el catch lo libera.
+    const { error: holdErr } = await db
+      .from('tour_holds')
+      .update({ status: 'paying' })
+      .eq('id', holdId)
+      .eq('status', 'active');
+    if (holdErr) throw new Error(holdErr.message);
+
     return { externalPaymentId: session.externalPaymentId, bookingId: booking.id };
   } catch (err) {
     await releaseHold(holdId).catch(() => undefined);

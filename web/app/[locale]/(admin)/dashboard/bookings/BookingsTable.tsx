@@ -12,6 +12,8 @@ function badgeClass(status: string): string {
   if (status === BookingStatus.Confirmed) return styles.badgeConfirmed;
   // payment_mismatch (spec 0014): anomalía de dinero, badge propio destacado.
   if (status === BookingStatus.PaymentMismatch) return styles.badgeMismatch;
+  // overbooked_refunded (spec 0025): cupo agotado al pagar, auto-reembolsada. Badge propio.
+  if (status === BookingStatus.OverbookedRefunded) return styles.badgeOverbooked;
   return styles.badge;
 }
 

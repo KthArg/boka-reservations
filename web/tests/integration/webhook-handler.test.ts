@@ -41,7 +41,9 @@ const admin = createClient<Database>(SUPABASE_URL, SERVICE_KEY);
 const TEST_SLUG = `webhook-handler-${crypto.randomUUID().slice(0, 8)}`;
 const TWENTY_FIVE_HOURS_MS = 25 * 60 * 60 * 1000;
 const eventIds: string[] = [];
+const extraInstanceIds: string[] = [];
 let tourId: string;
+let scheduleId: string;
 let instanceId: string;
 
 beforeAll(async () => {
@@ -70,6 +72,7 @@ beforeAll(async () => {
     .insert({ tour_id: tourId, day_of_week: 1, start_time: '08:00', capacity: 5 })
     .select('id')
     .single();
+  scheduleId = sched!.id;
   const startsAt = new Date(Date.now() + TWENTY_FIVE_HOURS_MS).toISOString();
   const { data: inst } = await admin
     .from('tour_instances')
@@ -86,15 +89,17 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  const allInstanceIds = [instanceId, ...extraInstanceIds];
   const { data: bks } = await admin
     .from('bookings')
     .select('id')
-    .eq('tour_instance_id', instanceId);
+    .in('tour_instance_id', allInstanceIds);
   for (const b of bks ?? []) {
     await admin.from('notifications').delete().eq('booking_id', b.id);
+    await admin.from('refunds').delete().eq('booking_id', b.id);
     await admin.from('payments').delete().eq('booking_id', b.id);
   }
-  await admin.from('bookings').delete().eq('tour_instance_id', instanceId);
+  await admin.from('bookings').delete().in('tour_instance_id', allInstanceIds);
   await admin.from('tour_instances').delete().eq('tour_id', tourId);
   await admin.from('tour_schedules').delete().eq('tour_id', tourId);
   await admin.from('tours').delete().eq('id', tourId);
@@ -196,5 +201,58 @@ describe('webhook handler — validación de monto (spec 0014)', () => {
 
     expect(res.status).toBe(200);
     expect(await bookingStatus(bookingId)).toBe('confirmed');
+  });
+
+  it('cupo agotado al confirmar (spec 0025): responde 200 y deja overbooked_refunded', async () => {
+    // Instancia llena de antemano (capacity_total == capacity_reserved): el próximo pago excede.
+    const startsAt = new Date(Date.now() + TWENTY_FIVE_HOURS_MS).toISOString();
+    const { data: full } = await admin
+      .from('tour_instances')
+      .insert({
+        tour_id: tourId,
+        schedule_id: scheduleId,
+        starts_at: startsAt,
+        ends_at: startsAt,
+        capacity_total: 1,
+        capacity_reserved: 1,
+      })
+      .select('id')
+      .single();
+    extraInstanceIds.push(full!.id);
+
+    const externalPaymentId = `pi_${crypto.randomUUID()}`;
+    const { data: booking } = await admin
+      .from('bookings')
+      .insert({
+        tour_instance_id: full!.id,
+        customer_name: 'Overbook Handler',
+        customer_email: `obh-${crypto.randomUUID().slice(0, 8)}@example.com`,
+        tickets_adult: 1,
+        total_amount_cents: EXPECTED_CENTS,
+        locale: 'es',
+      })
+      .select('id')
+      .single();
+    await admin.from('payments').insert({
+      booking_id: booking!.id,
+      external_payment_id: externalPaymentId,
+      amount_cents: EXPECTED_CENTS,
+    });
+
+    const p = payload({ paymentId: externalPaymentId });
+    eventIds.push(p.eventId);
+    providerState.payload = p;
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await bookingStatus(booking!.id)).toBe('overbooked_refunded');
+    // El cupo no se movió (sigue lleno, no sobrevendido).
+    const { data: inst } = await admin
+      .from('tour_instances')
+      .select('capacity_reserved')
+      .eq('id', full!.id)
+      .single();
+    expect(inst!.capacity_reserved).toBe(1);
   });
 });

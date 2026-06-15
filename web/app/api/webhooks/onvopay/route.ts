@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
+import { BookingStatus } from '@shared/constants/enums';
 import { getPaymentProvider } from '@/lib/payments';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 
@@ -88,22 +89,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 
-  // Alerta de sobrecupo (spec 0023): confirm_booking honra el pago aunque supere el cupo y
-  // registra el audit `booking.overbooked`; acá avisamos a Sentry para revisión proactiva.
-  if (booking?.tour_instance_id) {
-    const { data: instance } = await db
-      .from('tour_instances')
-      .select('capacity_reserved, capacity_total')
-      .eq('id', booking.tour_instance_id)
-      .single();
-    if (instance && instance.capacity_reserved > instance.capacity_total) {
-      Sentry.withScope((scope) => {
-        scope.setLevel('warning');
-        scope.setFingerprint(['booking-overbooked']);
-        scope.setExtra('bookingId', payment.booking_id);
-        Sentry.captureMessage('[webhook] reserva confirmada en sobrecupo');
-      });
-    }
+  // Sobreventa (spec 0025): confirm_booking ya NO confirma en sobrecupo; si el cupo estaba
+  // agotado dejó la reserva en `overbooked_refunded` con un refund total encolado. Se re-lee
+  // el estado para alertar a Sentry (el audit `booking.overbooked_refunded` lo emite la RPC).
+  const { data: confirmed } = await db
+    .from('bookings')
+    .select('status')
+    .eq('id', payment.booking_id)
+    .single();
+  if (confirmed?.status === BookingStatus.OverbookedRefunded) {
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning');
+      scope.setFingerprint(['booking-overbooked-refunded']);
+      scope.setExtra('bookingId', payment.booking_id);
+      Sentry.captureMessage('[webhook] cupo agotado al confirmar: reserva auto-reembolsada');
+    });
   }
 
   return NextResponse.json({ received: true });

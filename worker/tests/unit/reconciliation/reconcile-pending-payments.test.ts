@@ -24,8 +24,8 @@ const repoMocks = vi.hoisted(() => ({
   confirmRecoveredBooking: vi.fn(),
   flagPaymentMismatch: vi.fn(),
   writeRecoveredAudit: vi.fn(),
-  // spec 0023: lectura de capacidad para detectar sobrecupo. Default null = sin alerta.
-  fetchInstanceCapacity: vi.fn().mockResolvedValue(null),
+  // spec 0025: estado de la reserva tras recuperar. Default 'confirmed' = sin alerta de sobreventa.
+  fetchBookingStatus: vi.fn().mockResolvedValue('confirmed'),
 }));
 vi.mock('../../../src/reconciliation/repository.js', () => repoMocks);
 
@@ -127,6 +127,20 @@ describe('reconcileOne — árbol de decisión', () => {
     expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-recovered']);
     expect(repoMocks.cancelStaleBooking).not.toHaveBeenCalled();
     expect(repoMocks.flagPaymentMismatch).not.toHaveBeenCalled();
+  });
+
+  it('recuperación con cupo agotado (overbooked_refunded): alerta el auto-reembolso (spec 0025)', async () => {
+    const c = client(paidMatching);
+    repoMocks.fetchBookingStatus.mockResolvedValueOnce('overbooked_refunded');
+
+    await reconcileOne(db, c, booking());
+
+    // confirm_booking igual se llamó (la RPC decidió el camino de sobreventa internamente).
+    expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(db, 'b1', 'pi_x', 3);
+    // Dos alertas: la de recuperación + la de sobreventa.
+    expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(2);
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-recovered']);
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['booking-overbooked-refunded']);
   });
 
   it('OnvoPay succeeded con monto distinto: marca payment_mismatch (no confirma) y alerta', async () => {

@@ -47,8 +47,9 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const admin = createClient<Database>(SUPABASE_URL, SERVICE_KEY);
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
-// Justo bajo el umbral de 2h (1h59m): aún no debe entrar al lote.
-const JUST_UNDER_THRESHOLD_MS = (2 * 60 - 1) * 60 * 1000;
+// Justo bajo el umbral de 30 min (29m): aún no debe entrar al lote. El umbral bajó de 2h a
+// 30 min en el spec 0025 (con la Capa 1, este umbral define la "ventana de pago" efectiva).
+const JUST_UNDER_THRESHOLD_MS = 29 * 60 * 1000;
 const TEST_SLUG = `reconcile-${crypto.randomUUID().slice(0, 8)}`;
 let tourId: string;
 let instanceId: string;
@@ -261,7 +262,7 @@ describe('reconcilePendingPayments job (integración)', () => {
     expect(await bookingStatus(bookingId)).toBe('pending_payment');
   });
 
-  it('borde del umbral: una reserva a 1h59m (justo bajo 2h) todavía no se procesa', async () => {
+  it('borde del umbral: una reserva a 29m (justo bajo 30 min) todavía no se procesa', async () => {
     const { bookingId } = await seedPending({
       ageMs: JUST_UNDER_THRESHOLD_MS,
       withPayment: false,
