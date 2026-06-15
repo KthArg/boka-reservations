@@ -1,11 +1,11 @@
 # 0021 — Cierre de condiciones P1 de la auditoría del Security Council
 
-- **Estado**: approved
+- **Estado**: implemented
 - **Autor**: kenneth
 - **Creado**: 2026-06-12
-- **Última actualización**: 2026-06-13 (aprobado e implementado; P1-2 se aplica con `supabase config push`, no a mano)
-- **Rama**: fix/0021-cierre-p1-auditoria-council (cuando aplique)
-- **PR**: #<número> (cuando aplique)
+- **Última actualización**: 2026-06-14 (mergeado a `dev`; P1-2 se aplica con `supabase config push` en el cutover, no a mano)
+- **Rama**: fix/0021-cierre-p1-auditoria-council
+- **PR**: #40
 
 ## 1. Contexto y motivación
 

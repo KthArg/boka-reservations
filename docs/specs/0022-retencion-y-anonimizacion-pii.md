@@ -1,11 +1,11 @@
 # 0022 — Retención de datos y anonimización de PII (Ley 8968)
 
-- **Estado**: approved
+- **Estado**: implemented
 - **Autor**: kenneth
 - **Creado**: 2026-06-13
-- **Última actualización**: 2026-06-13 (aprobado tras revisión del spec-reviewer; 3 bloqueantes incorporados)
+- **Última actualización**: 2026-06-14 (mergeado a `dev`; migración `…034`)
 - **Rama**: feat/0022-retencion-y-anonimizacion-pii
-- **PR**: #<número> (cuando aplique)
+- **PR**: #42
 
 ## 1. Contexto y motivación
 
