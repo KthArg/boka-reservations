@@ -62,12 +62,15 @@ BEGIN
     RAISE EXCEPTION 'BOOKING_NOT_FOUND';
   END IF;
 
-  -- (1) Idempotencia por estado (spec 0025 + 0026): cubre los terminales del pago. Crítico
-  -- porque el reconciliador llama confirm_booking SIN p_event_id (la idempotencia por
-  -- processed_webhook_events no aplica): este guard por estado es la única defensa contra un
-  -- segundo refund (overbooked_refunded) o una re-evaluación (payment_mismatch). `payment_mismatch`
-  -- se suma acá para que un reintento sobre una reserva ya marcada no re-audite ni confirme.
-  IF v_booking.status IN ('confirmed', 'overbooked_refunded', 'payment_mismatch') THEN
+  -- (1) Idempotencia/gate por estado (spec 0025 + 0026): confirm_booking SOLO actúa sobre una
+  -- reserva `pending_payment`. Cualquier otro estado es un no-op idempotente: terminales del pago
+  -- (`confirmed`/`overbooked_refunded`/`payment_mismatch`) y también `cancelled`/`refunded` —
+  -- así un webhook/reconciliación tardío NO resucita una reserva cancelada ni pisa un terminal.
+  -- Espeja el gate `status='pending_payment'` de flag_payment_mismatch (0014). Crítico porque el
+  -- reconciliador llama confirm_booking SIN p_event_id (la idempotencia por
+  -- processed_webhook_events no aplica): este gate por estado es la única defensa contra un
+  -- segundo refund o una re-evaluación de mismatch sobre una reserva ya resuelta.
+  IF v_booking.status <> 'pending_payment' THEN
     RETURN;
   END IF;
 

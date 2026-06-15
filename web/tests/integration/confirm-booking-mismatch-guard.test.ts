@@ -110,6 +110,16 @@ async function mismatchAuditCount(bookingId: string): Promise<number> {
   return count ?? 0;
 }
 
+async function mismatchAuditSource(bookingId: string): Promise<string | null> {
+  const { data } = await admin
+    .from('audit_logs')
+    .select('metadata')
+    .eq('entity_id', bookingId)
+    .eq('action', 'booking.payment_mismatch')
+    .single();
+  return (data?.metadata as { source?: string } | null)?.source ?? null;
+}
+
 beforeAll(async () => {
   const { data: tour } = await admin
     .from('tours')
@@ -180,6 +190,8 @@ describe('confirm_booking — guard de payment_mismatch (spec 0026)', () => {
     expect(await paymentStatus(bookingId)).toBe('pending'); // el pago NO se da por bueno
     expect(await reserved(instanceId)).toBe(0); // no entrega cupo
     expect(await mismatchAuditCount(bookingId)).toBe(1);
+    // El audit lo emitió el guard interno, no flag_payment_mismatch (ambos usan la misma action).
+    expect(await mismatchAuditSource(bookingId)).toBe('confirm_booking');
   });
 
   it('moneda en otra capitalización (usd vs USD): NO marca falso-mismatch, confirma', async () => {
@@ -218,6 +230,25 @@ describe('confirm_booking — guard de payment_mismatch (spec 0026)', () => {
     expect(await bookingStatus(bookingId)).toBe('payment_mismatch');
     expect(await mismatchAuditCount(bookingId)).toBe(1); // no re-audita en el reintento
     expect(await reserved(instanceId)).toBe(0);
+  });
+
+  it('reconfirmar una reserva ya confirmed con monto incorrecto NO la marca mismatch (idempotencia va primero, spec §8)', async () => {
+    const instanceId = await createInstance(5);
+    const { bookingId, externalPaymentId } = await seedBooking(instanceId);
+
+    await confirm(bookingId, externalPaymentId, { amountCents: EXPECTED_CENTS, currency: 'USD' });
+    expect(await bookingStatus(bookingId)).toBe('confirmed');
+
+    // Reintento con monto incorrecto: el gate por estado (idempotencia) retorna ANTES del guard
+    // de mismatch, así que la reserva sigue confirmed, no se audita mismatch ni se duplica cupo.
+    await confirm(bookingId, externalPaymentId, {
+      amountCents: EXPECTED_CENTS - 100,
+      currency: 'USD',
+    });
+
+    expect(await bookingStatus(bookingId)).toBe('confirmed');
+    expect(await mismatchAuditCount(bookingId)).toBe(0);
+    expect(await reserved(instanceId)).toBe(1); // no se duplica el cupo
   });
 
   it('sin monto (params omitidos): el guard no corre, confirma (comportamiento aditivo)', async () => {
