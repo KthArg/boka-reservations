@@ -17,6 +17,11 @@ const envSchema = z.object({
   // Secreto dedicado para firmar el token de invitación (spec 0023, ACCESS-04). Antes se
   // reutilizaba SUPABASE_SERVICE_ROLE_KEY; un secreto propio desacopla la clave más sensible.
   INVITE_SIGNING_SECRET: z.string().min(1),
+  // Rollout de la CSP con nonces (spec 0024). 'true' emite la política como
+  // Content-Security-Policy-Report-Only (observa violaciones sin romper); default 'false'
+  // = enforcing. El middleware lo lee directo de process.env (corre en edge), no por acá;
+  // este campo documenta y valida la variable del lado Node.
+  CSP_REPORT_ONLY: z.enum(['true', 'false']).default('false'),
 });
 
 function parseEnv() {
