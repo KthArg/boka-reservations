@@ -161,7 +161,8 @@
     "ticket-child": "Child",
     "ticket-student": "Student",
     "not-found-title": "Tour not found",
-    "not-found-back": "Browse all tours"
+    "not-found-back": "Browse all tours",
+    "rate-limited": "Too many requests. Please wait a moment and try again."
   },
   "bookings": {
     "nav-label": "Bookings",

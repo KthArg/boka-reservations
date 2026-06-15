@@ -2,6 +2,47 @@
 
 Registro vivo de la implementación. Lo más reciente arriba.
 
+## 2026-06-14 — Cierre de los P3 diferidos (APPSEC-03 + INFRA-05) y spec de CSP-nonces
+
+Rama `fix/0023-cierre-p3-diferidos`. Cierra los dos P3 que la Tanda B había dejado pendientes.
+
+**APPSEC-03 — RESUELTO (corrige el registro previo).** El diagnóstico anterior ("el override
+no mueve la postcss de Next") era incorrecto en su causa: este monorepo **no** es un workspace
+pnpm (no hay `pnpm-workspace.yaml`); `web/`, `worker/` y `shared/` son proyectos pnpm
+independientes con lockfile propio. El override estaba en el `package.json` **raíz** (solo
+tooling), por eso nunca llegaba a Next. Movido a `web/package.json`
+(`pnpm.overrides.postcss: "^8.5.10"`): ahora Next resuelve **postcss 8.5.15** (la 8.4.31
+vulnerable —CVE-2026-41305, XSS por `</style>` sin escapar— desaparece del árbol de `web`).
+Verificado: `pnpm why postcss` solo muestra 8.5.15, y el `next build` de producción pasa con la
+postcss parcheada (postcss es build-critical; build verde = sin regresión de CSS).
+
+**INFRA-05 — RESUELTO en código (antes diferido al edge).** Freno anti-scraping por IP a las
+lecturas públicas del portal:
+
+- `shared/constants/rate-limit.ts`: regla `publicReadPerIp` (120/min, holgada y afinable) +
+  prefijo `publicReadIp` (`public:ip`).
+- `web/lib/public/read-limit.ts`: `isPublicReadThrottled()` reusa `checkRateLimit`
+  (kill-switch `RATE_LIMIT_ENABLED` + fail-open) con `getClientIp`/`rateLimitKey`, igual patrón
+  que `isCheckoutThrottled`. Ante store caído deja pasar (no tira el portal).
+- `tours/page.tsx` y `tours/[id]/page.tsx`: chequean antes de los fetches caros y, si se
+  excede, renderizan un aviso suave (`t('rate-limited')`) en vez del contenido.
+- i18n `rate-limited` en `es.json` + `en.json`. Test unit `read-limit.test.ts`.
+
+**Spec nuevo 0024** (`docs/specs/0024-csp-nonces-strict-dynamic.md`): CSP con nonce por request
+
+- `strict-dynamic` (el último P3 de CSP). Solo documentación; **APTO por spec-reviewer** (2ª
+  pasada, tras corregir 3 bloqueantes: patrón real del middleware de next-intl, carga real del
+  SDK de OnvoPay vía `createElement`, y loader vs iframe bajo strict-dynamic). No se implementa
+  en esta tanda.
+
+**Verificación:** typecheck OK (web+worker) · lint 0 err · web 154 unit (incluye read-limit) ·
+`next build` producción OK con postcss 8.5.15. **Playwright** (dev server): portal (home/tours/
+detalle/checkout), EN, login, guard de dashboard (redirect), y panel admin (dashboard +
+reservas) — todo renderiza con **0 errores de consola**. Sin migraciones (no se corrió `db
+reset`). `code-reviewer`: sin bloqueantes.
+
+**Queda de P3:** solo el spec 0024 (CSP-nonces) para implementar a futuro.
+
 ## 2026-06-14 — Tanda B (P3) implementada (todos los checks verdes)
 
 - **APPSEC-01** (`admin-filters.ts`): regex estricta `^\d{4}-\d{2}-\d{2}$` en `validateExportRange`

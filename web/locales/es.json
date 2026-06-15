@@ -161,7 +161,8 @@
     "ticket-child": "Niño",
     "ticket-student": "Estudiante",
     "not-found-title": "Tour no encontrado",
-    "not-found-back": "Ver todos los tours"
+    "not-found-back": "Ver todos los tours",
+    "rate-limited": "Demasiadas solicitudes. Esperá un momento y volvé a intentar."
   },
   "bookings": {
     "nav-label": "Reservas",

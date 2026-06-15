@@ -29,6 +29,12 @@ export const RATE_LIMITS = {
   forgotPerIp: { limit: 10, windowSeconds: SECONDS_PER_HOUR },
   /** Checkout por IP: acota la frecuencia de holds para no secuestrar cupo. */
   checkoutPerIp: { limit: 10, windowSeconds: 10 * SECONDS_PER_MINUTE },
+  /**
+   * Lecturas públicas del portal (browsing de tours) por IP. Límite muy holgado:
+   * los reads son idempotentes y no tocan inventario; sólo busca frenar scraping
+   * masivo sin molestar a usuarios legítimos ni a IPs compartidas (NAT/CGNAT).
+   */
+  publicReadPerIp: { limit: 120, windowSeconds: SECONDS_PER_MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
 /**
@@ -41,6 +47,7 @@ export const RATE_LIMIT_KEY_PREFIX = {
   forgotIp: 'forgot:ip',
   forgotEmail: 'forgot:email',
   checkoutIp: 'checkout:ip',
+  publicReadIp: 'public:ip',
 } as const;
 
 /** Valor de IP cuando el header x-forwarded-for está ausente (local sin proxy). */
