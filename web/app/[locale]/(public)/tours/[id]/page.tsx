@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { getTourBySlug, getTourPricing, getUpcomingInstances } from '@/lib/public/tours';
+import { isPublicReadThrottled } from '@/lib/public/read-limit';
 import { PriceList } from '@/components/public/PriceList/PriceList';
 import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/AvailabilityCalendar';
 import styles from './slug.module.css';
@@ -9,11 +10,18 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function TourDetailPage({ params }: Props) {
   const { id: slug } = await params;
-  const [t, locale, tour] = await Promise.all([
-    getTranslations('public'),
-    getLocale(),
-    getTourBySlug(slug),
-  ]);
+  const [t, locale] = await Promise.all([getTranslations('public'), getLocale()]);
+
+  // INFRA-05 (spec 0023): freno anti-scraping por IP a las lecturas públicas.
+  if (await isPublicReadThrottled()) {
+    return (
+      <article className={styles.page}>
+        <p className={styles.description}>{t('rate-limited')}</p>
+      </article>
+    );
+  }
+
+  const tour = await getTourBySlug(slug);
 
   if (!tour) notFound();
 
