@@ -5,7 +5,7 @@
 - **Creado**: 2026-06-11
 - **Última actualización**: 2026-06-11
 - **Rama**: fix/security-hardening-redirect-guard-isd
-- **PR**: (pendiente)
+- **PR**: #38
 
 > Spec **retrospectivo**: documenta los hallazgos de la tercera auditoría de seguridad
 > completa (revisión estática desde cero + pentest activo contra el stack vivo) y los

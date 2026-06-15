@@ -1,11 +1,11 @@
 # 0024 — CSP con nonces por request (strict-dynamic)
 
-- **Estado**: draft
+- **Estado**: approved
 - **Autor**: kenneth
 - **Creado**: 2026-06-14
-- **Última actualización**: 2026-06-14 (revisado por spec-reviewer: corregidos 3 bloqueantes — propagación real del nonce sobre el middleware de next-intl, carga real del SDK de OnvoPay, y separación loader vs iframe; decisiones de §13 resueltas)
-- **Rama**: feat/0024-csp-nonces (cuando aplique)
-- **PR**: #<número> (cuando aplique)
+- **Última actualización**: 2026-06-15 (2ª y 3ª ronda de spec-reviewer: se cerró con un spike el mecanismo de propagación del nonce — verificado contra el código de `next` y `next-intl` instalados, ver §5; se corrigió la codificación base64 edge-safe; se documentó el `getSession()` extra de ACCESS-02 y el orden frente al cliente de Supabase; paridad completa de directivas en los tests; se reconcilió el criterio de Sentry y el rollout report-only. Ronda final del spec-reviewer: "Sin correcciones pendientes / listo para aprobar")
+- **Rama**: feat/0024-csp-nonces
+- **PR**: #47
 
 ## 1. Contexto y motivación
 
@@ -41,7 +41,7 @@ Criterios de aceptación:
 - [ ] El nonce es distinto en cada request, y el valor del `'nonce-...'` en el header CSP **coincide** con el atributo `nonce="..."` de los `<script>` que Next emite en el HTML servido (es lo que garantiza que la hidratación no rompa).
 - [ ] Las páginas del portal público (`/`, `/tours`, `/tours/[id]`), el checkout, el panel admin y el login cargan y se hidratan sin errores de CSP en la consola del navegador.
 - [ ] El checkout completa un pago real con el widget de OnvoPay sin violaciones de CSP que rompan el flujo.
-- [ ] Sentry sigue capturando errores del browser (su script se ejecuta bajo la nueva política).
+- [ ] El script de Sentry (cuando hay DSN) se ejecuta bajo la nueva política sin ser bloqueado por CSP. La verificación de captura real de un error **queda diferida al checkpoint de observabilidad** (depende de un DSN configurado, que hoy no existe — ver §10 y `pre-production-checklist`); no es criterio bloqueante de este spec.
 - [ ] En desarrollo, HMR/React-refresh sigue funcionando (se conserva `'unsafe-eval'` sólo en dev).
 - [ ] El refresh de sesión de Supabase y el rewrite de locale de next-intl siguen funcionando (no se rompe el comportamiento actual del middleware).
 
@@ -49,24 +49,50 @@ Criterios de aceptación:
 
 ### Punto de partida real del middleware
 
-`web/middleware.ts` hoy **no** usa `NextResponse.next()`. Hace:
+`web/middleware.ts` hoy **no** usa `NextResponse.next()`. Hace (verificado contra el código vivo):
 
 ```
-const response = intlMiddleware(request);                 // next-intl arma la respuesta (rewrite de locale)
+const response = intlMiddleware(request);                  // next-intl arma la respuesta (rewrite de locale)
 const supabase = createSupabaseMiddlewareClient(request, response); // engancha el refresh de cookies a ESA respuesta
-await supabase.auth.getUser();                            // refresca sesión (escribe cookies en response)
-if (isProtectedPath) { ... return NextResponse.redirect(...) }  // branch de redirect (ACCESS-02)
+await supabase.auth.getUser();                             // refresca sesión (escribe cookies en request+response)
+if (isProtectedPath(pathname)) {
+  if (!user) return redirectToLogin();
+  await supabase.auth.getSession();                        // ACCESS-02 (spec 0023): segundo llamado
+  const role = decodeUserRole(session.access_token);       // exige rol de panel; si no → redirectToLogin()
+}
 return response;
 ```
 
-El refresh de cookies de Supabase depende de devolver **esa misma** `response`; descartarla rompe la sesión (hay un comentario en el código advirtiéndolo). Por eso el nonce debe integrarse sin reemplazar la respuesta de next-intl.
+Dos hechos del código real que el diseño del nonce debe respetar:
 
-### Generación y propagación del nonce
+- El refresh de cookies de Supabase depende de devolver **esa misma** `response`; descartarla rompe la sesión (hay un comentario en el código advirtiéndolo). Por eso el nonce no debe reemplazar la respuesta de next-intl.
+- El branch protegido hace **dos** llamados a Supabase (`getUser()` y `getSession()` para decodificar `user_role`) y puede terminar en un `NextResponse.redirect(...)`. El nonce/CSP debe convivir con ambos caminos (respuesta normal y redirect).
 
-1. **Generar** el nonce con Web Crypto (edge-safe, igual que el `atob`/`TextDecoder` que ya usa el middleware; nada de `node:crypto` ni `Buffer`): 16 bytes aleatorios con `crypto.getRandomValues(new Uint8Array(16))` codificados a base64. Forma única y fija para que el test sea determinista en formato.
-2. **Que Next lea el nonce**: Next aplica el nonce a sus `<script>` cuando lo encuentra en los **request headers** que recibe al renderizar. Como la respuesta la produce `intlMiddleware`, hay que pasarle a next-intl un request con el header `x-nonce` agregado: clonar los headers del request, setear `x-nonce`, y construir el request que recibe `intlMiddleware` (p. ej. `intlMiddleware` sobre un `NextRequest` con esos headers, o el mecanismo equivalente que exponga next-intl). Validar en implementación que next-intl preserva ese request header hacia el render de Next (es el punto técnico a confirmar de este spec).
-3. **Setear la CSP en la respuesta**: agregar el header `Content-Security-Policy` con el mismo nonce a `response` **y** al `NextResponse.redirect(...)` del branch protegido (ambos caminos deben llevar CSP).
-4. El nonce queda disponible para Server Components vía el request header `x-nonce` (por si algún componente necesita firmar un script propio).
+### Mecanismo de propagación del nonce — verificado en el código instalado (spike cerrado)
+
+Este era el punto técnico abierto del spec. Se resolvió leyendo el código de `next@15.3` y `next-intl@4.12` en `node_modules`, no como hipótesis:
+
+1. **Cómo decide Next qué nonce poner en sus `<script>`** (`next/dist/server/app-render/app-render.js`):
+
+   ```js
+   const csp = headers['content-security-policy'] || headers['content-security-policy-report-only'];
+   const nonce = typeof csp === 'string' ? getScriptNonceFromHeader(csp) : undefined;
+   ```
+
+   Next lee el nonce del header **`content-security-policy` (o `content-security-policy-report-only`) del _request_ que llega al render**, parseando el `'nonce-…'` de su `script-src`. **No** lee `x-nonce` (eso es solo una convención para que los componentes lo lean vía `headers()`). Implicación clave para el rollout: como acepta también el header report-only, el modo Report-Only **igual** firma los scripts de Next con el nonce.
+
+2. **Cómo llega ese request header al render pasando por next-intl** (`next-intl/dist/.../middleware/middleware.js`): cuando next-intl resuelve con `next()`/rewrite hace `const headers = new Headers(request.headers)` y devuelve `NextResponse.rewrite(url, { request: { headers } })` (o `NextResponse.next({ request: { headers } })`). Es decir, **next-intl copia los headers del request entrante y los reenvía al render** vía la opción `request.headers`. Por lo tanto, si el request que recibe `intlMiddleware` ya trae el header CSP con el nonce, ese header llega intacto al render de Next.
+
+3. **Implementación concreta** en `web/middleware.ts`:
+   - Generar el nonce (ver abajo) y construir el string de CSP con ese nonce (módulo compartido, ver «Dónde vive la CSP»).
+   - Clonar los headers del request entrante (`new Headers(request.headers)`) y setear en esa copia **`content-security-policy`** = el string de CSP (el header que Next parsea para firmar sus scripts) **y** **`x-nonce`** = el nonce (conveniencia para Server Components que quieran firmar un script propio).
+   - Llamar a `intlMiddleware` con un `NextRequest` reconstruido a partir del request original que **solo** sobrescribe los headers por la copia con el nonce (preservando url, método y cookies). next-intl copia esos headers y los reenvía al render (paso 2).
+   - **Supabase sigue usando el request _original_**: `createSupabaseMiddlewareClient(request, response)` lee `request.cookies`, que son idénticas (clonamos el header `cookie`), y engancha el refresh a la `response` de next-intl. El request reconstruido solo alimenta a `intlMiddleware`; no cambia el manejo de cookies. Orden: generar nonce → `response = intlMiddleware(reqConNonce)` → `createSupabaseMiddlewareClient(request, response)` → `getUser()`/branch ACCESS-02 → setear el header CSP en la salida.
+4. **Setear la CSP en la _respuesta_** (lo que el navegador aplica): agregar el header `Content-Security-Policy` (o `…-Report-Only` según el env de rollout, §11) con el **mismo** nonce a `response` **y** al `NextResponse.redirect(...)` del branch protegido.
+
+**Generación del nonce (edge-safe, sin `node:crypto` ni `Buffer`):** 16 bytes aleatorios con `crypto.getRandomValues(new Uint8Array(16))` codificados a base64 con `btoa(String.fromCharCode(...bytes))` (mismo estilo edge-safe que el `atob`/`TextDecoder` del `decodeUserRole` ya presente). El **valor** es aleatorio por request; lo que el test fija es el **formato** (string base64 no vacío, distinto entre dos requests).
+
+**Caveat a verificar (no bloqueante del diseño):** reconstruir el `NextRequest` para `intlMiddleware` debe preservar el cuerpo de los POST de Server Actions (login, checkout) — el cuerpo lo lee el route/Server Action downstream, no el middleware, así que clonar headers en el middleware no lo consume. La reconstrucción **sólo sobreescribe headers**: nunca leer ni clonar el body (nada de `await request.text()`/`request.clone()` del body), para no consumir el stream. Aun así, la verificación E2E (§10) ejercita login y checkout (ambos POST) y cazaría una regresión de body. **Verificación de implementación**: confirmar la firma concreta para reconstruir un `NextRequest` con headers sobreescritos en el edge runtime (p. ej. `new NextRequest(request, { headers })` vs. envolver un `Request` nativo) — es el único detalle del mecanismo que se cierra al codear; los pasos 1-2 de §5 ya están verificados contra el código instalado.
 
 ### Dónde vive la CSP (un solo header)
 
@@ -88,11 +114,13 @@ Carga real del SDK de OnvoPay (`web/components/public/CheckoutForm/CheckoutForm.
 
 ```
 request → middleware:
-  nonce = base64(getRandomValues(16))
-  req' = request + header x-nonce        → intlMiddleware(req')  → Next firma sus <script> con el nonce
-  supabase.auth.getUser() (refresca cookies sobre la respuesta)
-  response.headers['Content-Security-Policy'] = csp(nonce)
-  (branch protegido: el redirect también lleva csp(nonce))
+  nonce = btoa(String.fromCharCode(...getRandomValues(16)))
+  hdrs  = clone(request.headers) + {content-security-policy: csp(nonce), x-nonce: nonce}
+  req'  = NextRequest(request, {headers: hdrs})
+  response = intlMiddleware(req')   → next-intl reenvía hdrs al render → Next parsea el CSP-request y firma sus <script> con el nonce
+  supabase = createSupabaseMiddlewareClient(request /*original*/, response)  → getUser() refresca cookies sobre response
+  branch protegido (getSession()/ACCESS-02): si redirige, el redirect también lleva csp(nonce)
+  response.headers['Content-Security-Policy'] = csp(nonce)   // (o -Report-Only según env de rollout)
 → browser ejecuta sólo scripts con nonce (+ los que ésos carguen vía strict-dynamic)
 ```
 
@@ -107,12 +135,12 @@ No aplica.
 ## 8. Casos borde y errores
 
 - **Widget de OnvoPay (riesgo central)**. Comportamiento esperado: el loader (`createElement`) se autoriza por propagación de `strict-dynamic` desde el bundle confiable; el contenido del iframe `*.onvopay.com` no se ve afectado (cae bajo `frame-src`, ya permitido). Verificación obligatoria: un pago real end-to-end sin violaciones de CSP que rompan el flujo. Si rompe el loader, aplicar el fix acotado de §5 (`script.nonce` o `next/script`). No se mergea sin un pago real verde.
-- **Render dinámico forzado**. Un nonce por request impide el cacheo estático de la respuesta HTML. **Decisión**: se acepta render dinámico en las respuestas HTML que ya pasan por el middleware (el `matcher` actual `'/((?!api|_next|_vercel|.*\\..*).*)'` ya las cubre); el beneficio de eliminar `'unsafe-inline'` globalmente supera la pérdida de cacheo estático para el volumen de este portal. Los assets (`_next`, estáticos) quedan fuera del matcher y siguen cacheables. Revisar si se observa degradación de performance.
+- **Render dinámico forzado**. Un nonce por request impide el cacheo estático de la respuesta HTML. **Decisión**: se acepta render dinámico en las respuestas HTML que ya pasan por el middleware (el `matcher` actual `'/((?!api|_next|_vercel|.*\\..*).*)'` ya las cubre); el beneficio de eliminar `'unsafe-inline'` globalmente supera la pérdida de cacheo estático para el volumen de este portal (sin tráfico productivo aún). Los assets (`_next`, estáticos) quedan fuera del matcher y siguen cacheables. Umbral concreto a vigilar (§12): si tras el cutover el TTFB del portal público (`/`, `/tours`) se degrada de forma sostenida respecto a la línea base previa, reconsiderar (p. ej. acotar el matcher del nonce a las rutas que ejecutan scripts inline, dejando estáticas las puramente públicas).
 - **Doble header CSP**. Garantizar **una sola** fuente de CSP (toda en el middleware); quitar la de `next.config.ts` para no emitir dos políticas que el navegador intersecaría.
-- **Branch de redirect del middleware**. El `NextResponse.redirect` de rutas protegidas también debe llevar el header CSP (aunque sea una redirección, por consistencia y porque algunos navegadores procesan headers de la respuesta intermedia).
+- **Branch de redirect del middleware**. El `NextResponse.redirect` de rutas protegidas también lleva el header CSP. Una 3xx no renderiza HTML ni ejecuta scripts, así que el CSP ahí **no aporta seguridad**; se setea sólo para no tener ramas con/sin header (consistencia y simplicidad del código), no porque el navegador lo necesite. El caso borde que sí importa es el de la respuesta que renderiza HTML (coincidencia nonce header ↔ `<script nonce>`).
 - **Refresh de cookies de Supabase**. La integración del nonce no debe descartar la `response` a la que Supabase engancha las cookies; verificar que la sesión sigue refrescándose.
 - **Edge runtime**. Usar Web Crypto (`crypto.getRandomValues`), no `node:crypto`; consistente con el patrón edge-safe ya presente.
-- **Sentry**. Su init de browser se bundlea con el cliente de Next, así que debería heredar el nonce; verificar que captura un error de prueba (depende de tener DSN configurado, ver §10).
+- **Sentry**. Su init de browser (`web/sentry.client.config.ts`, hoy `enabled` sólo con `NODE_ENV=production` && DSN presente) se bundlea con el cliente de Next, así que el script que lo carga es uno de los `<script>` de Next y hereda el nonce. Bajo `strict-dynamic`, cualquier script que Sentry inyecte dinámicamente se autoriza por propagación desde ese bundle confiable. Si la verificación mostrara que `@sentry/nextjs` necesita el nonce explícito, el SDK expone la opción documentada para pasárselo; se evaluará sólo si la verificación lo exige. La captura real de un error depende de DSN (diferida, §10).
 - **Navegadores sin `strict-dynamic`**. Caen al fallback (`https:`/host-allowlist), comportamiento degradado pero no roto.
 
 ## 9. Impacto en otras áreas
@@ -124,16 +152,18 @@ No aplica.
 
 ## 10. Plan de tests
 
-- **Unit**: el builder del string de CSP, dado un nonce, incluye `'nonce-<x>'` y `'strict-dynamic'` en `script-src` y **no** incluye `'unsafe-inline'` en scripts; conserva los orígenes de OnvoPay/Supabase/Sentry y `frame-ancestors`/`frame-src`; agrega `'unsafe-eval'` sólo cuando `NODE_ENV !== 'production'`.
-- **Unit**: el middleware setea `x-nonce` en el request hacia el render y un header `Content-Security-Policy` con el **mismo** nonce en la respuesta; dos requests producen nonces distintos; el branch de redirect también lleva CSP.
-- **E2E (Playwright)**: navegar portal, detalle de tour, checkout, login y dashboard; afirmar que la consola no reporta violaciones de CSP ni scripts bloqueados, y que el HTML trae `<script nonce="...">` coincidente con el header.
-- **Manual (documentado en el PR)**: un pago real con OnvoPay (vía ngrok) completado sin violaciones de CSP; un error de prueba capturado por Sentry (requiere DSN configurado — si el DSN de prod aún no está, dejar registrado que esta verificación queda pendiente del checkpoint de observabilidad).
+- **Unit (builder de CSP)**: dado un nonce, el string incluye `'nonce-<x>'` y `'strict-dynamic'` en `script-src` y **no** incluye `'unsafe-inline'` en `script-src`; agrega `'unsafe-eval'` sólo cuando `NODE_ENV !== 'production'` **y, como caso negativo explícito, NO lo incluye cuando `NODE_ENV === 'production'`**. Además, **paridad completa con la CSP vigente**: el test afirma que se conservan **todas** las demás directivas del `next.config.ts` actual sin pérdida — `default-src 'self'`, `style-src 'self' 'unsafe-inline'` (residuo aceptado, §3), `img-src 'self' data: https:`, `font-src 'self' data:`, `connect-src 'self' <supabase http> <supabase ws> https://sdk.onvopay.com https://api.onvopay.com https://*.sentry.io`, `frame-src https://sdk.onvopay.com https://*.onvopay.com`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`. Como los orígenes de `connect-src` se derivan en runtime de `NEXT_PUBLIC_SUPABASE_URL` (`supabaseOrigin`/`supabaseWs` en `next.config.ts`), el test debe **inyectar un valor de env de fixture** y verificar que el módulo compartido compone esos orígenes igual que hoy (no afirmar contra strings vacíos ni hardcodear, para que el test no sea frágil). Así una migración no pierde una directiva en silencio.
+- **Unit (middleware)**: dado un request, el middleware (a) setea el header **`content-security-policy`** con el nonce en los **request headers** que recibe el render (el mecanismo por el que Next firma sus scripts — no basta `x-nonce`), (b) setea un header `Content-Security-Policy` con el **mismo** nonce en la respuesta, (c) dos requests producen nonces distintos, (d) el branch de redirect también lleva CSP.
+- **Unit/regresión (un solo header CSP)**: afirmar que la fuente de CSP es única — que `next.config.ts` ya **no** emite `Content-Security-Policy` (hoy lo emite en `securityHeaders`) y que una respuesta trae exactamente **un** header CSP. Previene reintroducir la doble política (§8) al editar `next.config.ts`.
+- **E2E (Playwright)**: navegar portal (`/`), detalle de tour, checkout, login y dashboard; afirmar que la consola no reporta violaciones de CSP ni scripts bloqueados, que el HTML trae `<script nonce="...">` cuyo valor **coincide** con el `'nonce-…'` del header CSP de la respuesta, y que login y checkout (POST de Server Action) siguen funcionando (verifica de paso el caveat de body de §5).
+- **Manual (documentado en el PR)**: un pago real con OnvoPay (vía ngrok) completado sin violaciones de CSP. La captura real de un error por Sentry requiere DSN configurado; como hoy no existe DSN de prod, esta verificación queda **explícitamente diferida al checkpoint de observabilidad** (consistente con §4) — se deja registrado en el PR, no bloquea el merge.
 
 ## 11. Plan de rollout
 
-- Transición controlada por env: arrancar emitiendo `Content-Security-Policy-Report-Only` (nonce + strict-dynamic) en paralelo a la CSP enforcing vigente, para observar violaciones sin romper; promover a `Content-Security-Policy` enforcing cuando el reporte salga limpio en los flujos críticos. La env decide enforce vs report-only.
+- **Una sola política**, cuyo _header_ decide un env (p. ej. `CSP_REPORT_ONLY`): `Content-Security-Policy` (enforcing) por defecto, o `Content-Security-Policy-Report-Only` cuando se quiera observar sin romper. No se emiten dos CSP en paralelo (evita la doble política de §8): es el mismo string nonce+strict-dynamic bajo uno u otro nombre de header. Next firma igual sus scripts en ambos modos (lee el nonce de los dos headers, §5).
+- **Consistente con el spec 0016** (que decidió ir a enforcing directo tras validar en build de prod local porque no hay prod aún): el camino por defecto de este spec es **verificar en `pnpm build && start` local + Playwright + pago real** y quedar en **enforcing**. El modo Report-Only queda disponible como herramienta para el eventual cutover a prod real (observar violaciones con tráfico real antes de endurecer), no como paso obligatorio hoy.
 - No requiere migración de datos.
-- Reversible con un cambio de config (volver a la CSP con `'unsafe-inline'`), sin estado persistente que limpiar.
+- Reversible con un cambio de config (volver a la CSP con `'unsafe-inline'` de `next.config.ts`), sin estado persistente que limpiar.
 - Coordinar la verificación del pago real (OnvoPay sandbox + ngrok, como en checkpoints anteriores) antes de promover a enforce en producción.
 
 ## 12. Métricas de éxito
@@ -141,8 +171,9 @@ No aplica.
 - 0 violaciones de CSP en consola/Report-Only en los flujos críticos (portal, checkout, login, admin) durante la ventana de observación.
 - `script-src` en producción sin `'unsafe-inline'` (verificable en el header de cualquier respuesta HTML).
 - Tasa de éxito de checkout sin regresión tras el enforcing.
+- TTFB del portal público (`/`, `/tours`) sin degradación sostenida atribuible al render dinámico del nonce (§8); si la hubiera, aplicar la mitigación de acotar el matcher.
 
 ## 13. Preguntas abiertas
 
-- [ ] **Pregunta**: ¿next-intl preserva el request header `x-nonce` hacia el render de Next con el patrón de §5, o hace falta un mecanismo específico de next-intl para inyectarlo? **Dueño**: kenneth **Antes de**: implementación (es el punto técnico a confirmar; se valida con un spike corto del middleware).
-- [ ] **Pregunta**: ¿El loader de OnvoPay (`document.createElement`) sobrevive a `strict-dynamic` por propagación, o requiere el fix acotado (`script.nonce` / `next/script`)? **Dueño**: kenneth **Antes de**: enforce (se resuelve con el pago real de §10).
+- [x] **RESUELTA** — ¿next-intl propaga el nonce hacia el render de Next? **Sí, verificado en el código instalado** (no era `x-nonce` sino el header `content-security-policy` del request): Next extrae el nonce de `headers['content-security-policy']` en `app-render.js`, y next-intl reenvía `new Headers(request.headers)` vía `NextResponse.rewrite/next({ request: { headers } })`. El mecanismo concreto quedó en §5. No requiere spike adicional previo a la implementación.
+- [ ] **Pregunta**: ¿El loader de OnvoPay (`document.createElement`) sobrevive a `strict-dynamic` por propagación, o requiere el fix acotado (`script.nonce` / `next/script`)? **Dueño**: kenneth **Antes de**: enforce (se resuelve con el pago real de §10; es el único punto que sólo se confirma en runtime, por eso el criterio de aceptación exige un pago real verde y `payment-flow-auditor`).
