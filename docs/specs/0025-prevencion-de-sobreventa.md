@@ -4,8 +4,8 @@
 - **Autor**: kenneth
 - **Creado**: 2026-06-14
 - **Última actualización**: 2026-06-14 (aprobado por el usuario; decisiones de §13 resueltas: ventana de pago 30 min, estado `overbooked_refunded`, secuencial respecto a 0026. Antes, revisado por spec-reviewer: corregidos 5 bloqueantes — mecanismo real de encolado de refund, idempotencia en el camino del reconciliador sin `p_event_id`, hold en estado `paying` en vez de extender `expires_at`, `ALTER` del CHECK constraint de `bookings.status`, y la regla worker-sin-`@shared`)
-- **Rama**: feat/0025-prevencion-sobreventa (cuando aplique)
-- **PR**: #<número> (cuando aplique)
+- **Rama**: feat/0025-prevencion-sobreventa
+- **PR**: #49 (mergeado a `dev`)
 
 ## 1. Contexto y motivación
 

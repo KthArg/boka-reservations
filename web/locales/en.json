@@ -168,6 +168,8 @@
     "nav-label": "Bookings",
     "page-title": "Bookings",
     "today-link": "Today",
+    "refresh": "Refresh",
+    "refresh-pending": "Refreshing…",
     "col-date": "Date",
     "col-tour": "Tour",
     "col-customer": "Customer",

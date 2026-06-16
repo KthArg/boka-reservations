@@ -118,7 +118,15 @@ describe('reconcileOne — árbol de decisión', () => {
 
     await reconcileOne(db, c, booking());
 
-    expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(db, 'b1', 'pi_x', 3);
+    // spec 0026: el worker propaga monto/moneda al guard de payment_mismatch de confirm_booking.
+    expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(
+      db,
+      'b1',
+      'pi_x',
+      3,
+      EXPECTED_CENTS,
+      EXPECTED_CURRENCY,
+    );
     expect(repoMocks.writeRecoveredAudit).toHaveBeenCalledWith(db, 'b1', {
       seats: 3,
       external_payment_id: 'pi_x',
@@ -136,7 +144,14 @@ describe('reconcileOne — árbol de decisión', () => {
     await reconcileOne(db, c, booking());
 
     // confirm_booking igual se llamó (la RPC decidió el camino de sobreventa internamente).
-    expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(db, 'b1', 'pi_x', 3);
+    expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(
+      db,
+      'b1',
+      'pi_x',
+      3,
+      EXPECTED_CENTS,
+      EXPECTED_CURRENCY,
+    );
     // Dos alertas: la de recuperación + la de sobreventa.
     expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(2);
     expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-recovered']);

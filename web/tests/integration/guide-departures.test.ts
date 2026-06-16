@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { deleteToursDeep } from './cleanup';
 
 // listUpcomingDepartures / listGuides usan createSupabaseServerClient
 // (next/headers, server-only). Mockeamos esas fronteras y devolvemos el service
@@ -98,9 +99,9 @@ describe('listUpcomingDepartures / listGuides (integration)', () => {
   });
 
   afterEach(async () => {
-    while (createdTourIds.length) {
-      await admin.from('tours').delete().eq('id', createdTourIds.pop()!);
-    }
+    // Antes (spec 0026, ítem 3): borraba solo el tour → los FKs de schedule/instances/bookings/
+    // tour_instance_guides hacían fallar el delete en silencio y la suite filtraba "Salida ES".
+    await deleteToursDeep(admin, createdTourIds.splice(0));
   });
 
   afterAll(async () => {
