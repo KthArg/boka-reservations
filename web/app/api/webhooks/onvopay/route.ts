@@ -77,11 +77,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // así un fallo hace rollback de ambos y el retry de OnvoPay reprocesa limpio.
   // confirm_booking es idempotente a nivel reserva (no reconfirma) y a nivel
   // evento (ON CONFLICT), así que reenviar el mismo webhook es inocuo.
+  // Monto/moneda pagados van al guard de payment_mismatch dentro de confirm_booking (spec 0026,
+  // defensa en profundidad). La validación de arriba ya cortó el mismatch; pasarlos es redundante
+  // pero inofensivo y protege ante un futuro caller que olvide validar.
   const { error: rpcError } = await db.rpc('confirm_booking', {
     p_booking_id: payment.booking_id,
     p_external_payment_id: payload.paymentId,
     p_total_seats: totalSeats,
     p_event_id: payload.eventId,
+    p_paid_amount_cents: payload.amountCents,
+    p_paid_currency: payload.currency,
   });
 
   if (rpcError) {

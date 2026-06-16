@@ -782,6 +782,8 @@ export type Database = {
           p_external_payment_id: string;
           p_total_seats: number;
           p_event_id?: string | null;
+          p_paid_amount_cents?: number | null;
+          p_paid_currency?: string | null;
         };
         Returns: void;
       };

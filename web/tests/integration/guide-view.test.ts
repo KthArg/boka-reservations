@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { deleteToursDeep } from './cleanup';
 
 // guide-view.ts y token.ts llevan `import 'server-only'`, paquete que no existe
 // en el runtime de vitest. Lo stubbeamos (mismo patrón que bookings-repository).
@@ -100,9 +101,9 @@ describe('getGuideUpcomingTours (integration)', () => {
   });
 
   afterEach(async () => {
-    while (createdTourIds.length) {
-      await admin.from('tours').delete().eq('id', createdTourIds.pop()!);
-    }
+    // Antes (spec 0026, ítem 3): borraba solo el tour → los FKs de schedule/instances/bookings/
+    // tour_instance_guides hacían fallar el delete en silencio y la suite filtraba "Catarata ES".
+    await deleteToursDeep(admin, createdTourIds.splice(0));
     while (createdTokenHashes.length) {
       await admin.from('guide_access_tokens').delete().eq('token_hash', createdTokenHashes.pop()!);
     }
