@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { resendInvite, setActive } from '@/lib/users/actions';
 import { UserRole } from '@shared/constants/enums';
 import type { UserActionResult } from '@/lib/users/types';
+import { Icon } from '@/components/admin/icons';
 import styles from './users.module.css';
 
 type Props = { id: string; role: UserRole; active: boolean; isSelf: boolean };
@@ -41,10 +42,12 @@ export function UserRowActions({ id, role, active, isSelf }: Props) {
         onClick={onToggle}
         disabled={pending || (isSelf && active)}
       >
+        <Icon name={active ? 'deactivate' : 'reactivate'} size={15} />
         {active ? t('deactivate') : t('reactivate')}
       </button>
       {role !== UserRole.Guide && active && (
         <button type="button" className={styles.resendBtn} onClick={onResend} disabled={pending}>
+          <Icon name="resend" size={15} />
           {t('resend-invite')}
         </button>
       )}

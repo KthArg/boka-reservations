@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { assignGuide, unassignGuide } from '@/lib/guides/assign-action';
 import type { AssignableGuide } from '@/lib/guides/types';
+import { Icon } from '@/components/admin/icons';
 import styles from './departures.module.css';
 
 type Props = {
@@ -55,6 +56,7 @@ export function GuideAssigner({ instanceId, guides, assignedGuideId }: Props) {
         onClick={onAssign}
         disabled={pending || !selected || selected === assignedGuideId}
       >
+        <Icon name="assign" size={15} />
         {t('assign')}
       </button>
       {assignedGuideId ? (
@@ -64,6 +66,7 @@ export function GuideAssigner({ instanceId, guides, assignedGuideId }: Props) {
           onClick={onUnassign}
           disabled={pending}
         >
+          <Icon name="unassign" size={15} />
           {t('unassign')}
         </button>
       ) : null}

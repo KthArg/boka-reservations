@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 
 export const metadata: Metadata = {
-  title: 'Boka Trails',
+  title: 'Boka Verde',
   description: 'Reservas de tours de senderismo y birdwatching en Costa Rica',
 };
 

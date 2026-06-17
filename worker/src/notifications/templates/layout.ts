@@ -11,7 +11,7 @@ export function wrapHtml(bodyHtml: string): string {
         <td>${bodyHtml}</td>
       </tr>
     </table>
-    <p style="text-align:center;font-size:12px;color:#888;margin-top:16px;">Boka Trails</p>
+    <p style="text-align:center;font-size:12px;color:#888;margin-top:16px;">Boka Verde</p>
   </body>
 </html>`;
 }

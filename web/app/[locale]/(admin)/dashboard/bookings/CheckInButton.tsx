@@ -4,6 +4,7 @@ import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { toggleCheckIn } from '@/lib/booking/checkin-action';
 import { CheckInAction } from '@shared/constants/bookings';
+import { Icon } from '@/components/admin/icons';
 import styles from './bookings.module.css';
 
 type Props = {
@@ -29,6 +30,7 @@ export function CheckInButton({ bookingId, checkedIn }: Props) {
 
   return (
     <button type="button" className={styles.checkinBtn} onClick={onClick} disabled={pending}>
+      <Icon name={checkedIn ? 'retry' : 'checkin'} size={14} />
       {label}
     </button>
   );

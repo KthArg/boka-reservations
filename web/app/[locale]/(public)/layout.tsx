@@ -13,7 +13,7 @@ export default async function PublicLayout({ children }: Props) {
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link href="/" className={styles.logo}>
-            Boka Trails
+            Boka Verde
           </Link>
           <nav className={styles.nav}>
             <Link href="/tours" className={styles.navLink}>
@@ -28,7 +28,7 @@ export default async function PublicLayout({ children }: Props) {
 
       <footer className={styles.footer}>
         <p className={styles.footerText}>
-          © {new Date().getFullYear()} Boka Trails — {t('footer-rights')}
+          © {new Date().getFullYear()} Boka Verde — {t('footer-rights')}
         </p>
       </footer>
     </div>
