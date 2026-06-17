@@ -24,6 +24,8 @@ describe('verifyWebhook (OnvoPay)', () => {
     const result = adapter.verifyWebhook(body, WEBHOOK_SECRET);
 
     expect(result).not.toBeNull();
+    // eventId y paymentId son AMBOS data.id a propósito: el webhook de OnvoPay no trae un id de
+    // evento de envelope (verificado contra la doc; ver comentario en el adapter). No "corregir".
     expect(result?.eventId).toBe('pay_xyz789');
     expect(result?.eventType).toBe('payment-intent.succeeded');
     expect(result?.paymentId).toBe('pay_xyz789');

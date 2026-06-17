@@ -81,6 +81,15 @@ export function createOnvopayAdapter(secretKey: string, webhookSecret: string): 
       if (!result.success) return null;
 
       const body = result.data;
+      // eventId === paymentId === data.id A PROPÓSITO: el webhook de OnvoPay solo trae `type`
+      // y `data` a nivel raíz — NO existe un id de evento de envelope distinto de `data.id`
+      // (verificado contra https://docs.onvopay.com/en/webhooks, cutover 2026-06-17). `data.id`
+      // es el id del payment-intent, único identificador estable del mensaje. Sirve de clave de
+      // idempotencia (processed_webhook_events, dentro de confirm_booking) porque el flujo es
+      // binario: un único `payment-intent.succeeded` terminal por intent. NO unificar esto si se
+      // suma un 2º proveedor que SÍ traiga un event id propio, ni si OnvoPay empezara a emitir
+      // más de un evento accionable por intent: ahí el eventId debe ser el id de evento real,
+      // no el del recurso (ver pre-production-checklist, Pagos/Webhooks).
       return {
         eventId: body.data.id,
         eventType: body.type,
