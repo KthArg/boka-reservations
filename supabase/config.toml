@@ -257,7 +257,7 @@ otp_expiry = 3600
 # Template de invitación de usuario interno (spec 0010). Apunta a /auth/confirm
 # (verifyOtp con token_hash), no al flujo PKCE de /auth/callback.
 [auth.email.template.invite]
-subject = "Te invitaron a Boka Trails / You've been invited"
+subject = "Te invitaron a Boka Verde / You've been invited"
 content_path = "./supabase/templates/invite.html"
 
 # Uncomment to customize notification email template

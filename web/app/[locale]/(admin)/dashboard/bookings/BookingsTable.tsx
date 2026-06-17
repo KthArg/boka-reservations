@@ -4,6 +4,7 @@ import { BookingStatus } from '@shared/constants/enums';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import type { AdminBookingRow } from '@/lib/booking/admin-types';
 import { CheckInButton } from './CheckInButton';
+import { Icon } from '@/components/admin/icons';
 import styles from './bookings.module.css';
 
 type Props = { rows: AdminBookingRow[] };
@@ -64,6 +65,7 @@ export async function BookingsTable({ rows }: Props) {
               <td className={styles.td}>
                 <Link href={`/dashboard/bookings/${row.id}`} className={styles.detailLink}>
                   {t('view-detail')}
+                  <Icon name="detail" size={15} />
                 </Link>
               </td>
             </tr>

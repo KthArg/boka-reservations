@@ -10,7 +10,7 @@ const envSchema = z
     SENTRY_DSN: z.string().url().optional(),
 
     EMAIL_PROVIDER: z.enum(['mailpit', 'resend']).default('mailpit'),
-    EMAIL_FROM: z.string().min(1).default('Boka Trails <no-reply@localhost>'),
+    EMAIL_FROM: z.string().min(1).default('Boka Verde <no-reply@localhost>'),
     RESEND_API_KEY: z.string().min(1).optional(),
     SMTP_HOST: z.string().min(1).default('localhost'),
     SMTP_PORT: z.coerce.number().int().positive().default(1025),

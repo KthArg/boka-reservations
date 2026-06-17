@@ -6,7 +6,9 @@
     "under-construction": "Booking system — under construction.",
     "save": "Save",
     "cancel": "Cancel",
-    "actions": "Actions"
+    "actions": "Actions",
+    "toggle-sidebar": "Collapse or expand menu",
+    "menu": "Menu"
   },
   "tour": {
     "book-now": "Book now",
@@ -143,6 +145,7 @@
     "hero-title": "Discover Costa Rica",
     "footer-rights": "All rights reserved",
     "tours-title": "Our tours",
+    "tours-subtitle": "Guided hiking and birdwatching through the forests of Costa Rica, in small groups and at an unhurried pace.",
     "tours-from-price": "From ${price} USD",
     "tours-no-price": "Ask for price",
     "tours-duration": "{n} min",

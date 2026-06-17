@@ -1,7 +1,6 @@
 .title {
   font-size: var(--text-2xl);
-  font-weight: 600;
-  margin: 0 0 var(--space-lg);
+  margin: 0 0 var(--space-xl);
   color: var(--color-text);
 }
 
@@ -26,7 +25,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .label {
@@ -39,13 +38,20 @@
 }
 
 .input {
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
+  padding: 0.65rem var(--space-md);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   color: var(--color-text);
   background: var(--color-surface);
   outline: none;
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+.input:hover {
+  border-color: var(--color-text-muted);
 }
 
 .input:focus {
@@ -54,19 +60,26 @@
 }
 
 .submit {
-  margin-top: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-xs);
+  padding: 0.7rem var(--space-md);
   background: var(--color-primary);
   color: var(--color-surface);
   border: none;
   border-radius: var(--radius-md);
   font-size: var(--text-base);
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+  transition:
+    background var(--transition-base),
+    transform var(--transition-base);
 }
 
 .submit:hover {
   background: var(--color-primary-dark);
+}
+
+.submit:active {
+  transform: scale(0.985);
 }
 
 .forgotLink {
@@ -74,10 +87,11 @@
   margin-top: var(--space-lg);
   text-align: center;
   font-size: var(--text-sm);
-  color: var(--color-primary);
+  color: var(--color-text-muted);
   text-decoration: none;
+  transition: color var(--transition-base);
 }
 
 .forgotLink:hover {
-  text-decoration: underline;
+  color: var(--color-primary-dark);
 }
