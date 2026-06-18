@@ -3,6 +3,8 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-xl);
+  /* min(100%, 300px) evita el overflow horizontal cuando el viewport es más
+     angosto que la pista mínima (p. ej. 320px). */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--space-xl) var(--space-lg);
 }

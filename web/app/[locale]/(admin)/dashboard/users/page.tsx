@@ -6,6 +6,7 @@ import { listUsers } from '@/lib/users/repository';
 import { UserRole } from '@shared/constants/enums';
 import { UserFilters } from './UserFilters';
 import { UserRowActions } from './UserRowActions';
+import { Icon } from '@/components/admin/icons';
 import styles from './users.module.css';
 
 type Props = {
@@ -73,6 +74,7 @@ export default async function UsersPage({ params, searchParams }: Props) {
                 </td>
                 <td className={`${styles.td} ${styles.actions}`}>
                   <Link href={`/dashboard/users/${u.id}/edit`} className={styles.editBtn}>
+                    <Icon name="edit" size={15} />
                     {t('edit')}
                   </Link>
                   <UserRowActions

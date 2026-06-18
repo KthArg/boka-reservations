@@ -5,6 +5,7 @@ import { loadBookingForNotification, loadLatestRefund } from './repository.js';
 import { bookingViewUrl, localizedTourName } from './prepare.js';
 import { renderCancellationConfirmation } from './templates/cancellation-confirmation.js';
 import { renderRefundConfirmation } from './templates/refund-confirmation.js';
+import { renderOverbookedRefunded } from './templates/overbooked-refunded.js';
 
 // El link "ver mi reserva" del email de cancelación debe seguir vivo aunque el
 // tour ya haya pasado (a diferencia del de confirmación, que expira al inicio).
@@ -61,6 +62,32 @@ export async function prepareRefundEmail(
       tourName: localizedTourName(booking, notif.locale),
       refundAmountCents: refund.amountCents,
       currency: refund.currency,
+    },
+    notif.locale,
+  );
+  return { ok: true, email };
+}
+
+/** Email de "cupo agotado + reembolso" (spec 0025). Lo encola confirm_booking cuando el cupo
+ * se agotó al pagar; la reserva está `overbooked_refunded` (no confirmada) y ya tiene un refund
+ * total encolado, así que no aplica el guard de `prepareBookingEmail`. */
+export async function prepareOverbookedEmail(
+  db: SupabaseClient,
+  notif: NotificationRow,
+): Promise<PreparedEmail> {
+  if (!notif.booking_id) return { ok: false, reason: 'booking-missing' };
+
+  const booking = await loadBookingForNotification(db, notif.booking_id);
+  if (!booking) return { ok: false, reason: 'booking-not-found' };
+
+  const refund = await loadLatestRefund(db, booking.id);
+  const email = renderOverbookedRefunded(
+    {
+      customerName: booking.customer_name,
+      tourName: localizedTourName(booking, notif.locale),
+      startsAt: booking.tour_instance.starts_at,
+      refundAmountCents: refund?.amountCents ?? booking.total_amount_cents,
+      currency: refund?.currency ?? booking.currency,
     },
     notif.locale,
   );

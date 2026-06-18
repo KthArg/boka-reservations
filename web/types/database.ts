@@ -6,6 +6,24 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      rate_limits: {
+        Row: {
+          key: string;
+          window_start: string;
+          count: number;
+        };
+        Insert: {
+          key: string;
+          window_start?: string;
+          count?: number;
+        };
+        Update: {
+          key?: string;
+          window_start?: string;
+          count?: number;
+        };
+        Relationships: [];
+      };
       refunds: {
         Row: {
           id: string;
@@ -395,7 +413,7 @@ export type Database = {
           tour_instance_id: string;
           session_token: string;
           held_seats: number;
-          status: 'active' | 'released' | 'expired' | 'converted';
+          status: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at: string;
           created_at: string;
         };
@@ -404,7 +422,7 @@ export type Database = {
           tour_instance_id: string;
           session_token: string;
           held_seats: number;
-          status?: 'active' | 'released' | 'expired' | 'converted';
+          status?: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at?: string;
           created_at?: string;
         };
@@ -413,7 +431,7 @@ export type Database = {
           tour_instance_id?: string;
           session_token?: string;
           held_seats?: number;
-          status?: 'active' | 'released' | 'expired' | 'converted';
+          status?: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at?: string;
           created_at?: string;
         };
@@ -439,10 +457,19 @@ export type Database = {
           tickets_student: number;
           total_amount_cents: number;
           currency: string;
-          status: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          status:
+            | 'pending_payment'
+            | 'confirmed'
+            | 'cancelled'
+            | 'refunded'
+            | 'payment_mismatch'
+            | 'overbooked_refunded';
           locale: 'es' | 'en';
           checked_in_at: string | null;
           checked_in_by: string | null;
+          consent_at: string | null;
+          consent_version: string | null;
+          anonymized_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -457,10 +484,19 @@ export type Database = {
           tickets_student?: number;
           total_amount_cents: number;
           currency?: string;
-          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          status?:
+            | 'pending_payment'
+            | 'confirmed'
+            | 'cancelled'
+            | 'refunded'
+            | 'payment_mismatch'
+            | 'overbooked_refunded';
           locale?: 'es' | 'en';
           checked_in_at?: string | null;
           checked_in_by?: string | null;
+          consent_at?: string | null;
+          consent_version?: string | null;
+          anonymized_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -475,10 +511,19 @@ export type Database = {
           tickets_student?: number;
           total_amount_cents?: number;
           currency?: string;
-          status?: 'pending_payment' | 'confirmed' | 'cancelled' | 'refunded';
+          status?:
+            | 'pending_payment'
+            | 'confirmed'
+            | 'cancelled'
+            | 'refunded'
+            | 'payment_mismatch'
+            | 'overbooked_refunded';
           locale?: 'es' | 'en';
           checked_in_at?: string | null;
           checked_in_by?: string | null;
+          consent_at?: string | null;
+          consent_version?: string | null;
+          anonymized_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -553,7 +598,8 @@ export type Database = {
             | 'reminder_24h'
             | 'guide_assignment'
             | 'cancellation_confirmation'
-            | 'refund_confirmation';
+            | 'refund_confirmation'
+            | 'overbooked_refunded';
           channel: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
@@ -578,7 +624,8 @@ export type Database = {
             | 'reminder_24h'
             | 'guide_assignment'
             | 'cancellation_confirmation'
-            | 'refund_confirmation';
+            | 'refund_confirmation'
+            | 'overbooked_refunded';
           channel?: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
@@ -603,7 +650,8 @@ export type Database = {
             | 'reminder_24h'
             | 'guide_assignment'
             | 'cancellation_confirmation'
-            | 'refund_confirmation';
+            | 'refund_confirmation'
+            | 'overbooked_refunded';
           channel?: 'email';
           recipient_email?: string;
           locale?: 'es' | 'en';
@@ -723,7 +771,7 @@ export type Database = {
           tour_instance_id: string;
           session_token: string;
           held_seats: number;
-          status: 'active' | 'released' | 'expired' | 'converted';
+          status: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at: string;
           created_at: string;
         };
@@ -733,6 +781,9 @@ export type Database = {
           p_booking_id: string;
           p_external_payment_id: string;
           p_total_seats: number;
+          p_event_id?: string | null;
+          p_paid_amount_cents?: number | null;
+          p_paid_currency?: string | null;
         };
         Returns: void;
       };
@@ -744,6 +795,39 @@ export type Database = {
           p_actor_id?: string;
         };
         Returns: void;
+      };
+      flag_payment_mismatch: {
+        Args: {
+          p_booking_id: string;
+          p_paid_amount_cents: number;
+          p_paid_currency: string;
+          p_source: string;
+        };
+        Returns: boolean;
+      };
+      cancel_stale_pending_booking: {
+        Args: { p_booking_id: string; p_reason: string };
+        Returns: boolean;
+      };
+      anonymize_booking_pii_by_email: {
+        Args: { p_email: string; p_actor_id: string };
+        Returns: { anonymized_count: number; deleted_count: number }[];
+      };
+      anonymize_bookings_past_retention: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_unpaid_bookings: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_expired_access_tokens: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_old_notifications: {
+        Args: { p_cutoff: string };
+        Returns: number;
       };
       report_revenue: {
         Args: { p_from: string; p_to: string };
@@ -780,6 +864,10 @@ export type Database = {
           valid_bookings_count: number;
           currency: string;
         }[];
+      };
+      check_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number };
+        Returns: { allowed: boolean; retry_after: number }[];
       };
     };
     Enums: {

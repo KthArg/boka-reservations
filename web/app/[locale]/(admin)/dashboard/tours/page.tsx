@@ -3,6 +3,7 @@ import { Link } from '@/i18n/navigation';
 import { listTours } from '@/lib/tours/repository';
 import { archiveTour, reactivateTour } from '@/lib/tours/actions';
 import { TourStatus } from '@shared/constants/enums';
+import { Icon } from '@/components/admin/icons';
 import styles from './tours.module.css';
 
 export default async function ToursPage() {
@@ -47,17 +48,20 @@ export default async function ToursPage() {
                 <td className={styles.td}>{tour.activeSchedulesCount}</td>
                 <td className={`${styles.td} ${styles.actions}`}>
                   <Link href={`/dashboard/tours/${tour.id}/edit`} className={styles.editBtn}>
+                    <Icon name="edit" size={15} />
                     {t('edit')}
                   </Link>
                   {tour.status === TourStatus.Active ? (
                     <form action={archiveTour.bind(null, tour.id)}>
                       <button type="submit" className={styles.archiveBtn}>
+                        <Icon name="archive" size={15} />
                         {t('archive')}
                       </button>
                     </form>
                   ) : (
                     <form action={reactivateTour.bind(null, tour.id)}>
                       <button type="submit" className={styles.reactivateBtn}>
+                        <Icon name="restore" size={15} />
                         {t('reactivate')}
                       </button>
                     </form>

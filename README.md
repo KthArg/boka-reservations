@@ -159,6 +159,12 @@ Las reglas completas viven en `.claude/skills/` para que Claude Code las siga al
 - **`testing-practices`** — prácticas profundas y profesionales de testing.
 - **`changelog-maintenance`** — changelog vivo por feature, actualizado al cerrar cada unidad de trabajo.
 
+## Subagentes
+
+Además de las skills, el proyecto define **subagentes especializados** en `.claude/agents/` que el agente principal invoca para revisiones acotadas en momentos críticos del workflow (revisión de specs, validación de servicios externos, code review, integridad de schema, auditoría de pagos, curación de memoria). Los subagentes consumen las skills como fuente de verdad y actúan como consejeros: reportan, pero no modifican código ni documentación sin aprobación.
+
+Ver `.claude/agents/README.md` para la lista completa y los triggers de cada uno.
+
 ## Deployment
 
 - **`web/`** se despliega a Vercel automáticamente en cada push a `main`.
@@ -172,6 +178,7 @@ Las reglas completas viven en `.claude/skills/` para que Claude Code las siga al
 - `docs/claude-code-bootstrap-prompt.md` — prompt para arrancar Claude Code en una sesión nueva.
 - `.claude/memory/` — memoria persistente del proyecto.
 - `.claude/skills/` — guías de colaboración que Claude Code (y humanos) deben seguir.
+- `.claude/agents/` — subagentes especializados para revisiones acotadas (specs, pagos, schema, código, servicios externos, memoria).
 
 ## Licencia
 

@@ -50,6 +50,16 @@ describe('validateExportRange', () => {
     );
   });
 
+  it('rechaza formato no estricto que Date.parse aceptaría (APPSEC-01)', () => {
+    // `Date.parse('2026-01-01"')` es válido y rompería el header Content-Disposition del export.
+    expect(validateExportRange({ page: 1, dateFrom: '2026-01-01"', dateTo: '2026-02-01' })).toBe(
+      ExportRangeError.Missing,
+    );
+    expect(validateExportRange({ page: 1, dateFrom: '2026-1-1', dateTo: '2026-02-01' })).toBe(
+      ExportRangeError.Missing,
+    );
+  });
+
   it('rechaza un rango mayor a un año', () => {
     expect(validateExportRange({ page: 1, dateFrom: '2025-01-01', dateTo: '2026-06-01' })).toBe(
       ExportRangeError.TooLong,

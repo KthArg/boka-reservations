@@ -20,6 +20,6 @@ if (existsSync(envPath)) {
 process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER ?? 'mailpit';
 process.env.SMTP_HOST = process.env.SMTP_HOST ?? '127.0.0.1';
 process.env.SMTP_PORT = process.env.SMTP_PORT ?? '54325';
-process.env.EMAIL_FROM = process.env.EMAIL_FROM ?? 'Boka Trails <test@localhost>';
+process.env.EMAIL_FROM = process.env.EMAIL_FROM ?? 'Boka Verde <test@localhost>';
 process.env.NOTIFICATIONS_ENABLED = process.env.NOTIFICATIONS_ENABLED ?? 'true';
 process.env.APP_URL = process.env.APP_URL ?? 'http://127.0.0.1:3000';

@@ -6,7 +6,9 @@
     "under-construction": "Booking system — under construction.",
     "save": "Save",
     "cancel": "Cancel",
-    "actions": "Actions"
+    "actions": "Actions",
+    "toggle-sidebar": "Collapse or expand menu",
+    "menu": "Menu"
   },
   "tour": {
     "book-now": "Book now",
@@ -113,6 +115,7 @@
     "your-info": "Your details",
     "field-name": "Full name",
     "field-email": "Email address",
+    "consent-label": "I accept the <privacy>privacy notice</privacy> and the <terms>terms and conditions</terms>.",
     "total-label": "Total",
     "submit": "Pay now",
     "submitting": "Redirecting to payment...",
@@ -122,7 +125,6 @@
     "success-booking": "Booking #",
     "success-tour": "Tour:",
     "success-date": "Date:",
-    "success-name": "Name:",
     "success-email": "Confirmation sent to:",
     "success-back": "See more tours",
     "cancel-title": "Payment cancelled",
@@ -130,12 +132,20 @@
     "cancel-back": "Back to tour",
     "cancel-retry": "Try again"
   },
+  "legal": {
+    "privacy-title": "Privacy notice",
+    "privacy-body": "[PENDING — the operator must replace this text with its privacy notice in line with Costa Rica's Law 8968: what personal data is collected, for what purpose, how long it is retained, with whom it is shared, and how to exercise the rights of access, rectification and deletion before the data controller.]",
+    "terms-title": "Terms and conditions",
+    "terms-body": "[PENDING — the operator must replace this text with its terms and conditions: cancellation and refund policy, responsibilities of the parties, and conditions of service.]",
+    "back": "Back to home"
+  },
   "public": {
     "nav-tours": "Tours",
     "nav-home": "Home",
     "hero-title": "Discover Costa Rica",
     "footer-rights": "All rights reserved",
     "tours-title": "Our tours",
+    "tours-subtitle": "Guided hiking and birdwatching through the forests of Costa Rica, in small groups and at an unhurried pace.",
     "tours-from-price": "From ${price} USD",
     "tours-no-price": "Ask for price",
     "tours-duration": "{n} min",
@@ -154,12 +164,15 @@
     "ticket-child": "Child",
     "ticket-student": "Student",
     "not-found-title": "Tour not found",
-    "not-found-back": "Browse all tours"
+    "not-found-back": "Browse all tours",
+    "rate-limited": "Too many requests. Please wait a moment and try again."
   },
   "bookings": {
     "nav-label": "Bookings",
     "page-title": "Bookings",
     "today-link": "Today",
+    "refresh": "Refresh",
+    "refresh-pending": "Refreshing…",
     "col-date": "Date",
     "col-tour": "Tour",
     "col-customer": "Customer",
@@ -183,6 +196,8 @@
     "status-confirmed": "Confirmed",
     "status-cancelled": "Cancelled",
     "status-refunded": "Refunded",
+    "status-payment_mismatch": "Payment mismatch",
+    "status-overbooked_refunded": "Sold out (refunded)",
     "payment-pending": "Pending",
     "payment-succeeded": "Paid",
     "payment-failed": "Failed",
@@ -232,6 +247,7 @@
     "today-view": "View bookings",
     "notif-cancellation_confirmation": "Cancellation confirmation",
     "notif-refund_confirmation": "Refund confirmation",
+    "notif-overbooked_refunded": "Sold out + refund",
     "detail-cancel": "Cancel booking",
     "cancel-confirm-refund": "This booking is eligible for a {amount} refund. Confirm cancellation?",
     "cancel-confirm-no-refund": "This cancellation has no refund. Confirm cancellation?",
@@ -324,6 +340,8 @@
     "status-cancelled": "Cancelled",
     "status-refunded": "Refunded",
     "status-pending_payment": "Pending payment",
+    "status-payment_mismatch": "Payment mismatch",
+    "status-overbooked_refunded": "Sold out (refunded)",
     "cancel-cta": "Cancel booking",
     "cancel-title": "Cancel booking",
     "refund-yes": "You are eligible for a refund: {amount}",

@@ -5,6 +5,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@/types/database';
+import { deleteToursDeep } from './cleanup';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -84,18 +85,10 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await admin
-    .from('notifications')
-    .delete()
-    .in(
-      'booking_id',
-      (await admin.from('bookings').select('id').eq('tour_instance_id', instanceId)).data?.map(
-        (b) => b.id,
-      ) ?? [],
-    );
-  await admin.from('bookings').delete().in('tour_instance_id', [instanceId, nearInstanceId]);
-  await admin.from('tour_instances').delete().eq('tour_id', tourId);
-  await admin.from('tours').delete().eq('id', tourId);
+  // Antes (spec 0026, ítem 3): solo borraba notifications de `instanceId` y no tocaba payments
+  // ni el tour_schedule → los FKs hacían fallar en silencio el delete del tour y la suite
+  // filtraba "Tour notif". Ahora se borra el tour y toda su descendencia (ambas instancias).
+  await deleteToursDeep(admin, [tourId]);
 });
 
 async function createBookingAndPayment(args: {

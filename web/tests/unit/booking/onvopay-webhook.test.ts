@@ -24,6 +24,8 @@ describe('verifyWebhook (OnvoPay)', () => {
     const result = adapter.verifyWebhook(body, WEBHOOK_SECRET);
 
     expect(result).not.toBeNull();
+    // eventId y paymentId son AMBOS data.id a propósito: el webhook de OnvoPay no trae un id de
+    // evento de envelope (verificado contra la doc; ver comentario en el adapter). No "corregir".
     expect(result?.eventId).toBe('pay_xyz789');
     expect(result?.eventType).toBe('payment-intent.succeeded');
     expect(result?.paymentId).toBe('pay_xyz789');
@@ -53,5 +55,29 @@ describe('verifyWebhook (OnvoPay)', () => {
     const body = JSON.stringify(makePaymentEvent());
     const result = adapter.verifyWebhook(body, WEBHOOK_SECRET.slice(0, -1));
     expect(result).toBeNull();
+  });
+
+  // B-1 (spec 0016): nunca lanza ante input inválido; valida el body con Zod.
+  it('retorna null (no lanza) con un cuerpo no-JSON', () => {
+    expect(() => adapter.verifyWebhook('no es json {', WEBHOOK_SECRET)).not.toThrow();
+    expect(adapter.verifyWebhook('no es json {', WEBHOOK_SECRET)).toBeNull();
+  });
+
+  it('retorna null si falta un campo requerido (data.amount ausente)', () => {
+    const body = JSON.stringify({
+      type: 'payment-intent.succeeded',
+      data: { id: 'p', status: 'succeeded', currency: 'USD' },
+    });
+    expect(adapter.verifyWebhook(body, WEBHOOK_SECRET)).toBeNull();
+  });
+
+  it('retorna null si amount no es numérico', () => {
+    const body = JSON.stringify(makePaymentEvent({ amount: '5000' }));
+    expect(adapter.verifyWebhook(body, WEBHOOK_SECRET)).toBeNull();
+  });
+
+  it('retorna null con un body que no es objeto', () => {
+    expect(adapter.verifyWebhook('"solo-string"', WEBHOOK_SECRET)).toBeNull();
+    expect(adapter.verifyWebhook('null', WEBHOOK_SECRET)).toBeNull();
   });
 });

@@ -22,7 +22,7 @@ const COPY = {
     passengersLabel: 'Pasajeros',
     passengers: (n: number) => `${n} confirmado(s)`,
     cta: 'Ver mis próximas salidas',
-    farewell: '¡Gracias por guiar con Boka Trails!',
+    farewell: '¡Gracias por guiar con Boka Verde!',
   },
   en: {
     subject: (tour: string) => `You were assigned a tour — ${tour}`,
@@ -34,7 +34,7 @@ const COPY = {
     passengersLabel: 'Passengers',
     passengers: (n: number) => `${n} confirmed`,
     cta: 'View my upcoming tours',
-    farewell: 'Thanks for guiding with Boka Trails!',
+    farewell: 'Thanks for guiding with Boka Verde!',
   },
 };
 

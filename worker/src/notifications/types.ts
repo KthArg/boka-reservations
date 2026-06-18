@@ -7,11 +7,13 @@ export type NotificationKind =
   | 'reminder_24h'
   | 'guide_assignment'
   | 'cancellation_confirmation'
-  | 'refund_confirmation';
+  | 'refund_confirmation'
+  | 'overbooked_refunded';
 
 export const GUIDE_ASSIGNMENT_KIND: NotificationKind = 'guide_assignment';
 export const CANCELLATION_CONFIRMATION_KIND: NotificationKind = 'cancellation_confirmation';
 export const REFUND_CONFIRMATION_KIND: NotificationKind = 'refund_confirmation';
+export const OVERBOOKED_REFUNDED_KIND: NotificationKind = 'overbooked_refunded';
 
 /** Email ya renderizado, listo para entregar. */
 export type RenderedEmail = {

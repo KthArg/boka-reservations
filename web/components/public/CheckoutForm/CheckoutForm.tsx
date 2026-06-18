@@ -5,20 +5,19 @@ import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import type { PublicPricing } from '@/lib/public/tours';
 import { checkoutAction } from '@/lib/booking/checkout-action';
-import { calculateTotalCents } from '@/lib/booking/create';
+import { calculateTotalCents } from '@/lib/booking/pricing-math';
+import { MAX_TICKETS_PER_BOOKING } from '@/lib/booking/quantities';
 import styles from './CheckoutForm.module.css';
 
 type Props = {
   instanceId: string;
-  tourName: string;
   pricing: PublicPricing[];
-  tourSlug: string;
 };
 
 const TICKET_TYPES = ['adult', 'child', 'student'] as const;
 const ONVO_SDK_URL = 'https://sdk.onvopay.com/sdk.js';
 
-export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props) {
+export function CheckoutForm({ instanceId, pricing }: Props) {
   const t = useTranslations('checkout');
   const locale = useLocale();
   const router = useRouter();
@@ -76,14 +75,6 @@ export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props)
   return (
     <form action={action} className={styles.form}>
       <input type="hidden" name="instance_id" value={instanceId} />
-      <input type="hidden" name="tour_name" value={tourName} />
-      <input
-        type="hidden"
-        name="pricing"
-        value={JSON.stringify(
-          pricing.map((p) => ({ ticket_type: p.ticket_type, price_usd: p.price_usd })),
-        )}
-      />
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('tickets-section')}</h2>
@@ -99,7 +90,7 @@ export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props)
                 type="number"
                 name={type}
                 min={0}
-                max={20}
+                max={MAX_TICKETS_PER_BOOKING}
                 value={quantities[type]}
                 onChange={(e) =>
                   setQuantities((q) => ({ ...q, [type]: parseInt(e.target.value || '0', 10) }))
@@ -128,6 +119,42 @@ export function CheckoutForm({ instanceId, tourName, pricing, tourSlug }: Props)
           </label>
           <input id="email" name="email" type="email" required className={styles.input} />
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <label className={styles.consent}>
+          <input
+            type="checkbox"
+            name="consent"
+            value="accepted"
+            required
+            className={styles.consentCheckbox}
+          />
+          <span className={styles.consentText}>
+            {t.rich('consent-label', {
+              privacy: (chunks) => (
+                <a
+                  href={`/${locale}/privacy`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.consentLink}
+                >
+                  {chunks}
+                </a>
+              ),
+              terms: (chunks) => (
+                <a
+                  href={`/${locale}/terms`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.consentLink}
+                >
+                  {chunks}
+                </a>
+              ),
+            })}
+          </span>
+        </label>
       </section>
 
       {state && 'error' in state && (

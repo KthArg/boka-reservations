@@ -50,7 +50,10 @@ vi.mock('../../../src/notifications/booking-token.js', () => ({
 import { sendNotifications } from '../../../src/jobs/send-notifications.js';
 import { EmailPermanentError, EmailTransientError } from '../../../src/notifications/types.js';
 
-const FUTURE = '2026-06-15T13:00:00.000Z';
+// Relativo a "ahora" (siempre > la ventana stale de 1h de prepareBookingEmail). Un literal
+// fijo se vuelve un time-bomb: el día que el reloj lo pasa, prepareBookingEmail lo marca stale
+// y el happy path deja de despachar. testing-practices: no fechas reales fijas en tests.
+const FUTURE = new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString();
 
 const notif = {
   id: 'notif-1',

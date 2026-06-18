@@ -1,3 +1,4 @@
+import 'server-only';
 import { createOnvopayAdapter } from './adapters/onvopay';
 import type { PaymentProvider } from './types';
 

@@ -56,7 +56,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
           </p>
         </div>
       </header>
-      <CheckoutForm instanceId={instanceId} tourName={tourName} pricing={pricing} tourSlug={slug} />
+      <CheckoutForm instanceId={instanceId} pricing={pricing} />
     </div>
   );
 }

@@ -37,6 +37,12 @@ export enum BookingStatus {
   Confirmed = 'confirmed',
   Cancelled = 'cancelled',
   Refunded = 'refunded',
+  /** Pago reportado por OnvoPay no coincide con lo esperado; retenida para
+   *  revisión manual (spec 0014). No se confirma ni cuenta como ingreso. */
+  PaymentMismatch = 'payment_mismatch',
+  /** El pago se concretó pero el cupo ya estaba agotado (spec 0025). Terminal: no
+   *  confirma ni incrementa cupo; se reembolsa el total automáticamente. */
+  OverbookedRefunded = 'overbooked_refunded',
 }
 
 export enum PaymentStatus {

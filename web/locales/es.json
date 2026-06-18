@@ -6,7 +6,9 @@
     "under-construction": "Sistema de reservas — en construcción.",
     "save": "Guardar",
     "cancel": "Cancelar",
-    "actions": "Acciones"
+    "actions": "Acciones",
+    "toggle-sidebar": "Contraer o expandir el menú",
+    "menu": "Menú"
   },
   "tour": {
     "book-now": "Reservar ahora",
@@ -113,6 +115,7 @@
     "your-info": "Tus datos",
     "field-name": "Nombre completo",
     "field-email": "Correo electrónico",
+    "consent-label": "Acepto el <privacy>aviso de privacidad</privacy> y los <terms>términos y condiciones</terms>.",
     "total-label": "Total",
     "submit": "Pagar ahora",
     "submitting": "Redirigiendo al pago...",
@@ -122,7 +125,6 @@
     "success-booking": "Reserva #",
     "success-tour": "Tour:",
     "success-date": "Fecha:",
-    "success-name": "Nombre:",
     "success-email": "Confirmación enviada a:",
     "success-back": "Ver más tours",
     "cancel-title": "Pago cancelado",
@@ -130,12 +132,20 @@
     "cancel-back": "Volver al tour",
     "cancel-retry": "Reintentar"
   },
+  "legal": {
+    "privacy-title": "Aviso de privacidad",
+    "privacy-body": "[PENDIENTE — el operador debe reemplazar este texto con su aviso de privacidad conforme a la Ley 8968 de Costa Rica: qué datos personales se recolectan, con qué finalidad, por cuánto tiempo se conservan, con quién se comparten, y cómo ejercer los derechos de acceso, rectificación y eliminación ante el responsable de la base de datos.]",
+    "terms-title": "Términos y condiciones",
+    "terms-body": "[PENDIENTE — el operador debe reemplazar este texto con sus términos y condiciones: política de cancelación y reembolsos, responsabilidades de las partes, y condiciones del servicio.]",
+    "back": "Volver al inicio"
+  },
   "public": {
     "nav-tours": "Tours",
     "nav-home": "Inicio",
     "hero-title": "Descubrí Costa Rica",
     "footer-rights": "Todos los derechos reservados",
     "tours-title": "Nuestros tours",
+    "tours-subtitle": "Senderismo y observación de aves guiados por los bosques de Costa Rica, en grupos pequeños y a paso tranquilo.",
     "tours-from-price": "Desde ${price} USD",
     "tours-no-price": "Consultar precio",
     "tours-duration": "{n} min",
@@ -154,12 +164,15 @@
     "ticket-child": "Niño",
     "ticket-student": "Estudiante",
     "not-found-title": "Tour no encontrado",
-    "not-found-back": "Ver todos los tours"
+    "not-found-back": "Ver todos los tours",
+    "rate-limited": "Demasiadas solicitudes. Esperá un momento y volvé a intentar."
   },
   "bookings": {
     "nav-label": "Reservas",
     "page-title": "Reservas",
     "today-link": "Hoy",
+    "refresh": "Actualizar",
+    "refresh-pending": "Actualizando…",
     "col-date": "Fecha",
     "col-tour": "Tour",
     "col-customer": "Cliente",
@@ -183,6 +196,8 @@
     "status-confirmed": "Confirmada",
     "status-cancelled": "Cancelada",
     "status-refunded": "Reembolsada",
+    "status-payment_mismatch": "Pago no coincide",
+    "status-overbooked_refunded": "Cupo agotado (reembolsada)",
     "payment-pending": "Pendiente",
     "payment-succeeded": "Pagado",
     "payment-failed": "Fallido",
@@ -232,6 +247,7 @@
     "today-view": "Ver reservas",
     "notif-cancellation_confirmation": "Confirmación de cancelación",
     "notif-refund_confirmation": "Confirmación de reembolso",
+    "notif-overbooked_refunded": "Cupo agotado + reembolso",
     "detail-cancel": "Cancelar reserva",
     "cancel-confirm-refund": "Esta reserva tiene derecho a reembolso de {amount}. ¿Confirmás la cancelación?",
     "cancel-confirm-no-refund": "Esta cancelación no tiene reembolso. ¿Confirmás la cancelación?",
@@ -324,6 +340,8 @@
     "status-cancelled": "Cancelada",
     "status-refunded": "Reembolsada",
     "status-pending_payment": "Pago pendiente",
+    "status-payment_mismatch": "Pago no coincide",
+    "status-overbooked_refunded": "Cupo agotado (reembolsada)",
     "cancel-cta": "Cancelar reserva",
     "cancel-title": "Cancelar reserva",
     "refund-yes": "Tenés derecho a reembolso: {amount}",

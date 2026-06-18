@@ -4,12 +4,18 @@ import { BookingStatus } from '@shared/constants/enums';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import type { AdminBookingRow } from '@/lib/booking/admin-types';
 import { CheckInButton } from './CheckInButton';
+import { Icon } from '@/components/admin/icons';
 import styles from './bookings.module.css';
 
 type Props = { rows: AdminBookingRow[] };
 
 function badgeClass(status: string): string {
-  return status === BookingStatus.Confirmed ? styles.badgeConfirmed : styles.badge;
+  if (status === BookingStatus.Confirmed) return styles.badgeConfirmed;
+  // payment_mismatch (spec 0014): anomalía de dinero, badge propio destacado.
+  if (status === BookingStatus.PaymentMismatch) return styles.badgeMismatch;
+  // overbooked_refunded (spec 0025): cupo agotado al pagar, auto-reembolsada. Badge propio.
+  if (status === BookingStatus.OverbookedRefunded) return styles.badgeOverbooked;
+  return styles.badge;
 }
 
 function CheckInCell({ row, checkedInLabel }: { row: AdminBookingRow; checkedInLabel: string }) {
@@ -59,6 +65,7 @@ export async function BookingsTable({ rows }: Props) {
               <td className={styles.td}>
                 <Link href={`/dashboard/bookings/${row.id}`} className={styles.detailLink}>
                   {t('view-detail')}
+                  <Icon name="detail" size={15} />
                 </Link>
               </td>
             </tr>

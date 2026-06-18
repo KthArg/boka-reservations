@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
+import { BookingStatus } from '@shared/constants/enums';
 import { getPaymentProvider } from '@/lib/payments';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 
@@ -16,19 +18,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ received: true });
   }
 
-  const db = createSupabaseServiceClient();
-
-  const { error: conflictError } = await db
-    .from('processed_webhook_events')
-    .insert({ id: payload.eventId, processed_at: new Date().toISOString() });
-
-  if (conflictError) {
+  // PAYSEC-01 (spec 0023): exigir status 'succeeded' además del eventType. No inducible sin el
+  // secreto del webhook; defensa extra ante un evento 'succeeded' con un status no exitoso.
+  if (payload.status !== 'succeeded') {
     return NextResponse.json({ received: true });
   }
 
+  const db = createSupabaseServiceClient();
+
   const { data: payment } = await db
     .from('payments')
-    .select('booking_id')
+    .select('booking_id, amount_cents, currency')
     .eq('external_payment_id', payload.paymentId)
     .single();
 
@@ -37,9 +37,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'payment_not_found' }, { status: 404 });
   }
 
+  // Validación de monto (spec 0014): el pago es de monto fijo que armamos nosotros.
+  // Si lo que OnvoPay dice que se pagó no coincide EXACTO con lo esperado, NO se
+  // confirma: se marca payment_mismatch para revisión manual. Se responde 200 (no es
+  // transitorio; reintentar no lo arregla). El reconciliador (0013) es la red de
+  // respaldo si el flag fallara acá. La moneda se compara normalizada a mayúsculas
+  // (ISO 4217 es case-insensitive) para no marcar falso-mismatch por formato.
+  const currencyMismatch = payload.currency.toUpperCase() !== payment.currency.toUpperCase();
+  if (payload.amountCents !== payment.amount_cents || currencyMismatch) {
+    const { error: flagError } = await db.rpc('flag_payment_mismatch', {
+      p_booking_id: payment.booking_id,
+      p_paid_amount_cents: payload.amountCents,
+      p_paid_currency: payload.currency,
+      p_source: 'webhook',
+    });
+    if (flagError) console.error('webhook: flag_payment_mismatch failed', flagError.message);
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning');
+      scope.setFingerprint(['webhook-payment-mismatch']);
+      scope.setExtra('bookingId', payment.booking_id);
+      if (flagError) scope.setExtra('flagError', flagError.message);
+      Sentry.captureMessage('[webhook] pago con monto/moneda no coincidente');
+    });
+    return NextResponse.json({ received: true });
+  }
+
   const { data: booking } = await db
     .from('bookings')
-    .select('tickets_adult, tickets_child, tickets_student')
+    .select('tickets_adult, tickets_child, tickets_student, tour_instance_id')
     .eq('id', payment.booking_id)
     .single();
 
@@ -47,15 +72,43 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ? (booking.tickets_adult ?? 0) + (booking.tickets_child ?? 0) + (booking.tickets_student ?? 0)
     : 0;
 
+  // La idempotencia la maneja confirm_booking en su propia transacción: registra
+  // el evento (p_event_id) en processed_webhook_events junto con la confirmación,
+  // así un fallo hace rollback de ambos y el retry de OnvoPay reprocesa limpio.
+  // confirm_booking es idempotente a nivel reserva (no reconfirma) y a nivel
+  // evento (ON CONFLICT), así que reenviar el mismo webhook es inocuo.
+  // Monto/moneda pagados van al guard de payment_mismatch dentro de confirm_booking (spec 0026,
+  // defensa en profundidad). La validación de arriba ya cortó el mismatch; pasarlos es redundante
+  // pero inofensivo y protege ante un futuro caller que olvide validar.
   const { error: rpcError } = await db.rpc('confirm_booking', {
     p_booking_id: payment.booking_id,
     p_external_payment_id: payload.paymentId,
     p_total_seats: totalSeats,
+    p_event_id: payload.eventId,
+    p_paid_amount_cents: payload.amountCents,
+    p_paid_currency: payload.currency,
   });
 
   if (rpcError) {
     console.error('confirm_booking failed:', rpcError.message);
     return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
+
+  // Sobreventa (spec 0025): confirm_booking ya NO confirma en sobrecupo; si el cupo estaba
+  // agotado dejó la reserva en `overbooked_refunded` con un refund total encolado. Se re-lee
+  // el estado para alertar a Sentry (el audit `booking.overbooked_refunded` lo emite la RPC).
+  const { data: confirmed } = await db
+    .from('bookings')
+    .select('status')
+    .eq('id', payment.booking_id)
+    .single();
+  if (confirmed?.status === BookingStatus.OverbookedRefunded) {
+    Sentry.withScope((scope) => {
+      scope.setLevel('warning');
+      scope.setFingerprint(['booking-overbooked-refunded']);
+      scope.setExtra('bookingId', payment.booking_id);
+      Sentry.captureMessage('[webhook] cupo agotado al confirmar: reserva auto-reembolsada');
+    });
   }
 
   return NextResponse.json({ received: true });

@@ -1,8 +1,28 @@
+.hero {
+  margin-bottom: var(--space-2xl);
+}
+
+.eyebrow {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-accent-dark);
+  margin: 0 0 var(--space-sm);
+}
+
 .title {
-  font-size: var(--text-3xl);
-  font-weight: 700;
-  margin: 0 0 var(--space-xl);
+  font-size: var(--text-4xl);
+  margin: 0;
   color: var(--color-text);
+}
+
+.lead {
+  font-size: var(--text-lg);
+  line-height: var(--leading-snug);
+  color: var(--color-text-muted);
+  max-width: 52ch;
+  margin: var(--space-md) 0 0;
 }
 
 .empty {
