@@ -165,7 +165,7 @@ describe('RLS — admin puede modificar tours', () => {
 // --- actualización de perfil propio ---
 
 describe('RLS — actualización de perfil propio', () => {
-  it('usuario autenticado puede actualizar su nombre pero no su rol', async () => {
+  it('usuario autenticado puede actualizar su nombre pero no su rol ni su active', async () => {
     const client = createClient<Database>(SUPABASE_URL, ANON_KEY);
     const { data: signInData } = await client.auth.signInWithPassword({
       email: 'staff@bokatrails.com',
@@ -190,6 +190,15 @@ describe('RLS — actualización de perfil propio', () => {
       .update({ role: 'admin' })
       .eq('id', userId);
     expect(roleError).not.toBeNull();
+
+    // No puede cambiar su propio `active` (spec 0027): el UPDATE de users para authenticated es
+    // un grant de COLUMNA (full_name/phone/locale), así que `active` no es actualizable por el
+    // propio usuario → cierra la re-activación tras una desactivación del admin vía PostgREST.
+    const { error: activeError } = await client
+      .from('users')
+      .update({ active: false })
+      .eq('id', userId);
+    expect(activeError).not.toBeNull();
 
     await admin.from('users').update({ full_name: original!.full_name }).eq('id', userId);
     await client.auth.signOut();

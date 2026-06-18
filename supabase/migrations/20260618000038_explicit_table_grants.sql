@@ -86,12 +86,20 @@ GRANT SELECT ON public.notifications        TO authenticated;
 GRANT SELECT ON public.refunds              TO authenticated;
 GRANT SELECT ON public.tour_instance_guides TO authenticated;
 
--- users: además de SELECT, authenticated necesita UPDATE para el "perfil propio". La RLS
---   users_update (…009) permite a un usuario actualizar SOLO su fila (id = auth.uid()) y su
---   WITH CHECK bloquea el cambio de rol; el grant de tabla solo habilita esa capacidad ya
---   existente (sin él, el self-update da 42501 antes de la RLS — lo prueba auth.test.ts).
---   El CRUD del panel de usuarios va por service_role (web/lib/users/manage.ts), no por acá.
-GRANT SELECT, UPDATE ON public.users        TO authenticated;
+-- users: SELECT a nivel tabla + UPDATE a nivel COLUMNA (solo full_name/phone/locale).
+--   El self-update de perfil (RLS users_update, …009) solo toca esas columnas. Conceder UPDATE
+--   a nivel COLUMNA —y NO sobre la tabla entera— cierra un hueco de integridad: con UPDATE de
+--   tabla, un autenticado podía `UPDATE users SET active=true WHERE id=auth.uid()` vía PostgREST
+--   y re-activarse solo tras una desactivación del admin (la guarda de "último admin" vive solo
+--   en el camino service_role, no en la RLS). El grant por columna deja `active`/`role`/`email`/
+--   `id` FUERA del alcance de authenticated, sin necesidad de tocar la RLS. El CRUD admin va por
+--   service_role (web/lib/users/manage.ts), que bypassa todo esto.
+--   Nota: los grants de COLUMNA no aparecen en information_schema.role_table_grants, así que la
+--   función de auditoría de la sección 5 (que mira grants de tabla) no los enumera — misma
+--   frontera de cobertura que la función espejo …031. Por eso `users` no lleva UPDATE en la
+--   allowlist de abajo (no hay UPDATE de TABLA que excluir).
+GRANT SELECT ON public.users TO authenticated;
+GRANT UPDATE (full_name, phone, locale) ON public.users TO authenticated;
 
 -- ----------------------------------------------------------------
 -- 4. anon solo conserva SELECT en las tablas del portal: revocar escrituras.
@@ -157,8 +165,8 @@ AS $$
         ('notifications',        'authenticated', 'SELECT'),
         ('refunds',              'authenticated', 'SELECT'),
         ('users',                'authenticated', 'SELECT'),
-        -- users UPDATE: self-update de perfil propio, gated por RLS users_update (…009).
-        ('users',                'authenticated', 'UPDATE'),
+        -- (users NO lleva UPDATE acá: el self-update de perfil es un grant de COLUMNA
+        --  full_name/phone/locale, que no figura en role_table_grants — ver nota en la sección 3.)
         ('tour_instance_guides', 'authenticated', 'SELECT')
       ) AS allow(tbl, role, priv)
       WHERE allow.tbl  = g.table_name
