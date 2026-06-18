@@ -869,6 +869,10 @@ export type Database = {
         Args: { p_key: string; p_limit: number; p_window_seconds: number };
         Returns: { allowed: boolean; retry_after: number }[];
       };
+      audit_table_grants_to_public_roles: {
+        Args: Record<string, never>;
+        Returns: { table_name: string; role_name: string; privilege_type: string }[];
+      };
     };
     Enums: {
       user_role: 'admin' | 'staff' | 'guide';
