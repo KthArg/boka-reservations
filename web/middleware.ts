@@ -4,13 +4,17 @@ import { routing } from './i18n/routing';
 import { createSupabaseMiddlewareClient } from './lib/db/supabase-middleware';
 import { buildCsp, cspHeaderName } from './lib/security/csp';
 import { generateNonce } from './lib/security/nonce';
-import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
-import type { UserRole } from '@shared/constants/enums';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
 const NONCE_HEADER = 'x-nonce';
 const PROTECTED_SEGMENTS = ['/dashboard', '/bookings', '/guides', '/settings'];
+
+// Roles del panel, inlineados a strings A PROPÓSITO: el middleware corre en el runtime Edge y su
+// bundler NO puede incluir módulos fuera del root del web (`@shared` = `../shared`) → importar el
+// VALOR `ADMIN_PANEL_ROLES` de @shared rompía el deploy con "Edge Function referencing unsupported
+// modules". Debe coincidir con shared/constants/bookings.ts → [UserRole.Admin, UserRole.Staff].
+const ADMIN_PANEL_ROLES: readonly string[] = ['admin', 'staff'];
 
 function isProtectedPath(pathname: string): boolean {
   const withoutLocale = pathname.replace(/^\/(es|en)/, '');
@@ -19,11 +23,11 @@ function isProtectedPath(pathname: string): boolean {
 
 // Decodifica el claim `user_role` del access token (JWT inyectado por custom_access_token_hook).
 // Edge-safe a propósito: atob + TextDecoder, sin Buffer. Falla cerrado (undefined) ante error.
-function decodeUserRole(accessToken: string): UserRole | undefined {
+function decodeUserRole(accessToken: string): string | undefined {
   try {
     const b64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    const payload = JSON.parse(new TextDecoder().decode(bytes)) as { user_role?: UserRole };
+    const payload = JSON.parse(new TextDecoder().decode(bytes)) as { user_role?: string };
     return payload.user_role;
   } catch {
     return undefined;
