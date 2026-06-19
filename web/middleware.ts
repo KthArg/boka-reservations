@@ -56,13 +56,30 @@ export async function middleware(request: NextRequest) {
   // (mismas cookies); el reconstruido sólo alimenta a next-intl.
   const response = intlMiddleware(new NextRequest(request, { headers: requestHeaders }));
   response.headers.set(cspHeader, csp);
-  const supabase = createSupabaseMiddlewareClient(request, response);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // Auth en el middleware: getUser refresca la sesión (escribe cookies en `response`) y, para rutas
+  // protegidas, se valida el rol. Envuelto en try/catch (DIAGNÓSTICO + robustez): estamos depurando
+  // un MIDDLEWARE_INVOCATION_FAILED en el runtime Edge de Vercel; si el cliente de Supabase falla,
+  // se loguea el error real (aparece en los Runtime Logs) y se degrada a "no autenticado" en lugar
+  // de tirar 500 en TODO el sitio. (Temporal hasta cerrar la causa raíz del edge.)
+  let user: unknown = null;
+  let accessToken: string | undefined;
+  try {
+    const supabase = createSupabaseMiddlewareClient(request, response);
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+    if (user && isProtectedPath(pathname)) {
+      const { data: s } = await supabase.auth.getSession();
+      accessToken = s.session?.access_token;
+    }
+  } catch (err) {
+    console.error(
+      '[middleware] supabase auth error:',
+      err instanceof Error ? (err.stack ?? err.message) : String(err),
+    );
+  }
 
   if (isProtectedPath(pathname)) {
     const locale = pathname.split('/')[1] ?? routing.defaultLocale;
@@ -77,12 +94,8 @@ export async function middleware(request: NextRequest) {
     if (!user) return redirectToLogin();
 
     // ACCESS-02 (spec 0023): exigir rol de panel en el middleware, además de autenticar.
-    // Defensa en profundidad: el choke-point real sigue siendo (admin)/layout.tsx + RLS,
-    // pero el middleware ya rechaza a un authenticated sin rol antes de llegar a la ruta.
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const role = session ? decodeUserRole(session.access_token) : undefined;
+    // Defensa en profundidad: el choke-point real sigue siendo (admin)/layout.tsx + RLS.
+    const role = accessToken ? decodeUserRole(accessToken) : undefined;
     if (!role || !ADMIN_PANEL_ROLES.includes(role)) return redirectToLogin();
   }
 
