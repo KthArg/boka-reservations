@@ -47,11 +47,18 @@ const nextConfig: NextConfig = {
   // Root Directory = web, webpack resuelve módulos desde la carpeta del archivo importador
   // (shared/) hacia arriba y NO encuentra `zod` → "Module not found". Agregar web/node_modules
   // (process.cwd() durante el build es la carpeta web) a resolve.modules lo arregla de raíz.
-  webpack: (config) => {
-    config.resolve.modules = [
-      path.join(process.cwd(), 'node_modules'),
-      ...(config.resolve.modules ?? ['node_modules']),
-    ];
+  webpack: (config, { nextRuntime }) => {
+    // SOLO en compilaciones NO-edge. El middleware (edge) NO importa código de `shared/` (que es lo
+    // que necesita resolver `zod` desde web/node_modules), y tocar resolve.modules en el compilador
+    // del Edge le rompe la resolución del runtime de Next (next/server, polyfills) → el middleware
+    // crashea a module-load con MIDDLEWARE_INVOCATION_FAILED aun siendo trivial. Acotado al
+    // server/client, el bundle del edge queda intacto.
+    if (nextRuntime !== 'edge') {
+      config.resolve.modules = [
+        path.join(process.cwd(), 'node_modules'),
+        ...(config.resolve.modules ?? ['node_modules']),
+      ];
+    }
     return config;
   },
   async headers() {
