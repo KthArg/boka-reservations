@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 import { withSentryConfig } from '@sentry/nextjs';
@@ -28,6 +29,19 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: allowedOrigins ? { allowedOrigins } : undefined,
+  },
+  // Monorepo sin workspace de pnpm: el código de `shared/` se importa vía el alias `@shared`,
+  // pero `shared/` no tiene su propio node_modules. Sus imports de terceros (p. ej. `zod` en
+  // shared/schemas.ts) deben resolverse contra `web/node_modules`. Al construir en Vercel con
+  // Root Directory = web, webpack resuelve módulos desde la carpeta del archivo importador
+  // (shared/) hacia arriba y NO encuentra `zod` → "Module not found". Agregar web/node_modules
+  // (process.cwd() durante el build es la carpeta web) a resolve.modules lo arregla de raíz.
+  webpack: (config) => {
+    config.resolve.modules = [
+      path.join(process.cwd(), 'node_modules'),
+      ...(config.resolve.modules ?? ['node_modules']),
+    ];
+    return config;
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
