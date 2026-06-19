@@ -69,6 +69,25 @@ export type TourWithDetails = Tables<'tours'> & {
 
 export type TourListItem = Tables<'tours'> & { activeSchedulesCount: number };
 
+// Valores (como strings de formulario) de los campos básicos del tour. Se manejan como estado
+// controlado en TourForm para que React 19 no los borre al hacer form.reset() tras la action.
+export type TourBasicValues = {
+  name_es: string;
+  name_en: string;
+  description_es: string;
+  description_en: string;
+  meeting_point_es: string;
+  meeting_point_en: string;
+  includes_es: string;
+  includes_en: string;
+  difficulty: string;
+  duration_minutes: string;
+  min_participants: string;
+  max_capacity: string;
+  slug: string;
+  cover_image_url: string;
+};
+
 export type FieldErrors = { _form?: string[] } & Partial<Record<string, string[]>>;
 
 export type ActionResult = { success: true; id: string } | { success: false; errors: FieldErrors };
