@@ -10,9 +10,9 @@ const intlMiddleware = createIntlMiddleware(routing);
 const NONCE_HEADER = 'x-nonce';
 const PROTECTED_SEGMENTS = ['/dashboard', '/bookings', '/guides', '/settings'];
 
-// Roles del panel, inlineados a strings A PROPÓSITO: el middleware corre en Edge y su bundler no
-// puede incluir módulos fuera del root del web (`@shared`). Debe coincidir con
-// shared/constants/bookings.ts → [UserRole.Admin, UserRole.Staff].
+// Roles del panel, inlineados a strings A PROPÓSITO: el middleware se bundlea aparte y en este
+// monorepo (sin workspace de pnpm, `shared/` fuera del root del web) importar `@shared` desde el
+// middleware es frágil. Debe coincidir con shared/constants/bookings.ts → [UserRole.Admin, UserRole.Staff].
 const ADMIN_PANEL_ROLES: readonly string[] = ['admin', 'staff'];
 
 function isProtectedPath(pathname: string): boolean {
@@ -21,7 +21,7 @@ function isProtectedPath(pathname: string): boolean {
 }
 
 // Decodifica el claim `user_role` del access token (JWT del custom_access_token_hook).
-// Edge-safe: atob + TextDecoder, sin Buffer. Falla cerrado (undefined) ante error.
+// Usa atob + TextDecoder (sin Buffer). Falla cerrado (undefined) ante error.
 function decodeUserRole(accessToken: string): string | undefined {
   try {
     const b64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -52,8 +52,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Auth: getUser refresca la sesión; para rutas protegidas se valida el rol. Envuelto en try/catch
-  // por robustez en el Edge: si el cliente de Supabase fallara, se loguea y se degrada a "no
-  // autenticado" (fail-closed para el panel) en vez de tirar 500 en todo el sitio.
+  // por robustez: si el cliente de Supabase fallara, se loguea y se degrada a "no autenticado"
+  // (fail-closed para el panel) en vez de tirar 500 en todo el sitio.
   let user: unknown = null;
   let accessToken: string | undefined;
   try {
