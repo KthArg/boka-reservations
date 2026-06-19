@@ -71,7 +71,39 @@ describe('Grants de tabla explícitos para roles públicos (spec 0027)', () => {
 
   it.each(PORTAL_TABLES)('anon SÍ puede leer %s (portal público)', async (table) => {
     const { error } = await anon.from(table).select('*').limit(1);
-    expect(error?.code).not.toBe(PERMISSION_DENIED);
+    // Assert fuerte: la lectura del portal NO debe dar error alguno (no solo "≠ 42501", que
+    // pasaría con un error de red). Si el SELECT del portal se revocara, esto fallaría.
+    expect(error).toBeNull();
+  });
+
+  // Simétrico de la denegación anon: una sesión autenticada (panel + reportes SECURITY INVOKER)
+  // DEBE poder leer estas tablas. Un REVOKE de más acá rompería el panel o los reportes report_*
+  // sin que los asserts de anon lo noten — este test lo caza.
+  it('una sesión autenticada (admin) SÍ puede leer las tablas del panel y reportes', async () => {
+    const authed = createClient<Database>(SUPABASE_URL, ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { error: signInError } = await authed.auth.signInWithPassword({
+      email: 'admin@bokatrails.com',
+      password: 'admin1234',
+    });
+    expect(signInError).toBeNull();
+
+    const AUTH_READABLE_TABLES = [
+      'bookings',
+      'payments',
+      'notifications',
+      'refunds',
+      'tour_instances',
+      'users',
+      'tour_instance_guides',
+    ] as const;
+    for (const table of AUTH_READABLE_TABLES) {
+      const { error } = await authed.from(table).select('*').limit(1);
+      expect(error, `authenticated debería poder leer ${table}`).toBeNull();
+    }
+
+    await authed.auth.signOut();
   });
 
   it.each(PORTAL_TABLES)('anon NO puede insertar en %s', async (table) => {
