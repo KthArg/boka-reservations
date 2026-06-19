@@ -126,12 +126,51 @@ Desde la raíz del repo, con `main` checked out:
 ## Fase 2b/4 — Railway (worker)
 
 - [ ] Crear proyecto/servicio en Railway desde el repo; **Root Directory = `worker`**; Node 22.
-- [ ] Start command = `pnpm start` (corre `tsx src/index.ts`). Install = `pnpm install`. No requiere
-      build de `dist` (se ejecuta TS con tsx, que es dependencia de prod).
-- [ ] Cargar todas las variables de la tabla **Railway (worker)** (arriba).
-- [ ] Deploy y confirmar en logs que arranca sin error de env y que los jobs agendan
+- [ ] El `worker/railway.json` ya fija builder NIXPACKS, `startCommand = pnpm start` (corre
+      `tsx src/index.ts`) y restart `ON_FAILURE`. Install = `pnpm install` (hay `worker/pnpm-lock.yaml`
+      propio; el worker es self-contained, no importa `@shared` en runtime). No requiere build de `dist`.
+- [ ] **No exponer puerto/dominio**: el worker es un proceso de fondo (scheduler), no un server HTTP.
+- [ ] Cargar las variables de la tabla **Railway (worker)** (arriba).
+- [ ] Deploy y confirmar en logs `[worker] alive — <timestamp>` y que los jobs agendan
       (`generate-tour-instances`, `release-expired-holds`, `send-notifications`, `reconcile-pending-payments`,
-      `cleanup-rate-limits`, `apply-retention`).
+      `cleanup-rate-limits`, `apply-retention`) sin error de env.
+
+### Set reducido para la fase de validación (sin tráfico real)
+
+Para validar que el worker arranca y agenda **sin** configurar Resend/dominio todavía, usar este set
+mínimo (los emails quedan apagados, así que el proveedor no importa):
+
+| Variable                    | Valor (validación)                              |
+| --------------------------- | ----------------------------------------------- |
+| `SUPABASE_SERVICE_ROLE_KEY` | service role key de prod (secreto)              |
+| `NEXT_PUBLIC_SUPABASE_URL`  | `https://zkuoegsjxjgvzkwkqpdr.supabase.co`      |
+| `APP_URL`                   | `https://boka-reservations.vercel.app`          |
+| `NODE_ENV`                  | `production`                                    |
+| `NOTIFICATIONS_ENABLED`     | `false`                                         |
+| `ONVOPAY_SECRET_KEY`        | `onvo_test_…` (sandbox; refunds/reconciliación) |
+
+- Se omiten `EMAIL_PROVIDER`/`RESEND_API_KEY`: con el default `mailpit` y `NOTIFICATIONS_ENABLED=false`
+  el job de notificaciones no envía ni abre SMTP. Al pasar a tráfico real → `EMAIL_PROVIDER=resend` +
+  `RESEND_API_KEY` + `NOTIFICATIONS_ENABLED=true` (ver Fase 5).
+
+## Fase 4b — Bootstrap del primer admin (invite-only)
+
+El auto-registro está OFF y **no hay trigger** que cree `public.users` al crear un usuario de auth, así
+que el primer admin se siembra a mano. El hook `custom_access_token_hook` inyecta `user_role` buscando
+`public.users` **por `id`** (`WHERE id = user_id`), por eso la fila debe usar el **UUID del usuario de auth**.
+
+- [ ] **Dashboard → Authentication → Users → Add user**: email + password; marcar **Auto Confirm User**.
+- [ ] Copiar el **User UID** recién creado.
+- [ ] **Dashboard → SQL Editor**, reemplazando el UUID, email y nombre:
+
+  ```sql
+  insert into public.users (id, email, role, full_name)
+  values ('<AUTH_USER_UID>', '<email>', 'admin', '<Nombre Apellido>');
+  ```
+
+- [ ] Login en `https://boka-reservations.vercel.app/es/login` con esas credenciales → debe entrar al
+      panel (`/es/dashboard`). Si redirige a login en loop, revisar que el **Custom Access Token Hook**
+      esté registrado y apunte a `public.custom_access_token_hook` (Authentication → Hooks).
 
 ## Fase 5 — Dominio, DNS, email y webhook
 
