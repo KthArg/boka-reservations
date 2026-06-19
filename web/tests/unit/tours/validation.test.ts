@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { slugify, detectPricingOverlaps } from '@/lib/tours/validation';
 import { TicketType } from '@shared/constants/enums';
 import type { PricingRow } from '@/lib/tours/types';
+import { PricingRowSchema, ScheduleRowSchema } from '@/lib/tours/types';
 
 describe('slugify', () => {
   it('convierte a minúsculas y reemplaza espacios con guiones', () => {
@@ -84,5 +85,44 @@ describe('detectPricingOverlaps', () => {
 
   it('devuelve lista vacía para input vacío', () => {
     expect(detectPricingOverlaps([])).toHaveLength(0);
+  });
+});
+
+describe('coerción de fechas vacías a null (fix 22007)', () => {
+  it('PricingRowSchema convierte valid_from/valid_until "" en null', () => {
+    const parsed = PricingRowSchema.parse({
+      ticket_type: TicketType.Adult,
+      price_usd: 70,
+      valid_from: '',
+      valid_until: '',
+      active: true,
+    });
+    expect(parsed.valid_from).toBeNull();
+    expect(parsed.valid_until).toBeNull();
+  });
+
+  it('PricingRowSchema preserva fechas reales', () => {
+    const parsed = PricingRowSchema.parse({
+      ticket_type: TicketType.Adult,
+      price_usd: 70,
+      valid_from: '2026-12-01',
+      valid_until: '2027-04-30',
+      active: true,
+    });
+    expect(parsed.valid_from).toBe('2026-12-01');
+    expect(parsed.valid_until).toBe('2027-04-30');
+  });
+
+  it('ScheduleRowSchema: valid_from "" → undefined (se omite, aplica el default NOT NULL) y valid_until "" → null', () => {
+    const parsed = ScheduleRowSchema.parse({
+      day_of_week: 1,
+      start_time: '08:00',
+      capacity: 10,
+      valid_from: '',
+      valid_until: '',
+      active: true,
+    });
+    expect(parsed.valid_from).toBeUndefined();
+    expect(parsed.valid_until).toBeNull();
   });
 });

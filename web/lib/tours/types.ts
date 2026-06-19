@@ -2,13 +2,22 @@ import { z } from 'zod';
 import { TourDifficulty, TicketType } from '@shared/constants/enums';
 import type { Tables } from '@/types/database';
 
+// Los <input type="date"> vacíos llegan como '' en el FormData; las columnas `date` de Postgres
+// rechazan '' con 22007. Normalizamos '' en origen. Para columnas nullable (precios y
+// valid_until) → null; para tour_schedules.valid_from (NOT NULL DEFAULT current_date) →
+// undefined, que se omite del insert y aplica el default. Esto también corrige la detección de
+// solapamientos (que trata null como "precio base"; antes veía '' como una fecha real).
+const preprocess = (v: unknown) => (v === '' ? null : v);
+const optionalDate = z.preprocess(preprocess, z.string().nullable().optional());
+const optionalDateOmit = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
+
 export const PricingRowSchema = z.object({
   id: z.string().uuid().optional(),
   ticket_type: z.nativeEnum(TicketType),
   price_usd: z.coerce.number().min(0),
   season_label: z.string().nullable().optional(),
-  valid_from: z.string().nullable().optional(),
-  valid_until: z.string().nullable().optional(),
+  valid_from: optionalDate,
+  valid_until: optionalDate,
   active: z.boolean().default(true),
 });
 
@@ -17,12 +26,10 @@ export const ScheduleRowSchema = z.object({
   day_of_week: z.coerce.number().int().min(0).max(6),
   start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   capacity: z.coerce.number().int().positive(),
-  valid_from: z.string().optional(),
-  valid_until: z.string().nullable().optional(),
+  valid_from: optionalDateOmit,
+  valid_until: optionalDate,
   active: z.boolean().default(true),
 });
-
-const preprocess = (v: unknown) => (v === '' ? null : v);
 
 export const TourFormSchema = z
   .object({
@@ -61,6 +68,25 @@ export type TourWithDetails = Tables<'tours'> & {
 };
 
 export type TourListItem = Tables<'tours'> & { activeSchedulesCount: number };
+
+// Valores (como strings de formulario) de los campos básicos del tour. Se manejan como estado
+// controlado en TourForm para que React 19 no los borre al hacer form.reset() tras la action.
+export type TourBasicValues = {
+  name_es: string;
+  name_en: string;
+  description_es: string;
+  description_en: string;
+  meeting_point_es: string;
+  meeting_point_en: string;
+  includes_es: string;
+  includes_en: string;
+  difficulty: string;
+  duration_minutes: string;
+  min_participants: string;
+  max_capacity: string;
+  slug: string;
+  cover_image_url: string;
+};
 
 export type FieldErrors = { _form?: string[] } & Partial<Record<string, string[]>>;
 
