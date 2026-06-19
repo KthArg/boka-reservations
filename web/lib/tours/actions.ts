@@ -7,10 +7,11 @@ import { requireRole } from '@/lib/auth/server';
 import { UserRole, TourStatus } from '@shared/constants/enums';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { TourFormSchema } from './types';
-import type { ActionResult, PricingRow, ScheduleRow } from './types';
+import type { ActionResult } from './types';
 import { detectPricingOverlaps } from './validation';
 import { slugExists } from './repository';
 import { parseTourFields } from './parse';
+import { mapPricing, mapSchedules } from './map';
 
 async function guardAdmin(): Promise<ActionResult | null> {
   try {
@@ -19,32 +20,6 @@ async function guardAdmin(): Promise<ActionResult | null> {
   } catch {
     return { success: false, errors: { _form: ['No autorizado.'] } };
   }
-}
-
-function mapPricing(pricing: PricingRow[], tourId: string) {
-  return pricing.map((p) => ({
-    id: p.id,
-    tour_id: tourId,
-    ticket_type: p.ticket_type,
-    price_usd: p.price_usd,
-    season_label: p.season_label ?? null,
-    valid_from: p.valid_from ?? null,
-    valid_until: p.valid_until ?? null,
-    active: p.active,
-  }));
-}
-
-function mapSchedules(schedules: ScheduleRow[], tourId: string) {
-  return schedules.map((s) => ({
-    id: s.id,
-    tour_id: tourId,
-    day_of_week: s.day_of_week,
-    start_time: s.start_time,
-    capacity: s.capacity,
-    valid_from: s.valid_from,
-    valid_until: s.valid_until ?? null,
-    active: s.active,
-  }));
 }
 
 export async function createTour(

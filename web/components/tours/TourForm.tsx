@@ -4,12 +4,13 @@ import { useActionState, useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { createTour, updateTour } from '@/lib/tours/actions';
 import { slugify } from '@/lib/tours/validation';
-import { TicketType } from '@shared/constants/enums';
+import { TicketType, TourDifficulty } from '@shared/constants/enums';
 import type {
   ActionResult,
   FieldErrors,
   PricingRow,
   ScheduleRow,
+  TourBasicValues,
   TourWithDetails,
 } from '@/lib/tours/types';
 import TourBasicInfoSection from './TourBasicInfoSection';
@@ -63,6 +64,28 @@ export default function TourForm({ defaultValues }: Props) {
     defaultValues ? toScheduleRows(defaultValues.schedules) : [],
   );
 
+  // Campos básicos como estado controlado: React 19 hace form.reset() tras la action y borraría
+  // los inputs no controlados al fallar una validación (se perdía lo tipeado). El estado sobrevive
+  // al re-render, igual que pricing/schedules.
+  const [basic, setBasic] = useState<TourBasicValues>(() => ({
+    name_es: defaultValues?.name_es ?? '',
+    name_en: defaultValues?.name_en ?? '',
+    description_es: defaultValues?.description_es ?? '',
+    description_en: defaultValues?.description_en ?? '',
+    meeting_point_es: defaultValues?.meeting_point_es ?? '',
+    meeting_point_en: defaultValues?.meeting_point_en ?? '',
+    includes_es: defaultValues?.includes_es ?? '',
+    includes_en: defaultValues?.includes_en ?? '',
+    difficulty: defaultValues?.difficulty ?? TourDifficulty.Easy,
+    duration_minutes: defaultValues ? String(defaultValues.duration_minutes) : '',
+    min_participants: defaultValues ? String(defaultValues.min_participants) : '',
+    max_capacity: defaultValues ? String(defaultValues.max_capacity) : '',
+    slug: defaultValues?.slug ?? '',
+    cover_image_url: defaultValues?.cover_image_url ?? '',
+  }));
+  const setBasicField = (name: keyof TourBasicValues, value: string) =>
+    setBasic((b) => ({ ...b, [name]: value }));
+
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -84,7 +107,7 @@ export default function TourForm({ defaultValues }: Props) {
         </p>
       ))}
 
-      <TourBasicInfoSection defaultValues={defaultValues} errors={errors} />
+      <TourBasicInfoSection values={basic} onChange={setBasicField} errors={errors} />
       <PricingEditor
         value={pricing}
         onChange={setPricing}
