@@ -869,6 +869,12 @@ export type Database = {
         Args: { p_key: string; p_limit: number; p_window_seconds: number };
         Returns: { allowed: boolean; retry_after: number }[];
       };
+      // Agregada a mano (spec 0027): un `supabase gen types` puede no emitirla porque se le
+      // revocó EXECUTE de anon/authenticated. NO borrar al regenerar tipos.
+      audit_table_grants_to_public_roles: {
+        Args: Record<string, never>;
+        Returns: { table_name: string; role_name: string; privilege_type: string }[];
+      };
     };
     Enums: {
       user_role: 'admin' | 'staff' | 'guide';

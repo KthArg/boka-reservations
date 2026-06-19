@@ -1,17 +1,18 @@
 import { useTranslations } from 'next-intl';
 import { TourDifficulty } from '@shared/constants/enums';
-import type { TourWithDetails, FieldErrors } from '@/lib/tours/types';
+import type { TourBasicValues, FieldErrors } from '@/lib/tours/types';
 import { TourField } from './TourField';
 import styles from './TourForm.module.css';
 
 type Props = {
-  defaultValues?: TourWithDetails;
+  values: TourBasicValues;
+  onChange: (name: keyof TourBasicValues, value: string) => void;
   errors: FieldErrors;
 };
 
 const DIFFICULTIES = [TourDifficulty.Easy, TourDifficulty.Moderate, TourDifficulty.Hard] as const;
 
-export default function TourBasicInfoSection({ defaultValues: dv, errors }: Props) {
+export default function TourBasicInfoSection({ values, onChange, errors }: Props) {
   const t = useTranslations('tours');
 
   return (
@@ -22,54 +23,62 @@ export default function TourBasicInfoSection({ defaultValues: dv, errors }: Prop
         <TourField
           label={t('field-name-es')}
           name="name_es"
-          defaultValue={dv?.name_es}
+          value={values.name_es}
+          onChange={(v) => onChange('name_es', v)}
           errors={errors.name_es}
         />
         <TourField
           label={t('field-name-en')}
           name="name_en"
-          defaultValue={dv?.name_en}
+          value={values.name_en}
+          onChange={(v) => onChange('name_en', v)}
           errors={errors.name_en}
         />
         <TourField
           label={t('field-description-es')}
           name="description_es"
-          defaultValue={dv?.description_es}
+          value={values.description_es}
+          onChange={(v) => onChange('description_es', v)}
           errors={errors.description_es}
           multiline
         />
         <TourField
           label={t('field-description-en')}
           name="description_en"
-          defaultValue={dv?.description_en}
+          value={values.description_en}
+          onChange={(v) => onChange('description_en', v)}
           errors={errors.description_en}
           multiline
         />
         <TourField
           label={t('field-meeting-point-es')}
           name="meeting_point_es"
-          defaultValue={dv?.meeting_point_es}
+          value={values.meeting_point_es}
+          onChange={(v) => onChange('meeting_point_es', v)}
           errors={errors.meeting_point_es}
           multiline
         />
         <TourField
           label={t('field-meeting-point-en')}
           name="meeting_point_en"
-          defaultValue={dv?.meeting_point_en}
+          value={values.meeting_point_en}
+          onChange={(v) => onChange('meeting_point_en', v)}
           errors={errors.meeting_point_en}
           multiline
         />
         <TourField
           label={t('field-includes-es')}
           name="includes_es"
-          defaultValue={dv?.includes_es}
+          value={values.includes_es}
+          onChange={(v) => onChange('includes_es', v)}
           errors={errors.includes_es}
           multiline
         />
         <TourField
           label={t('field-includes-en')}
           name="includes_en"
-          defaultValue={dv?.includes_en}
+          value={values.includes_en}
+          onChange={(v) => onChange('includes_en', v)}
           errors={errors.includes_en}
           multiline
         />
@@ -81,7 +90,8 @@ export default function TourBasicInfoSection({ defaultValues: dv, errors }: Prop
           <select
             name="difficulty"
             className={styles.input}
-            defaultValue={dv?.difficulty ?? TourDifficulty.Easy}
+            value={values.difficulty}
+            onChange={(e) => onChange('difficulty', e.target.value)}
           >
             {DIFFICULTIES.map((d) => (
               <option key={d} value={d}>
@@ -99,7 +109,8 @@ export default function TourBasicInfoSection({ defaultValues: dv, errors }: Prop
           label={t('field-duration')}
           name="duration_minutes"
           type="number"
-          defaultValue={dv?.duration_minutes}
+          value={values.duration_minutes}
+          onChange={(v) => onChange('duration_minutes', v)}
           errors={errors.duration_minutes}
           min={1}
         />
@@ -107,7 +118,8 @@ export default function TourBasicInfoSection({ defaultValues: dv, errors }: Prop
           label={t('field-min-participants')}
           name="min_participants"
           type="number"
-          defaultValue={dv?.min_participants}
+          value={values.min_participants}
+          onChange={(v) => onChange('min_participants', v)}
           errors={errors.min_participants}
           min={1}
         />
@@ -115,20 +127,23 @@ export default function TourBasicInfoSection({ defaultValues: dv, errors }: Prop
           label={t('field-max-capacity')}
           name="max_capacity"
           type="number"
-          defaultValue={dv?.max_capacity}
+          value={values.max_capacity}
+          onChange={(v) => onChange('max_capacity', v)}
           errors={errors.max_capacity}
           min={1}
         />
         <TourField
           label={t('field-slug')}
           name="slug"
-          defaultValue={dv?.slug}
+          value={values.slug}
+          onChange={(v) => onChange('slug', v)}
           errors={errors.slug}
         />
         <TourField
           label={t('field-cover-image')}
           name="cover_image_url"
-          defaultValue={dv?.cover_image_url}
+          value={values.cover_image_url}
+          onChange={(v) => onChange('cover_image_url', v)}
           errors={errors.cover_image_url}
         />
       </div>
