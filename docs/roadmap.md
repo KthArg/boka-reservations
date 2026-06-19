@@ -22,9 +22,18 @@ Entre cada bloque grande de etapas hay un **checkpoint**: una parada explícita 
 
 ---
 
-## Estado actual (2026-06-15)
+## Estado actual (2026-06-19)
 
 > **La fuente de verdad del estado real son los specs en `docs/specs/`, sus changelogs, las auditorías en `docs/security-audits/`, y la memoria del proyecto (`.claude/memory/`).** Este resumen es un snapshot; el plan de Bloques/Etapas de más abajo conserva su redacción original como referencia histórica.
+
+### Sesión 2026-06-18/19 — promoción a `main`, prep de cutover y spec 0027
+
+- **0026 mergeado** (PR #51). **Verificación del `eventId` del webhook de OnvoPay** (PR #54): la doc oficial confirma que el webhook solo trae `type`+`data`, sin un id de evento de envelope → usar `data.id` como `eventId`+`paymentId` es correcto (ítem de cutover cerrado).
+- **Promoción `dev → main` (PR #55, MERGEADA)**: `main` quedó **igual a `dev`** (specs 0001–0027 + rebrand). Se resolvió la divergencia de historia que dejaba el squash de la promoción anterior (#24) con un merge `-s ours` (main como ancestro de dev, árbol de dev intacto) → las próximas promociones ya no conflictúan. **Producción se despliega desde `main`.**
+- **Prep de cutover (PR #56, abierto)**: el worker ahora arranca en prod con **`tsx`** (`start: tsx src/index.ts`; antes apuntaba a `node dist` pero `tsc` tenía `noEmit` → nunca emitía `dist`). Se agregó el **runbook `docs/cutover-produccion.md`** (paso a paso del Checkpoint 7, con tablas de env vars por plataforma).
+- **Spec 0027 (grants de tabla explícitos para PostgREST) — MERGEADO (PR #57)**: hace explícito el control de exposición de tablas a `anon`/`authenticated` (deja de depender del default "Automatically expose new tables" de Supabase), con red de regresión `audit_table_grants_to_public_roles()`. Cerró además un hueco de integridad: `users` pasa a `GRANT UPDATE` **a nivel columna** (`full_name`/`phone`/`locale`) para que un autenticado no pueda re-activarse (`active=true`) vía PostgREST. Migración `…038`. Revisado por spec-reviewer + db-schema-guardian + code-reviewer, verificado con Playwright.
+- **Fix del form de tours** (fix/quick): crear un tour con precios desde la UI fallaba por dos causas — fechas vacías (`''`→`22007`, ahora coercidas a `null`/`undefined` en el schema) y `id: undefined` enviado como `null` al PK (ahora se omite la clave). Verificado end-to-end con Playwright (tour con precio base creado OK).
+- **Cutover en progreso**: se está creando el proyecto Supabase de producción (Fase 2 del runbook). Pendiente: DB push de migraciones a prod, Vercel/Railway, Resend+dominio, claves OnvoPay live, Sentry DSN, y el texto legal del cliente (bloqueante para tráfico real).
 
 ### Producto
 
