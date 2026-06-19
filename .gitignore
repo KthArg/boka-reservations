@@ -54,3 +54,5 @@ Thumbs.db
 
 # Claude Code memory (estado interno, no debe ser público)
 .claude/memory/
+
+.vercel
