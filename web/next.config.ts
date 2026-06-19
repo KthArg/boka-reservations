@@ -1,7 +1,9 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
-import { withSentryConfig } from '@sentry/nextjs';
+// withSentryConfig deshabilitado temporalmente: aísla un MIDDLEWARE_INVOCATION_FAILED en el Edge
+// de Vercel (Sentry auto-envuelve el middleware del edge). Re-habilitar tras confirmar/arreglar.
+// import { withSentryConfig } from '@sentry/nextjs';
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
@@ -57,7 +59,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(withNextIntl(nextConfig), {
-  silent: true,
-  disableLogger: true,
-});
+export default withNextIntl(nextConfig);
