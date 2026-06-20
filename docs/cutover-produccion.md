@@ -126,9 +126,15 @@ Desde la raíz del repo, con `main` checked out:
 ## Fase 2b/4 — Railway (worker)
 
 - [ ] Crear proyecto/servicio en Railway desde el repo; **Root Directory = `worker`**; Node 22.
-- [ ] El `worker/railway.json` ya fija builder NIXPACKS, `startCommand = pnpm start` (corre
-      `tsx src/index.ts`) y restart `ON_FAILURE`. Install = `pnpm install` (hay `worker/pnpm-lock.yaml`
-      propio; el worker es self-contained, no importa `@shared` en runtime). No requiere build de `dist`.
+- [ ] El `worker/railway.json` fija `startCommand = pnpm start` (corre `tsx src/index.ts`), restart
+      `ON_FAILURE` y un **`buildCommand` no-op**. Install = `pnpm install` (hay `worker/pnpm-lock.yaml`
+      propio; el worker es self-contained, no importa `@shared` en runtime). El worker **no compila**:
+      corre TS con `tsx` en runtime.
+- [ ] **Gotcha (build):** Railpack (builder default de Railway) corre `pnpm run build` (`tsc`) por
+      defecto, que **falla** porque los tests de integración importan `../../../web/types/database.js`
+      y con Root Directory = `worker` la carpeta `web/` no está en el contexto. Por eso el `buildCommand`
+      del `railway.json` lo saltea. Si configurás por UI en vez de por archivo: **Settings → Build →
+      Custom Build Command** = `echo "sin build"`.
 - [ ] **No exponer puerto/dominio**: el worker es un proceso de fondo (scheduler), no un server HTTP.
 - [ ] Cargar las variables de la tabla **Railway (worker)** (arriba).
 - [ ] Deploy y confirmar en logs `[worker] alive — <timestamp>` y que los jobs agendan
