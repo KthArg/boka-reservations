@@ -55,7 +55,13 @@ export default function TourForm({ defaultValues }: Props) {
     action,
     null,
   );
-  const errors = (state?.success === false ? state.errors : EMPTY_ERRORS) as FieldErrors;
+  const rawErrors = (state?.success === false ? state.errors : EMPTY_ERRORS) as FieldErrors;
+  // Las actions devuelven CÓDIGOS (`tour_*`, spec 0028); acá se traducen. Los mensajes
+  // de Zod (validación por campo) siguen siendo texto y se muestran tal cual.
+  const translate = (msg: string) => (msg.startsWith('tour_') ? t(`errors.${msg}`) : msg);
+  const errors = Object.fromEntries(
+    Object.entries(rawErrors).map(([field, msgs]) => [field, msgs?.map(translate)]),
+  ) as FieldErrors;
 
   const [pricing, setPricing] = useState<PricingRow[]>(
     defaultValues ? toPricingRows(defaultValues.pricing) : [],

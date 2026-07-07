@@ -1,9 +1,9 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { listTours } from '@/lib/tours/repository';
-import { archiveTour, reactivateTour } from '@/lib/tours/actions';
 import { TourStatus } from '@shared/constants/enums';
 import { Icon } from '@/components/admin/icons';
+import { ArchiveTourButton } from '@/components/tours/ArchiveTourButton';
 import styles from './tours.module.css';
 
 export default async function ToursPage() {
@@ -52,19 +52,17 @@ export default async function ToursPage() {
                     {t('edit')}
                   </Link>
                   {tour.status === TourStatus.Active ? (
-                    <form action={archiveTour.bind(null, tour.id)}>
-                      <button type="submit" className={styles.archiveBtn}>
-                        <Icon name="archive" size={15} />
-                        {t('archive')}
-                      </button>
-                    </form>
+                    <ArchiveTourButton
+                      tourId={tour.id}
+                      mode="archive"
+                      className={styles.archiveBtn}
+                    />
                   ) : (
-                    <form action={reactivateTour.bind(null, tour.id)}>
-                      <button type="submit" className={styles.reactivateBtn}>
-                        <Icon name="restore" size={15} />
-                        {t('reactivate')}
-                      </button>
-                    </form>
+                    <ArchiveTourButton
+                      tourId={tour.id}
+                      mode="reactivate"
+                      className={styles.reactivateBtn}
+                    />
                   )}
                 </td>
               </tr>

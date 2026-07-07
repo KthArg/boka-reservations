@@ -1,5 +1,9 @@
 import type { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import { applyActivePricingFilter, pricingToday } from '@/lib/pricing/active-filter';
+import {
+  applyActivePricingFilter,
+  pricingToday,
+  selectEffectivePricing,
+} from '@/lib/pricing/active-filter';
 import { computeAuthoritativeTotal } from '@/lib/booking/pricing-math';
 import type { PricingRow } from '@/lib/booking/pricing-math';
 import type { TicketQuantities } from '@/lib/booking/quantities';
@@ -46,8 +50,13 @@ export async function resolveAuthoritativeCharge(
 }
 
 async function loadActivePricing(db: ServiceClient, tourId: string): Promise<PricingRow[]> {
-  const base = db.from('tour_pricing').select('ticket_type, price_usd').eq('tour_id', tourId);
+  // valid_from/valid_until viajan para la regla de prioridad (temporada > base, spec 0028):
+  // sin ella, con ambos vigentes el mismo día el monto cobrado era no determinista.
+  const base = db
+    .from('tour_pricing')
+    .select('ticket_type, price_usd, valid_from, valid_until')
+    .eq('tour_id', tourId);
   const { data, error } = await applyActivePricingFilter(base, pricingToday());
   if (error) throw new Error('CHECKOUT_PRICING_LOAD_FAILED');
-  return (data ?? []) as PricingRow[];
+  return selectEffectivePricing((data ?? []) as (PricingRow & { valid_from: string | null })[]);
 }

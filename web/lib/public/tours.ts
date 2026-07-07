@@ -1,5 +1,10 @@
 import { createSupabasePublicClient } from '@/lib/db/supabase-public';
-import { applyActivePricingFilter } from '@/lib/pricing/active-filter';
+import {
+  applyActivePricingFilter,
+  pricingToday,
+  selectEffectivePricing,
+} from '@/lib/pricing/active-filter';
+import { InstanceStatus, TicketType, TourStatus } from '@shared/constants/enums';
 import type { Tables } from '@/types/database';
 
 export type PublicTour = Tables<'tours'>;
@@ -14,26 +19,36 @@ export async function listActiveTours(): Promise<TourWithMinPrice[]> {
   const { data: tours, error } = await db
     .from('tours')
     .select('*')
-    .eq('status', 'active')
+    .eq('status', TourStatus.Active)
     .order('name_es');
 
   if (error) throw new Error(`Error al cargar tours: ${error.message}`);
   if (!tours) return [];
 
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: pricing } = await db
+  // Mismo filtro canónico que checkout/detalle (día CR) + prioridad temporada>base
+  // (spec 0028): el "desde $X" del listado es el precio adulto EFECTIVO de hoy.
+  const base = db
     .from('tour_pricing')
-    .select('tour_id, price_usd, ticket_type, active')
-    .eq('ticket_type', 'adult')
-    .eq('active', true)
-    .or(`valid_from.is.null,and(valid_from.lte.${today},valid_until.gte.${today})`);
+    .select('tour_id, price_usd, ticket_type, valid_from, valid_until')
+    .eq('ticket_type', TicketType.Adult);
+  const { data: pricing } = await applyActivePricingFilter(base, pricingToday());
 
+  const byTour = new Map<string, (typeof pricing)[number][]>();
+  for (const p of (pricing ?? []) as {
+    tour_id: string;
+    ticket_type: string;
+    price_usd: number;
+    valid_from: string | null;
+    valid_until: string | null;
+  }[]) {
+    const rows = byTour.get(p.tour_id) ?? [];
+    rows.push(p);
+    byTour.set(p.tour_id, rows);
+  }
   const priceByTour = new Map<string, number>();
-  for (const p of pricing ?? []) {
-    const current = priceByTour.get(p.tour_id);
-    if (current === undefined || p.price_usd < current) {
-      priceByTour.set(p.tour_id, p.price_usd);
-    }
+  for (const [tourId, rows] of byTour) {
+    const effective = selectEffectivePricing(rows)[0];
+    if (effective) priceByTour.set(tourId, effective.price_usd);
   }
 
   return tours.map((t) => ({
@@ -62,17 +77,22 @@ export async function getTourPricing(tourId: string): Promise<PublicPricing[]> {
 
   const { data } = await applyActivePricingFilter(base).order('ticket_type');
 
-  return data ?? [];
+  // Prioridad temporada>base (spec 0028): el display usa la MISMA selección que el
+  // cobro (checkout-pricing) — lo mostrado es siempre lo cobrado.
+  return selectEffectivePricing((data ?? []) as PublicPricing[]);
 }
 
 export async function getUpcomingInstances(tourId: string): Promise<PublicInstance[]> {
   const db = createSupabasePublicClient();
 
+  // starts_at >= ahora (spec 0028, B7): una salida ya pasada que siga `available`
+  // no debe ofrecerse — el checkout la rechazaría (HOLD_INSTANCE_PAST) recién al pagar.
   const { data } = await db
     .from('tour_instances')
     .select('*')
     .eq('tour_id', tourId)
-    .eq('status', 'available')
+    .eq('status', InstanceStatus.Available)
+    .gte('starts_at', new Date().toISOString())
     .order('starts_at');
 
   return data ?? [];
