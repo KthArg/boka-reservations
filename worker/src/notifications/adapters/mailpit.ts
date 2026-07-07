@@ -2,12 +2,19 @@ import nodemailer from 'nodemailer';
 import type { EmailAdapter, EmailSendInput, EmailSendResult } from '../types.js';
 import { EmailTransientError } from '../types.js';
 
+// Timeouts defensivos (spec 0028): espejo del adapter de Resend; una conexión SMTP
+// colgada no debe bloquear el ciclo del job.
+const SMTP_TIMEOUT_MS = 15_000;
+
 export function createMailpitAdapter(host: string, port: number, from: string): EmailAdapter {
   const transporter = nodemailer.createTransport({
     host,
     port,
     secure: false,
     tls: { rejectUnauthorized: false },
+    connectionTimeout: SMTP_TIMEOUT_MS,
+    greetingTimeout: SMTP_TIMEOUT_MS,
+    socketTimeout: SMTP_TIMEOUT_MS,
   });
 
   return {

@@ -21,11 +21,19 @@ vi.mock('@supabase/supabase-js', () => ({
 const repoMocks = vi.hoisted(() => ({
   fetchStalePendingBookings: vi.fn(),
   cancelStaleBooking: vi.fn(),
-  confirmRecoveredBooking: vi.fn(),
+  // spec 0028: la RPC devuelve el outcome; default 'confirmed' = recuperación normal.
+  confirmRecoveredBooking: vi.fn().mockResolvedValue('confirmed'),
   flagPaymentMismatch: vi.fn(),
   writeRecoveredAudit: vi.fn(),
-  // spec 0025: estado de la reserva tras recuperar. Default 'confirmed' = sin alerta de sobreventa.
-  fetchBookingStatus: vi.fn().mockResolvedValue('confirmed'),
+  // El módulo real exporta el espejo de outcomes; el mock lo replica tal cual.
+  ConfirmOutcome: {
+    Confirmed: 'confirmed',
+    AlreadyProcessed: 'already_processed',
+    LatePaymentRefunded: 'late_payment_refunded',
+    OverbookedRefunded: 'overbooked_refunded',
+    PaymentMismatch: 'payment_mismatch',
+    Ignored: 'ignored',
+  },
 }));
 vi.mock('../../../src/reconciliation/repository.js', () => repoMocks);
 
@@ -92,7 +100,10 @@ function booking(overrides: Record<string, unknown> = {}) {
 }
 
 describe('reconcileOne — árbol de decisión', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    repoMocks.confirmRecoveredBooking.mockResolvedValue('confirmed');
+  });
 
   it('sin fila de pago: cancela con reason no_payment y no consulta OnvoPay', async () => {
     const c = client({ outcome: PaymentIntentOutcome.Paid, rawStatus: 'succeeded' });
@@ -118,12 +129,12 @@ describe('reconcileOne — árbol de decisión', () => {
 
     await reconcileOne(db, c, booking());
 
-    // spec 0026: el worker propaga monto/moneda al guard de payment_mismatch de confirm_booking.
+    // spec 0026: el worker propaga monto/moneda al guard de payment_mismatch de
+    // confirm_booking. Los asientos ya no viajan: la RPC los deriva (spec 0028).
     expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(
       db,
       'b1',
       'pi_x',
-      3,
       EXPECTED_CENTS,
       EXPECTED_CURRENCY,
     );
@@ -139,23 +150,43 @@ describe('reconcileOne — árbol de decisión', () => {
 
   it('recuperación con cupo agotado (overbooked_refunded): alerta el auto-reembolso (spec 0025)', async () => {
     const c = client(paidMatching);
-    repoMocks.fetchBookingStatus.mockResolvedValueOnce('overbooked_refunded');
+    repoMocks.confirmRecoveredBooking.mockResolvedValueOnce('overbooked_refunded');
 
     await reconcileOne(db, c, booking());
 
-    // confirm_booking igual se llamó (la RPC decidió el camino de sobreventa internamente).
+    // confirm_booking igual se llamó (la RPC decidió el camino de sobreventa internamente)
+    // y el outcome manda: alerta de sobreventa, sin alerta de recuperación ni audit.
     expect(repoMocks.confirmRecoveredBooking).toHaveBeenCalledWith(
       db,
       'b1',
       'pi_x',
-      3,
       EXPECTED_CENTS,
       EXPECTED_CURRENCY,
     );
-    // Dos alertas: la de recuperación + la de sobreventa.
-    expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(2);
-    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-recovered']);
+    expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(1);
     expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['booking-overbooked-refunded']);
+    expect(repoMocks.writeRecoveredAudit).not.toHaveBeenCalled();
+  });
+
+  it('pago tardío (race con staleness): la RPC encoló el refund y se alerta (spec 0028)', async () => {
+    const c = client(paidMatching);
+    repoMocks.confirmRecoveredBooking.mockResolvedValueOnce('late_payment_refunded');
+
+    await reconcileOne(db, c, booking());
+
+    expect(sentryMocks.captureMessage).toHaveBeenCalledTimes(1);
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-late-payment-refunded']);
+    expect(repoMocks.writeRecoveredAudit).not.toHaveBeenCalled();
+  });
+
+  it('already_processed (otro actor resolvió en paralelo): sin alertas ni audit (spec 0028)', async () => {
+    const c = client(paidMatching);
+    repoMocks.confirmRecoveredBooking.mockResolvedValueOnce('already_processed');
+
+    await reconcileOne(db, c, booking());
+
+    expect(sentryMocks.captureMessage).not.toHaveBeenCalled();
+    expect(repoMocks.writeRecoveredAudit).not.toHaveBeenCalled();
   });
 
   it('OnvoPay succeeded con monto distinto: marca payment_mismatch (no confirma) y alerta', async () => {
