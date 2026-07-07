@@ -6,7 +6,7 @@ import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { writeAuditLog } from '@/lib/audit/log';
 import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
 import { AuditAction, AuditEntityType, actorTypeForRole } from '@shared/constants/audit';
-import { RefundStatus } from '@shared/constants/refunds';
+import { REFUND_MANUAL_CHECK_REASONS, RefundStatus } from '@shared/constants/refunds';
 import { RefundRetryError } from '@shared/constants/cancellations';
 
 export type RetryRefundResult = { ok: true } | { ok: false; error: RefundRetryError };
@@ -29,13 +29,22 @@ export async function retryRefund(refundId: string): Promise<RetryRefundResult> 
   const db = createSupabaseServiceClient();
   const { data: refund } = await db
     .from('refunds')
-    .select('id, status, booking_id, external_refund_id')
+    .select('id, status, booking_id, external_refund_id, failure_reason')
     .eq('id', refundId)
     .maybeSingle();
 
   if (!refund) return { ok: false, error: RefundRetryError.NotFound };
   if (refund.status !== RefundStatus.Failed)
     return { ok: false, error: RefundRetryError.NotFailed };
+
+  // Guard anti doble-reembolso (spec 0028, review pre-PR): si el resultado del POST
+  // anterior es desconocido Y no hay id para verificar, NO se re-crea desde el panel.
+  // El staff verifica en OnvoPay (el id, si existe, está en la alerta de Sentry) y
+  // resuelve en DB; recién entonces el retry vuelve a habilitarse.
+  const unknownOutcome =
+    refund.failure_reason !== null && REFUND_MANUAL_CHECK_REASONS.includes(refund.failure_reason);
+  if (!refund.external_refund_id && unknownOutcome)
+    return { ok: false, error: RefundRetryError.RequiresManualCheck };
 
   const target = refund.external_refund_id
     ? { status: RefundStatus.Processing, failure_reason: null }

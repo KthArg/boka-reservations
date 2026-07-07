@@ -11,6 +11,9 @@ import {
 } from './repository.js';
 import type { OnvopayRefundClient } from './onvopay.js';
 
+// 3 REINTENTOS reales tras el primer intento (esperas 1/5/30): terminal recién al
+// agotar el schedule (4to intento fallido). Con `>=` el reintento de 30 min era
+// inalcanzable — mismo off-by-one corregido en notifications (spec 0028, review pre-PR).
 const MAX_CREATE_ATTEMPTS = 3;
 // Tope de antigüedad de un refund en 'processing'. Si OnvoPay lo deja colgado
 // en pending para siempre, o un crash dejó la fila reclamada sin
@@ -114,7 +117,7 @@ async function createRefund(
       );
       return;
     }
-    if (attempts >= MAX_CREATE_ATTEMPTS) {
+    if (attempts > MAX_CREATE_ATTEMPTS) {
       await markFailed(db, refund, message, attempts);
       return;
     }

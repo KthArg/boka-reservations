@@ -65,7 +65,11 @@ async function runCycle(): Promise<void> {
       const message = err instanceof Error ? err.message : 'unknown';
       console.error('[send-notifications] error en notificación', notif.id, message);
       Sentry.captureException(err);
-      await handleTransient(db, notif, adapter.provider, message).catch(() => undefined);
+      try {
+        await handleTransient(db, notif, adapter.provider, message);
+      } catch {
+        // Best-effort: si ni reprogramar se pudo (DB caída), el próximo ciclo la retoma.
+      }
     }
   }
 }

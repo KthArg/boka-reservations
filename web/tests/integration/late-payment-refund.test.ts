@@ -258,6 +258,33 @@ describe('pago tardío sobre reserva cancelada (spec 0028)', () => {
     expect(await refundsOf(bookingId)).toHaveLength(1);
   });
 
+  it('reserva confirmada y cancelada <24h (sin derecho a refund): un replay NO encola refund', async () => {
+    const { bookingId, externalPaymentId } = await seedBooking();
+    // Confirmación real (pago succeeded) y cancelación normal SIN refund (política <24h).
+    const { data: outcome } = await admin.rpc('confirm_booking', {
+      p_booking_id: bookingId,
+      p_external_payment_id: externalPaymentId,
+      p_paid_amount_cents: EXPECTED_CENTS,
+      p_paid_currency: 'USD',
+    });
+    expect(outcome).toBe('confirmed');
+    const { error: cancelErr } = await admin.rpc('cancel_booking', {
+      p_booking_id: bookingId,
+      p_actor_type: 'tourist',
+      p_refund_amount_cents: 0,
+    });
+    expect(cancelErr).toBeNull();
+
+    // Replay/3er caller con event id nuevo: el pago ya era succeeded — NO es un pago
+    // tardío y reembolsarlo violaría la política (guard de elegibilidad, review pre-PR).
+    providerState.payload = payload({ paymentId: externalPaymentId });
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(await bookingStatus(bookingId)).toBe('cancelled');
+    expect(await refundsOf(bookingId)).toHaveLength(0);
+  });
+
   it('pago tardío con monto INCORRECTO: no encola refund (ignored, revisión manual)', async () => {
     const { bookingId, externalPaymentId } = await seedBooking();
     await admin.rpc('cancel_stale_pending_booking', {

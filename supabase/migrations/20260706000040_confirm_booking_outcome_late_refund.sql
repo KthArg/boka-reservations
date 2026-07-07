@@ -40,8 +40,16 @@
 -- preserva en el cuerpo. Las funciones de auditoría de regresión (029/031/038) cubren
 -- cualquier retroceso.
 --
--- Reversibilidad: DROP de esta firma y re-CREATE del cuerpo de …037 (RETURNS void).
--- Requiere que los callers no dependan aún del outcome.
+-- Reversibilidad: DROP de esta firma y re-CREATE del cuerpo de …037 (RETURNS void) para
+-- confirm_booking, y re-CREATE del cuerpo de …029 para flag_payment_mismatch. Requiere
+-- revertir también el código que consume el outcome (webhook web + recover del worker).
+--
+-- Nota de locks: el camino late toma bookings FOR UPDATE y luego toca payments, mientras
+-- settle_refund toma refunds FOR UPDATE y luego payments/bookings. Con un refund
+-- 'processing' de una reserva 'cancelled' y una llamada late concurrente hay una ventana
+-- teórica de deadlock (Postgres aborta una transacción y el caller reintenta; no es un
+-- hang). Ventana ínfima y auto-recuperable; homogeneizar el orden de settle_refund queda
+-- para una migración futura si alguna vez se observa.
 
 DROP FUNCTION IF EXISTS public.confirm_booking(uuid, text, integer, text, integer, text);
 
@@ -98,6 +106,10 @@ BEGIN
   END IF;
 
   -- Mismatch pendiente de resolución manual: no tocar nada; el caller alerta.
+  -- OJO: el gate por evento ya consumió p_event_id, así que un reenvío del MISMO
+  -- evento devolverá 'already_processed' sin re-alertar. Es deliberado: la
+  -- resolución del mismatch es manual (no llega por webhook); no lo "arregles"
+  -- moviendo el gate después de este chequeo.
   IF v_booking.status = 'payment_mismatch' THEN
     RETURN 'ignored';
   END IF;
@@ -120,25 +132,31 @@ BEGIN
       END IF;
     END IF;
 
+    -- Elegibilidad (fix del db-schema-guardian, review pre-PR): SOLO califica como
+    -- "pago tardío" un pago que estaba 'pending' (webhook nunca llegó) o 'failed'
+    -- (cancel_stale lo marcó al cancelar por staleness). Un pago ya 'succeeded'
+    -- pertenece a una reserva que fue CONFIRMADA y luego cancelada por la vía normal:
+    -- reembolsar acá violaría la política (<24h sin refund) o duplicaría un refund
+    -- 'failed' en retry manual. Esos casos -> 'ignored' (el caller alerta).
     -- El turista pagó de verdad: el pago queda succeeded (espejo del camino overbooked;
     -- el refund necesita un pago succeeded que reembolsar y los reportes no deben ver
     -- un pago "refunded que nunca fue succeeded").
     UPDATE public.payments SET status = 'succeeded'
-      WHERE booking_id = p_booking_id AND external_payment_id = p_external_payment_id;
+      WHERE booking_id = p_booking_id
+        AND external_payment_id = p_external_payment_id
+        AND status IN ('pending', 'failed')
+      RETURNING * INTO v_payment;
 
-    SELECT * INTO v_payment
-      FROM public.payments
-      WHERE booking_id = p_booking_id AND external_payment_id = p_external_payment_id;
-
-    -- Sin fila de pago no hay monto verificable que reembolsar automáticamente: se deja
-    -- a revisión manual (el caller alerta con el outcome).
+    -- Sin fila elegible (no existe, o ya estaba succeeded/refunded): nada que
+    -- reembolsar automáticamente; revisión manual (el caller alerta con el outcome).
     IF NOT FOUND THEN
       RETURN 'ignored';
     END IF;
 
     -- Refund total encolado en la MISMA transacción (patrón cancel_booking/…036). El
     -- índice único parcial refunds_one_active_per_booking garantiza a lo sumo un refund
-    -- activo por reserva: reenvíos o carreras no duplican.
+    -- activo por reserva: reenvíos o carreras no duplican. Se registra en el audit si
+    -- el refund realmente se encoló (traza forense veraz).
     INSERT INTO public.refunds (booking_id, payment_id, amount_cents, currency, reason)
     VALUES (
       p_booking_id, v_payment.id, v_payment.amount_cents, v_payment.currency,
@@ -153,7 +171,8 @@ BEGIN
         'refund_amount_cents', v_payment.amount_cents,
         'currency', v_payment.currency,
         'external_payment_id', p_external_payment_id,
-        'event_id', p_event_id
+        'event_id', p_event_id,
+        'refund_enqueued', FOUND
       )
     );
 

@@ -3,6 +3,25 @@
 Spec: [0028-cierre-hallazgos-code-review-integral.md](./0028-cierre-hallazgos-code-review-integral.md)
 Ramas: `fix/0028-dinero` (workstream A), `fix/0028-panel-portal` (workstream B), `chore/0028-deuda-menor-ci` (workstream C)
 
+## 2026-07-06 — Reviews pre-PR del workstream A aplicados
+
+**Hecho**:
+
+- Corrieron los 3 revisores obligatorios sobre el diff. Veredictos: payment-flow-auditor **APTO** (los 5 hallazgos originales CERRADOS con evidencia); db-schema-guardian y code-reviewer **requirieron cambios**, todos aplicados:
+  - **Guard de elegibilidad en el camino late** (bloqueante del guardián): solo un pago `pending`/`failed` califica como tardío (`UPDATE … WHERE status IN (…) RETURNING`); un pago ya `succeeded` (reserva confirmada→cancelada <24h sin derecho a refund, o refund `failed` en retry) → `ignored`. Cerraba un refund contra-política y un doble refund posible. + `refund_enqueued` veraz en el audit, down de `flag_payment_mismatch` documentado, nota de lock-order, comentario del gate en `ignored`.
+  - **Off-by-one del backoff de refunds** (M-1): el reintento de 30 min era inalcanzable; ahora `attempts > MAX_CREATE_ATTEMPTS` (4 intentos, esperas 1/5/30), espejo del fix de notifications.
+  - **Guard del retry manual peligroso** (M-2): `failed('processing-stale'/'ambiguous-timeout')` SIN `external_refund_id` → `RefundRetryError.RequiresManualCheck` (constante compartida `REFUND_MANUAL_CHECK_REASONS`, mensaje i18n es/en en el botón del panel). El §8 del spec se corrigió (afirmaba que ese retry entraba por verify; el id nunca se persistió).
+  - **Tests faltantes del plan §10** (A-1): unit del webhook (error de query → 500, fila inexistente → 404, outcome late → alerta, RPC error → 500) y del poison pill del batch de notifications (+ markSent fallido no re-envía). Integración nueva: replay sobre confirmada→cancelada <24h no encola refund.
+- Follow-ups aceptados sin bloquear (del payment-flow-auditor, fallan del lado seguro): (1) un refund verificado como `failed` en OnvoPay no puede re-crearse desde el panel (requiere limpiar el id en DB) — dead-end operativo a resolver en un spec futuro junto a P2; (2) runbook de Railway: drain ≥ 30 s para el graceful shutdown; (3) `fetchActiveRefunds` puede demorar un ciclo con lote lleno de filas en backoff (irrelevante al volumen actual).
+
+**Por qué / decisiones**:
+
+- El guard de elegibilidad se implementó en vez de solo documentarse: es defensa en profundidad dentro de la función de dinero (precedente 0026) y el workstream C purgará `processed_webhook_events` (90 días), lo que erosiona el gate por evento para replays muy tardíos.
+
+**Pendiente**:
+
+- Verificación final (typecheck+lint+unit+integración) y PR del workstream A.
+
 ## 2026-07-06 — Workstream A implementado (dinero); integración corriendo
 
 **Hecho**:

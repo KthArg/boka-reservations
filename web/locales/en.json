@@ -259,7 +259,8 @@
     "refund-status-failed": "Failed",
     "refund-retry": "Retry refund",
     "refund-retry-confirm": "Retry the failed refund?",
-    "refund-retry-error": "The refund could not be retried."
+    "refund-retry-error": "The refund could not be retried.",
+    "refund-retry-manual-check": "This refund requires manual verification in OnvoPay before retrying (the previous attempt outcome is unknown). Check the Sentry alert."
   },
   "guides": {
     "nav-label": "Departures",

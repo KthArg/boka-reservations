@@ -113,13 +113,23 @@ describe('process-refunds processOne', () => {
     expect(repoMocks.markFailed).not.toHaveBeenCalled();
   });
 
-  it('marca failed cuando se agotan los intentos de creacion', async () => {
+  it('el 3er reintento (espera de 30 min) es alcanzable: con attempts=2 aún libera el claim', async () => {
     const c = client({ createRefund: vi.fn().mockRejectedValue(new Error('boom')) });
 
-    // updated_at viejo: el backoff 1/5/30 ya venció y toca el 3er intento (spec 0028).
+    // updated_at viejo: la espera de 5 min venció; el intento 3 falla pero AÚN queda
+    // el reintento de 30 min (spec 0028: terminal recién al agotar 1/5/30).
     await processOne(db, c, { ...pending, attempts: 2, updated_at: OLD });
 
-    expect(repoMocks.markFailed).toHaveBeenCalledWith(db, expect.anything(), 'boom', 3);
+    expect(repoMocks.releaseClaim).toHaveBeenCalledWith(db, 'r1', 3);
+    expect(repoMocks.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('marca failed cuando se agotan los intentos de creacion (4to intento)', async () => {
+    const c = client({ createRefund: vi.fn().mockRejectedValue(new Error('boom')) });
+
+    await processOne(db, c, { ...pending, attempts: 3, updated_at: OLD });
+
+    expect(repoMocks.markFailed).toHaveBeenCalledWith(db, expect.anything(), 'boom', 4);
     expect(repoMocks.releaseClaim).not.toHaveBeenCalled();
   });
 
