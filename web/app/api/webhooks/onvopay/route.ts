@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
-import { BookingStatus } from '@shared/constants/enums';
+import { ConfirmBookingOutcome } from '@shared/constants/enums';
 import { getPaymentProvider } from '@/lib/payments';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
+
+/** Alerta agregada a Sentry (una issue por fingerprint), con el booking afectado. */
+function alert(message: string, fingerprint: string, bookingId: string, extra?: string): void {
+  Sentry.withScope((scope) => {
+    scope.setLevel('warning');
+    scope.setFingerprint([fingerprint]);
+    scope.setExtra('bookingId', bookingId);
+    if (extra) scope.setExtra('detail', extra);
+    Sentry.captureMessage(message);
+  });
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const rawBody = await req.text();
@@ -26,12 +37,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const db = createSupabaseServiceClient();
 
-  const { data: payment } = await db
+  // maybeSingle + chequeo de error (spec 0028): un fallo transitorio de la query NO es
+  // "el pago no existe". Ante error se responde 500 para que OnvoPay reintente; el 404
+  // queda solo para el caso real de intent desconocido.
+  const { data: payment, error: paymentErr } = await db
     .from('payments')
     .select('booking_id, amount_cents, currency')
     .eq('external_payment_id', payload.paymentId)
-    .single();
+    .maybeSingle();
 
+  if (paymentErr) {
+    console.error('webhook: error leyendo payments', paymentErr.message);
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
+  }
   if (!payment) {
     console.error('webhook: payment not found for intent', payload.paymentId);
     return NextResponse.json({ error: 'payment_not_found' }, { status: 404 });
@@ -52,38 +70,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       p_source: 'webhook',
     });
     if (flagError) console.error('webhook: flag_payment_mismatch failed', flagError.message);
-    Sentry.withScope((scope) => {
-      scope.setLevel('warning');
-      scope.setFingerprint(['webhook-payment-mismatch']);
-      scope.setExtra('bookingId', payment.booking_id);
-      if (flagError) scope.setExtra('flagError', flagError.message);
-      Sentry.captureMessage('[webhook] pago con monto/moneda no coincidente');
-    });
+    alert(
+      '[webhook] pago con monto/moneda no coincidente',
+      'webhook-payment-mismatch',
+      payment.booking_id,
+      flagError?.message,
+    );
     return NextResponse.json({ received: true });
   }
 
-  const { data: booking } = await db
-    .from('bookings')
-    .select('tickets_adult, tickets_child, tickets_student, tour_instance_id')
-    .eq('id', payment.booking_id)
-    .single();
-
-  const totalSeats = booking
-    ? (booking.tickets_adult ?? 0) + (booking.tickets_child ?? 0) + (booking.tickets_student ?? 0)
-    : 0;
-
-  // La idempotencia la maneja confirm_booking en su propia transacción: registra
-  // el evento (p_event_id) en processed_webhook_events junto con la confirmación,
-  // así un fallo hace rollback de ambos y el retry de OnvoPay reprocesa limpio.
-  // confirm_booking es idempotente a nivel reserva (no reconfirma) y a nivel
-  // evento (ON CONFLICT), así que reenviar el mismo webhook es inocuo.
-  // Monto/moneda pagados van al guard de payment_mismatch dentro de confirm_booking (spec 0026,
-  // defensa en profundidad). La validación de arriba ya cortó el mismatch; pasarlos es redundante
-  // pero inofensivo y protege ante un futuro caller que olvide validar.
-  const { error: rpcError } = await db.rpc('confirm_booking', {
+  // La idempotencia la maneja confirm_booking en su propia transacción: el gate por
+  // p_event_id (processed_webhook_events) corta reenvíos con 'already_processed', y un
+  // fallo hace rollback de todo para que el retry de OnvoPay reprocese limpio.
+  // Los asientos los deriva la RPC de la propia reserva (spec 0028): este handler ya no
+  // lee bookings ni puede confirmar con asientos incorrectos. Monto/moneda pagados van
+  // al guard de payment_mismatch interno (spec 0026, defensa en profundidad).
+  const { data: outcome, error: rpcError } = await db.rpc('confirm_booking', {
     p_booking_id: payment.booking_id,
     p_external_payment_id: payload.paymentId,
-    p_total_seats: totalSeats,
     p_event_id: payload.eventId,
     p_paid_amount_cents: payload.amountCents,
     p_paid_currency: payload.currency,
@@ -94,21 +98,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 
-  // Sobreventa (spec 0025): confirm_booking ya NO confirma en sobrecupo; si el cupo estaba
-  // agotado dejó la reserva en `overbooked_refunded` con un refund total encolado. Se re-lee
-  // el estado para alertar a Sentry (el audit `booking.overbooked_refunded` lo emite la RPC).
-  const { data: confirmed } = await db
-    .from('bookings')
-    .select('status')
-    .eq('id', payment.booking_id)
-    .single();
-  if (confirmed?.status === BookingStatus.OverbookedRefunded) {
-    Sentry.withScope((scope) => {
-      scope.setLevel('warning');
-      scope.setFingerprint(['booking-overbooked-refunded']);
-      scope.setExtra('bookingId', payment.booking_id);
-      Sentry.captureMessage('[webhook] cupo agotado al confirmar: reserva auto-reembolsada');
-    });
+  // Alertas según el outcome (spec 0028; reemplaza la re-lectura del status previa).
+  if (outcome === ConfirmBookingOutcome.OverbookedRefunded) {
+    alert(
+      '[webhook] cupo agotado al confirmar: reserva auto-reembolsada',
+      'booking-overbooked-refunded',
+      payment.booking_id,
+    );
+  } else if (outcome === ConfirmBookingOutcome.LatePaymentRefunded) {
+    // Pago tardío sobre una reserva cancelada (p. ej. staleness): la RPC ya encoló el
+    // refund total. Se alerta para que el operador sepa que hubo un cobro sin reserva.
+    alert(
+      '[webhook] pago tardío sobre reserva cancelada: refund total encolado',
+      'webhook-late-payment-refunded',
+      payment.booking_id,
+    );
+  } else if (outcome === ConfirmBookingOutcome.Ignored) {
+    alert(
+      '[webhook] pago recibido en estado no accionable: revisión manual',
+      'webhook-ignored-status',
+      payment.booking_id,
+    );
   }
 
   return NextResponse.json({ received: true });

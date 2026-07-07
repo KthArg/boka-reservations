@@ -8,7 +8,10 @@ import type {
   WebhookPayload,
 } from '../types';
 
-const ONVOPAY_API_BASE = 'https://api.onvopay.com/v1';
+// Base URL parametrizable (spec 0028, A6): permite apuntar al sandbox
+// (https://api.dev.onvopay.com/v1) sin editar código. Default: producción.
+const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
+const ONVOPAY_API_BASE = process.env.ONVOPAY_API_BASE_URL ?? ONVOPAY_API_BASE_DEFAULT;
 // Timeout defensivo del fetch de creación del payment intent (spec 0020, L-1). Sin esto, una
 // conexión colgada de OnvoPay ataría la función serverless del checkout hasta el timeout de
 // plataforma. Espejo de los clientes del worker (refunds/reconciliación, 15 s). Constante local
@@ -64,6 +67,23 @@ export function createOnvopayAdapter(secretKey: string, webhookSecret: string): 
 
       const data = (await res.json()) as OnvopayCreateResponse;
       return { externalPaymentId: data.id };
+    },
+
+    async cancelPaymentSession(externalPaymentId: string): Promise<void> {
+      // Best-effort (spec 0028, A1): endpoint de cancelación pendiente de verificar en
+      // sandbox (P1 del spec). Si no existe (404) o falla, el caller lo tolera: la
+      // garantía real es no entregar el intent al widget.
+      const res = await fetch(`${ONVOPAY_API_BASE}/payment-intents/${externalPaymentId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${secretKey}`,
+        },
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        throw new Error(`OnvoPay cancel error ${res.status}: ${await res.text()}`);
+      }
     },
 
     verifyWebhook(rawBody: string, signature: string): WebhookPayload | null {
