@@ -40,7 +40,7 @@ export default async function BookingsPage({ searchParams }: Props) {
         <h1 className={styles.title}>{t('page-title')}</h1>
         <div className={styles.headerActions}>
           <RefreshButton />
-          <Link href="/dashboard/bookings/hoy" className={styles.secondaryBtn}>
+          <Link href="/dashboard/bookings/today" className={styles.secondaryBtn}>
             {t('today-link')}
           </Link>
         </div>

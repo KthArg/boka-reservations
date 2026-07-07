@@ -1,4 +1,5 @@
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
+import { HoldStatus, InstanceStatus } from '@shared/constants/enums';
 
 export type AvailabilityResult = {
   available: number;
@@ -24,22 +25,24 @@ export async function checkAvailability(
 
   if (error || !instance) return { available: 0, canBook: false };
 
-  if (instance.status !== 'available' || new Date(instance.starts_at) <= new Date()) {
+  if (instance.status !== InstanceStatus.Available || new Date(instance.starts_at) <= new Date()) {
     return { available: 0, canBook: false };
   }
 
   // Cupos ocupados por holds vivos: `active` no expirados MÁS `paying` (pago en curso, sin
   // mirar expires_at). Espeja create_hold_atomic (spec 0025) para que la disponibilidad
   // mostrada no difiera del gate real de creación de hold.
-  const now = new Date().toISOString();
+  // Comparación NUMÉRICA (spec 0028, C5): expires_at llega con offset '+00:00' y
+  // toISOString() produce 'Z'; comparar strings de formatos distintos es frágil.
+  const nowMs = Date.now();
   const { data: holds } = await db
     .from('tour_holds')
     .select('held_seats, status, expires_at')
     .eq('tour_instance_id', instanceId)
-    .in('status', ['active', 'paying']);
+    .in('status', [HoldStatus.Active, HoldStatus.Paying]);
 
   const heldSeats = (holds ?? [])
-    .filter((h) => h.status === 'paying' || h.expires_at > now)
+    .filter((h) => h.status === HoldStatus.Paying || new Date(h.expires_at).getTime() > nowMs)
     .reduce((sum, h) => sum + h.held_seats, 0);
   const available = Math.max(0, instance.capacity_total - instance.capacity_reserved - heldSeats);
 
@@ -72,9 +75,9 @@ export async function releaseHold(holdId: string): Promise<void> {
   // toca `active`, así que sin esto un `paying` huérfano retendría el cupo hasta el reconciliador).
   const { error } = await db
     .from('tour_holds')
-    .update({ status: 'released' })
+    .update({ status: HoldStatus.Released })
     .eq('id', holdId)
-    .in('status', ['active', 'paying']);
+    .in('status', [HoldStatus.Active, HoldStatus.Paying]);
 
   if (error) throw new Error(`Error al liberar hold: ${error.message}`);
 }

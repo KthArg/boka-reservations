@@ -10,7 +10,25 @@ type ScheduleRow = {
   day_of_week: number;
   start_time: string;
   capacity: number;
+  valid_from: string | null;
+  valid_until: string | null;
 };
+
+// Día calendario de Costa Rica de un instante (worker self-contained: espejo de
+// web/lib/dates/cr-date.ts). La vigencia del horario la define el operador en días CR.
+const BUSINESS_TIMEZONE = 'America/Costa_Rica';
+function crDateOf(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: BUSINESS_TIMEZONE });
+}
+
+// spec 0028 (C6): valid_from/valid_until eran columnas muertas — el operador seteaba
+// valid_until esperando cerrar la temporada y las salidas se seguían generando 90 días.
+function withinValidity(startsAtIso: string, sch: ScheduleRow): boolean {
+  const day = crDateOf(startsAtIso);
+  if (sch.valid_from != null && day < sch.valid_from) return false;
+  if (sch.valid_until != null && day > sch.valid_until) return false;
+  return true;
+}
 
 type TourRow = {
   id: string;
@@ -23,7 +41,7 @@ export async function generateTourInstances(): Promise<void> {
   const [{ data: schedules, error: schErr }, { data: tours, error: tourErr }] = await Promise.all([
     db
       .from('tour_schedules')
-      .select('id, tour_id, day_of_week, start_time, capacity')
+      .select('id, tour_id, day_of_week, start_time, capacity, valid_from, valid_until')
       .eq('active', true),
     db.from('tours').select('id, duration_minutes').eq('status', 'active'),
   ]);
@@ -55,13 +73,16 @@ export async function generateTourInstances(): Promise<void> {
     );
     if (dates.length === 0) continue;
 
-    const rows = dates.map((d) => ({
-      tour_id: sch.tour_id,
-      schedule_id: sch.id,
-      starts_at: d.starts_at,
-      ends_at: d.ends_at,
-      capacity_total: sch.capacity,
-    }));
+    const rows = dates
+      .filter((d) => withinValidity(d.starts_at, sch))
+      .map((d) => ({
+        tour_id: sch.tour_id,
+        schedule_id: sch.id,
+        starts_at: d.starts_at,
+        ends_at: d.ends_at,
+        capacity_total: sch.capacity,
+      }));
+    if (rows.length === 0) continue;
 
     const { error, count } = await db.from('tour_instances').upsert(rows, {
       onConflict: 'schedule_id,starts_at',
