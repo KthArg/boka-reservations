@@ -9,6 +9,9 @@ const PII_RETENTION_MONTHS = 18;
 const UNPAID_BOOKING_RETENTION_DAYS = 90;
 const NOTIFICATION_RETENTION_DAYS = 90;
 const EXPIRED_TOKEN_GRACE_DAYS = 7;
+// spec 0028 (C1): un evento de webhook solo protege la idempotencia mientras OnvoPay
+// pueda reintentarlo; a 90 días es puro crecimiento sin función.
+const WEBHOOK_EVENT_RETENTION_DAYS = 90;
 // FINANCIAL_RECORD_RETENTION_YEARS = 5 queda definida en el spec pero sin job: la purga del
 // registro anonimizado a 5 años está diferida (al lanzar no hay datos cercanos a esa edad).
 
@@ -19,6 +22,7 @@ export interface RetentionCutoffs {
   unpaidCutoff: string;
   tokenCutoff: string;
   notificationCutoff: string;
+  webhookEventCutoff: string;
 }
 
 // Calcula los cutoffs (ISO) desde las ventanas. Recibe `now` para poder testearlo.
@@ -31,6 +35,9 @@ export function computeRetentionCutoffs(now: Date = new Date()): RetentionCutoff
     tokenCutoff: new Date(now.getTime() - EXPIRED_TOKEN_GRACE_DAYS * DAY_MS).toISOString(),
     notificationCutoff: new Date(
       now.getTime() - NOTIFICATION_RETENTION_DAYS * DAY_MS,
+    ).toISOString(),
+    webhookEventCutoff: new Date(
+      now.getTime() - WEBHOOK_EVENT_RETENTION_DAYS * DAY_MS,
     ).toISOString(),
   };
 }

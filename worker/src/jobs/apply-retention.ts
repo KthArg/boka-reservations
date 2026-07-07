@@ -20,6 +20,8 @@ export async function applyRetention(): Promise<void> {
     { fn: 'purge_unpaid_bookings', args: { p_cutoff: cutoffs.unpaidCutoff } },
     { fn: 'purge_expired_access_tokens', args: { p_cutoff: cutoffs.tokenCutoff } },
     { fn: 'purge_old_notifications', args: { p_cutoff: cutoffs.notificationCutoff } },
+    // spec 0028 (C1): único store operativo que crecía sin retención.
+    { fn: 'purge_old_webhook_events', args: { p_cutoff: cutoffs.webhookEventCutoff } },
   ];
 
   const failures: string[] = [];

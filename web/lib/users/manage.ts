@@ -30,7 +30,10 @@ export async function setUserActive(
   const target = await getUserById(id);
   if (!target) return { ok: false, error: UserManagementError.NotFound };
 
+  const db = createSupabaseServiceClient();
+
   if (!active) {
+    // Pre-chequeo para errores amigables (self / último admin)…
     const guard = checkDeactivation({
       targetId: id,
       targetRole: target.role as UserRole,
@@ -39,9 +42,19 @@ export async function setUserActive(
       activeAdminCount: await countActiveAdmins(),
     });
     if (guard) return { ok: false, error: guard };
+
+    // …y desactivación ATÓMICA en DB (spec 0028, C1): el pre-chequeo tenía TOCTOU —
+    // dos desactivaciones concurrentes de los dos últimos admins dejaban 0 admins
+    // (lockout, el sistema es invite-only). La RPC serializa con FOR UPDATE y
+    // devuelve false si el guard del último admin bloquea en la carrera.
+    const { data: deactivated, error } = await db.rpc('deactivate_internal_user', {
+      p_user_id: id,
+    });
+    if (error) return { ok: false, error: UserManagementError.WriteFailed };
+    if (!deactivated) return { ok: false, error: UserManagementError.LastAdmin };
+    return { ok: true };
   }
 
-  const db = createSupabaseServiceClient();
   const { error } = await db.from('users').update({ active }).eq('id', id);
   return error ? { ok: false, error: UserManagementError.WriteFailed } : { ok: true };
 }
