@@ -42,6 +42,13 @@ describe('parseBookingFilters', () => {
     expect(f.tourId).toBeUndefined();
   });
 
+  it('ignora fechas con formato válido pero calendario inválido (review pre-PR: 500 real)', () => {
+    // '2026-13-45' pasa el regex ISO; crDayStartIso lanzaría RangeError al filtrar.
+    const f = parseBookingFilters({ dateFrom: '2026-13-45', dateTo: '2026-02-30' });
+    expect(f.dateFrom).toBeUndefined();
+    expect(f.dateTo).toBeUndefined();
+  });
+
   it('ignora un status desconocido y acepta uno válido', () => {
     expect(parseBookingFilters({ status: 'inventado' }).status).toBeUndefined();
     expect(parseBookingFilters({ status: 'confirmed' }).status).toBe(BookingStatus.Confirmed);
@@ -92,9 +99,9 @@ describe('validateExportRange', () => {
     ).toBeNull();
   });
 
-  it('rechaza un rango invertido (spec 0028, B8)', () => {
+  it('rechaza un rango invertido con su propio código (spec 0028, B8)', () => {
     expect(validateExportRange({ page: 1, dateFrom: '2026-03-10', dateTo: '2026-03-01' })).toBe(
-      ExportRangeError.Missing,
+      ExportRangeError.Inverted,
     );
   });
 });

@@ -48,9 +48,22 @@ export function selectEffectivePricing<T extends WindowedRow>(rows: T[]): T[] {
   const byType = new Map<string, T>();
   for (const row of rows) {
     const current = byType.get(row.ticket_type);
-    if (!current || (isSeasonal(row) && !isSeasonal(current))) {
-      byType.set(row.ticket_type, row);
-    }
+    if (!current || wins(row, current)) byType.set(row.ticket_type, row);
   }
   return [...byType.values()];
+}
+
+// Tie-break determinista (review pre-PR): si el EXCLUDE de …041 faltara en algún entorno
+// y coexistieran dos temporadas vigentes, la selección NO puede depender del orden físico
+// de las filas (display y cobro divergirían). Gana la temporada que empezó más tarde
+// (más específica); a igual inicio, la que termina antes.
+function wins(candidate: WindowedRow, current: WindowedRow): boolean {
+  const cSeasonal = isSeasonal(candidate);
+  const curSeasonal = isSeasonal(current);
+  if (cSeasonal !== curSeasonal) return cSeasonal;
+  if (!cSeasonal) return false;
+  const fromA = candidate.valid_from ?? '';
+  const fromB = current.valid_from ?? '';
+  if (fromA !== fromB) return fromA > fromB;
+  return (candidate.valid_until ?? '9999-12-31') < (current.valid_until ?? '9999-12-31');
 }

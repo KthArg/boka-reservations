@@ -27,10 +27,19 @@ function parseStatus(raw: string | undefined): BookingStatus | undefined {
  * formato (spec 0028, B8): antes `?dateFrom=basura` o `?tourId=no-uuid` llegaban crudos
  * al query builder y PostgREST lanzaba (error page del panel).
  */
+// Formato ISO Y fecha calendario real (review pre-PR): '2026-13-45' pasa el regex pero
+// revienta crDayStartIso con RangeError → 500 del listado. El round-trip cubre además el
+// rollover del parser de V8 ('2026-02-30' → 2 de marzo).
+const isRealDate = (v: string): boolean => {
+  if (!ISO_DATE.test(v)) return false;
+  const t = Date.parse(v);
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === v;
+};
+
 export function parseBookingFilters(params: Record<string, string | undefined>): BookingFilters {
   const filters: BookingFilters = { page: parsePage(params.page) };
-  if (params.dateFrom && ISO_DATE.test(params.dateFrom)) filters.dateFrom = params.dateFrom;
-  if (params.dateTo && ISO_DATE.test(params.dateTo)) filters.dateTo = params.dateTo;
+  if (params.dateFrom && isRealDate(params.dateFrom)) filters.dateFrom = params.dateFrom;
+  if (params.dateTo && isRealDate(params.dateTo)) filters.dateTo = params.dateTo;
   if (params.tourId && UUID_RE.test(params.tourId)) filters.tourId = params.tourId;
   const search = params.search?.trim();
   if (search) filters.search = search;
@@ -68,7 +77,7 @@ export function validateExportRange(filters: BookingFilters): ExportRangeError |
   const to = Date.parse(filters.dateTo);
   if (Number.isNaN(from) || Number.isNaN(to)) return ExportRangeError.Missing;
   // Rango invertido (spec 0028, B8): antes `from > to` pasaba y el export salía vacío.
-  if (to < from) return ExportRangeError.Missing;
+  if (to < from) return ExportRangeError.Inverted;
   if ((to - from) / MS_PER_DAY > EXPORT_MAX_RANGE_DAYS) return ExportRangeError.TooLong;
   return null;
 }

@@ -18,6 +18,8 @@ export const EXPORT_MAX_RANGE_DAYS = 366;
 /** Motivos por los que un export puede rechazarse (responde 400). */
 export enum ExportRangeError {
   Missing = 'export_range_missing',
+  /** `from > to` (spec 0028, B8): su propio código para no reportar "falta el rango". */
+  Inverted = 'export_range_inverted',
   TooLong = 'export_range_too_long',
 }
 

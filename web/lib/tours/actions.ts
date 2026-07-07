@@ -1,16 +1,14 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/server';
-import { UserRole, TourStatus, InstanceStatus, BookingStatus } from '@shared/constants/enums';
+import { UserRole } from '@shared/constants/enums';
 import { TourActionError } from '@shared/constants/tours';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
-import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { TourFormSchema } from './types';
 import type { ActionResult } from './types';
-import { detectPricingOverlaps } from './validation';
+import { detectPricingOverlaps, hasHalfOpenSeasons, hasInvalidSeasonRange } from './validation';
 import { slugExists } from './repository';
 import { parseTourFields } from './parse';
 import { mapPricing, mapSchedules } from './map';
@@ -41,6 +39,12 @@ export async function createTour(
     return { success: false, errors: { slug: [TourActionError.SlugTaken] } };
   }
 
+  if (hasHalfOpenSeasons(pricing)) {
+    return { success: false, errors: { _form: [TourActionError.SeasonDatesIncomplete] } };
+  }
+  if (hasInvalidSeasonRange(pricing)) {
+    return { success: false, errors: { _form: [TourActionError.SeasonRangeInvalid] } };
+  }
   const overlapErrors = detectPricingOverlaps(pricing);
   if (overlapErrors.length > 0) {
     return { success: false, errors: { _form: overlapErrors.map((e) => e.code) } };
@@ -98,6 +102,12 @@ export async function updateTour(
   // El formulario representa el estado FINAL completo (spec 0028, B1): la validación
   // corre sobre lo enviado, y reconcileRows elimina de DB las filas quitadas antes de
   // upsertear — quitar un precio del form ahora LO ELIMINA (antes quedaba activo).
+  if (hasHalfOpenSeasons(pricing)) {
+    return { success: false, errors: { _form: [TourActionError.SeasonDatesIncomplete] } };
+  }
+  if (hasInvalidSeasonRange(pricing)) {
+    return { success: false, errors: { _form: [TourActionError.SeasonRangeInvalid] } };
+  }
   const overlapErrors = detectPricingOverlaps(pricing);
   if (overlapErrors.length > 0) {
     return { success: false, errors: { _form: overlapErrors.map((e) => e.code) } };
@@ -131,53 +141,4 @@ export async function updateTour(
 
   const locale = await getLocale();
   redirect(`/${locale}/dashboard/tours`);
-}
-
-export type ArchiveResult = { ok: true } | { ok: false; error: string };
-
-/**
- * Archiva un tour dejando sus salidas coherentes (spec 0028, B12): con reservas activas
- * en salidas futuras se bloquea; sin ellas, las salidas futuras `available` pasan a
- * `cancelled` (dejan de listarse y de poder reservarse). Usa el service client tras el
- * guard de rol: las instancias las administra el sistema, no hay RLS de escritura admin.
- */
-export async function archiveTour(id: string): Promise<ArchiveResult> {
-  await requireRole(UserRole.Admin);
-  const db = createSupabaseServiceClient();
-  const nowIso = new Date().toISOString();
-
-  const { data: active, error: qErr } = await db
-    .from('bookings')
-    .select('id, tour_instances!inner(tour_id, starts_at)')
-    .in('status', [BookingStatus.PendingPayment, BookingStatus.Confirmed])
-    .eq('tour_instances.tour_id', id)
-    .gte('tour_instances.starts_at', nowIso)
-    .limit(1);
-  if (qErr) return { ok: false, error: TourActionError.ArchiveFailed };
-  if ((active?.length ?? 0) > 0) {
-    return { ok: false, error: TourActionError.ArchiveHasBookings };
-  }
-
-  const { error: instErr } = await db
-    .from('tour_instances')
-    .update({ status: InstanceStatus.Cancelled })
-    .eq('tour_id', id)
-    .eq('status', InstanceStatus.Available)
-    .gte('starts_at', nowIso);
-  if (instErr) return { ok: false, error: TourActionError.ArchiveFailed };
-
-  const { error } = await db.from('tours').update({ status: TourStatus.Archived }).eq('id', id);
-  if (error) return { ok: false, error: TourActionError.ArchiveFailed };
-
-  revalidatePath('/', 'layout');
-  return { ok: true };
-}
-
-export async function reactivateTour(id: string): Promise<ArchiveResult> {
-  await requireRole(UserRole.Admin);
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from('tours').update({ status: TourStatus.Active }).eq('id', id);
-  if (error) return { ok: false, error: TourActionError.ArchiveFailed };
-  revalidatePath('/', 'layout');
-  return { ok: true };
 }

@@ -10,10 +10,17 @@
 --
 -- Semántica de precios (decisión del spec 0028 §5-B1): un precio BASE (sin fechas) por
 -- (tour, ticket_type) convive con TEMPORADAS (con fechas); la temporada gana. En DB:
---   - EXCLUDE anti-solape SOLO entre filas con al menos un límite de fecha (un límite NULL
---     dentro del daterange = infinito hacia ese lado, bounds inclusivos '[]').
+--   - EXCLUDE anti-solape SOLO entre filas con al menos un límite de fecha (bounds
+--     inclusivos '[]'). NOTA (review pre-PR): el CHECK valid_season_range (…005) sigue
+--     siendo AUTORITATIVO y exige ambas fechas o ninguna — las temporadas semi-abiertas
+--     están prohibidas hoy y la app las rechaza con código propio
+--     (tour_season_dates_incomplete). El EXCLUDE trata un límite NULL como infinito solo
+--     como defensa futura: si algún día se relaja ese CHECK, hay que ajustar además el
+--     filtro de vigencia de lib/pricing/active-filter.ts (su OR asume valid_from NULL =
+--     precio base) y el CHECK season_label_required_with_dates.
 --   - UNIQUE parcial: una sola fila base activa por (tour_id, ticket_type).
--- La prioridad temporada>base la resuelve la app en un único punto (lib/pricing).
+-- La prioridad temporada>base la resuelve la app en un único punto (lib/pricing), con
+-- tie-break determinista que no depende de este constraint.
 --
 -- Deploy: la DB de prod aún no tiene datos reales (pre-cutover) → sin NOT VALID ni
 -- CONCURRENTLY. Si algún entorno tuviera datos en conflicto, la migración falla explícita

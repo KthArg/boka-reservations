@@ -26,6 +26,13 @@ describe('selectEffectivePricing', () => {
     expect(selectEffectivePricing([base, openEnded])).toEqual([openEnded]);
   });
 
+  it('tie-break determinista si coexistieran dos temporadas (defensa sin el EXCLUDE)', () => {
+    const early = { ...season, valid_from: '2026-11-01', valid_until: '2027-02-28' };
+    // Gana la que empezó más tarde (más específica), sin importar el orden de llegada.
+    expect(selectEffectivePricing([early, season])).toEqual([season]);
+    expect(selectEffectivePricing([season, early])).toEqual([season]);
+  });
+
   it('resuelve por ticket_type de forma independiente', () => {
     const childBase = { ...base, ticket_type: 'child', price_usd: 20 };
     const result = selectEffectivePricing([base, season, childBase]);

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAnyRole } from '@/lib/auth/server';
 import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
-import { ReportKind } from '@shared/constants/reports';
+import { ReportKind, REPORT_UNKNOWN_ERROR } from '@shared/constants/reports';
 import { validateReportRange, type ReportRange } from '@/lib/reports/range';
 import { getRevenueReport, getOccupancyReport, getRefundsSummary } from '@/lib/reports/queries';
 import { revenueToCsv, occupancyToCsv, refundsSummaryToCsv } from '@/lib/reports/csv';
@@ -42,7 +42,7 @@ export async function GET(request: Request, { params }: RouteContext): Promise<N
   const range: ReportRange = { from: from as string, to: to as string };
 
   const result = await buildCsv(sp.get('report') ?? '', range, locale);
-  if (!result) return new NextResponse('report_unknown', { status: 400 });
+  if (!result) return new NextResponse(REPORT_UNKNOWN_ERROR, { status: 400 });
 
   const [csv, name] = result;
   const filename = `${name}-${range.from}_${range.to}.csv`;

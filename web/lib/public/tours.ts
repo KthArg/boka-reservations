@@ -64,7 +64,7 @@ export async function getTourBySlug(slug: string): Promise<PublicTour | null> {
     .from('tours')
     .select('*')
     .eq('slug', slug)
-    .eq('status', 'active')
+    .eq('status', TourStatus.Active)
     .single();
 
   if (error) return null;

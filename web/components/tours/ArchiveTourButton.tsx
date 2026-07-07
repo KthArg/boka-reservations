@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { archiveTour, reactivateTour } from '@/lib/tours/actions';
+import { archiveTour, reactivateTour } from '@/lib/tours/archive-action';
 import { Icon } from '@/components/admin/icons';
 
 type Props = { tourId: string; mode: 'archive' | 'reactivate'; className: string };
@@ -17,6 +17,7 @@ export function ArchiveTourButton({ tourId, mode, className }: Props) {
   const [pending, startTransition] = useTransition();
 
   function onClick() {
+    if (mode === 'archive' && !window.confirm(t('confirm-archive'))) return;
     startTransition(async () => {
       const result = mode === 'archive' ? await archiveTour(tourId) : await reactivateTour(tourId);
       if (!result.ok) window.alert(t(`errors.${result.error}`));

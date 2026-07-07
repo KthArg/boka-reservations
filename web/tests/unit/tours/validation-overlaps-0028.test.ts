@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectPricingOverlaps } from '@/lib/tours/validation';
+import { detectPricingOverlaps, hasHalfOpenSeasons } from '@/lib/tours/validation';
 import { TicketType } from '@shared/constants/enums';
 import type { PricingRow } from '@/lib/tours/types';
 
@@ -61,5 +61,20 @@ describe('detectPricingOverlaps — bordes y aperturas (spec 0028)', () => {
   it('las filas inactivas no cuentan', () => {
     const errors = detectPricingOverlaps([row({}), row({ active: false })]);
     expect(errors).toHaveLength(0);
+  });
+});
+
+describe('hasHalfOpenSeasons (review pre-PR: valid_season_range exige ambas fechas)', () => {
+  it('detecta una temporada activa con una sola fecha', () => {
+    expect(hasHalfOpenSeasons([row({ valid_from: '2026-01-01' })])).toBe(true);
+    expect(hasHalfOpenSeasons([row({ valid_until: '2026-01-31' })])).toBe(true);
+  });
+
+  it('acepta base (sin fechas) y temporada completa; ignora inactivas', () => {
+    expect(hasHalfOpenSeasons([row({})])).toBe(false);
+    expect(hasHalfOpenSeasons([row({ valid_from: '2026-01-01', valid_until: '2026-01-31' })])).toBe(
+      false,
+    );
+    expect(hasHalfOpenSeasons([row({ valid_from: '2026-01-01', active: false })])).toBe(false);
   });
 });

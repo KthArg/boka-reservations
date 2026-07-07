@@ -3,6 +3,23 @@
 Spec: [0028-cierre-hallazgos-code-review-integral.md](./0028-cierre-hallazgos-code-review-integral.md)
 Ramas: `fix/0028-dinero` (workstream A), `fix/0028-panel-portal` (workstream B), `chore/0028-deuda-menor-ci` (workstream C)
 
+## 2026-07-07 — Reviews pre-PR del workstream B aplicados
+
+**Hecho**:
+
+- Veredictos: payment-flow-auditor **APTO** (releaseHold solo toca `active` ✓, día CR exacto como insumo contable ✓, fallo-seguro del checkout en la ventana de reconciliación ✓); db-schema-guardian **APTO con condición** (aplicada); code-reviewer **requirió cambios** (aplicados):
+  - **Tie-break determinista** en `selectEffectivePricing` (defensa si el EXCLUDE faltara: gana la temporada que empezó más tarde) + test.
+  - **Anti-TOCTOU en `archiveTour`**: re-chequeo tras cancelar instancias con reversión; movido a `lib/tours/archive-action.ts` (límite 150 líneas). La ventana residual la cubre `create_hold_atomic` (instancia `cancelled`).
+  - **Temporadas semi-abiertas e inválidas rechazadas temprano** (`hasHalfOpenSeasons`, `hasInvalidSeasonRange` + códigos `tour_season_dates_incomplete`/`tour_season_range_invalid` i18n): el CHECK `valid_season_range` de …005 sigue autoritativo (header de …041 corregido — documentaba semántica inalcanzable).
+  - **Fechas calendario-inválidas** (`2026-13-45`, `2026-02-30` con rollover de V8) rechazadas en `parseBookingFilters` con round-trip (evita el RangeError→500) + tests.
+  - Texto de `tour_pricing_write_failed` corregido (prometía atomicidad que la reconciliación en dos requests no tiene); `ExportRangeError.Inverted` propio; literales → constantes (`TourActionError.*` en validation, `REPORT_UNKNOWN_ERROR`); adapter OnvoPay recibe `baseUrl` desde la env tipada (B11 completo); `getTourBySlug` con `TourStatus.Active`; confirm en `ArchiveTourButton` (clave existente).
+  - **Tests de integración nuevos exigidos por §10**: prioridad temporada>base en el COBRO real (`resolveAuthoritativeCharge` → 6000 no 4000) y B12 archivado (bloqueo con reserva activa → cancelación de salidas + archivado).
+- **Deuda aceptada y documentada** (no bloquea; candidatos a C o post-merge): reconciliación de tours transaccional vía RPC (hoy 2 requests: un fallo del upsert tras el delete deja el tour sin esas filas — fallo-seguro para el dinero: el checkout lanza `CHECKOUT_TICKET_UNAVAILABLE`, jamás cobra 0); unit de la success page; integración del throttle de magic links excedido; unificar `toRangeBounds` con `cr-date`; fallback hardcodeado en `success.module.css`; divergencia display/cobro en la medianoche CR (el monto autoritativo es el del intent); `window.alert` como feedback del archivado. Throttle 300/h (vs "p. ej. 20/h" del spec): deliberado, la barrera es la entropía del token.
+
+**Pendiente**:
+
+- Verificación final en verde → push + PR del workstream B (stacked sobre #67).
+
 ## 2026-07-07 — Workstream B implementado (panel/portal); verificación corriendo
 
 **Hecho**:

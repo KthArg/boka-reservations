@@ -6,7 +6,11 @@ import type { PaymentProvider } from './types';
 // Consume la env TIPADA (spec 0028, B11): la presencia de las llaves se validó al boot
 // (instrumentation.ts), no en runtime a mitad de un checkout.
 export function getPaymentProvider(): PaymentProvider {
-  return createOnvopayAdapter(env.ONVOPAY_SECRET_KEY, env.ONVOPAY_WEBHOOK_SECRET);
+  return createOnvopayAdapter(
+    env.ONVOPAY_SECRET_KEY,
+    env.ONVOPAY_WEBHOOK_SECRET,
+    env.ONVOPAY_API_BASE_URL,
+  );
 }
 
 export type { PaymentProvider, CreatePaymentParams, PaymentSession, WebhookPayload } from './types';

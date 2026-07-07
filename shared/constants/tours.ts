@@ -13,6 +13,10 @@ export enum TourActionError {
   SchedulesWriteFailed = 'tour_schedules_write_failed',
   /** Dos temporadas activas solapadas para el mismo tipo (validación + constraint …041). */
   PricingOverlap = 'tour_pricing_overlap',
+  /** Temporada con una sola fecha: el CHECK valid_season_range exige ambas o ninguna. */
+  SeasonDatesIncomplete = 'tour_season_dates_incomplete',
+  /** Temporada de un día o invertida: valid_season_range exige from < until estricto. */
+  SeasonRangeInvalid = 'tour_season_range_invalid',
   /** Dos precios base activos para el mismo tipo. */
   BasePriceDuplicate = 'tour_base_price_duplicate',
   /** No se puede eliminar un horario con salidas ya generadas (FK); desactivarlo. */

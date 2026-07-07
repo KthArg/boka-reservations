@@ -11,3 +11,6 @@ export enum ReportRangeError {
   Inverted = 'inverted',
   TooLong = 'too-long',
 }
+
+/** Código del 400 cuando el query param `report` no existe (spec 0028, B13). */
+export const REPORT_UNKNOWN_ERROR = 'report_unknown';
