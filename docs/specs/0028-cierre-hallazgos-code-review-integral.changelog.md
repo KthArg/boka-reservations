@@ -3,6 +3,24 @@
 Spec: [0028-cierre-hallazgos-code-review-integral.md](./0028-cierre-hallazgos-code-review-integral.md)
 Ramas: `fix/0028-dinero` (workstream A), `fix/0028-panel-portal` (workstream B), `chore/0028-deuda-menor-ci` (workstream C)
 
+## 2026-07-07 — Workstream C implementado (deuda menor + CI); verificación corriendo
+
+**Hecho**:
+
+- Migración `20260707000042`: `cancel_booking` encola `LEAST(p_refund_amount_cents, pago)` (lo auditado = lo encolado, jamás más que lo cobrado — cierra el footgun del refund parcial futuro); `deactivate_internal_user` atómica (FOR UPDATE sobre admins activos, cierra el TOCTOU del último admin); DROP de `users_delete_admin` (la operación soportada es desactivar); `purge_old_webhook_events` (90 días) sumada al job `apply-retention` del worker.
+- `setUserActive` desactiva vía la RPC (pre-chequeo amigable + guard atómico en DB); tipos curados actualizados a mano.
+- `/dashboard/bookings/hoy` → `/today` (regla de URLs en inglés) con link actualizado.
+- Strings mágicos: `HoldStatus`/`InstanceStatus` en `availability.ts` y `create.ts`; comparaciones de timestamps numéricas (`getTime()`) en `availability.ts` y `guide-view.ts` (C5).
+- `CheckoutForm` tipado (`OnvoSdk`, adiós los 4 `any` con disable) + `ONVO_SDK_URL`/`ONVO_PAYMENT_TYPE_ONE_TIME` en `shared/constants/payments.ts` + dedupe/cleanup del `<script>` del SDK.
+- `generate-tour-instances` respeta `valid_from`/`valid_until` (día CR, espejo local self-contained) — dejaron de ser columnas muertas.
+- `shared/index.ts` re-exporta los 17 módulos reales.
+- CI: typecheck de `shared` en el job principal + job nuevo `integration` con Supabase local (`supabase start` + `db reset` + env exportada de `supabase status`) corriendo `test:integration` de web y worker — lo más crítico del sistema por fin gatea.
+- Reglas `no-magic-numbers`/`no-restricted-syntax` del worker quedan en `warn` (43 avisos preexistentes, mayormente números en definiciones de constantes; subirlas a error es follow-up).
+
+**Pendiente**:
+
+- Verificación completa + reviews obligatorios + PR del workstream C.
+
 ## 2026-07-07 — Reviews pre-PR del workstream B aplicados
 
 **Hecho**:
