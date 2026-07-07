@@ -45,6 +45,20 @@ export enum BookingStatus {
   OverbookedRefunded = 'overbooked_refunded',
 }
 
+/** Outcome devuelto por la RPC `confirm_booking` (spec 0028). El worker es
+ *  self-contained y espeja estos valores en `reconciliation/repository.ts`. */
+export enum ConfirmBookingOutcome {
+  Confirmed = 'confirmed',
+  /** Evento ya procesado o reserva ya resuelta: no-op idempotente. */
+  AlreadyProcessed = 'already_processed',
+  /** Pago llegó para una reserva `cancelled`: refund total encolado (spec 0028). */
+  LatePaymentRefunded = 'late_payment_refunded',
+  OverbookedRefunded = 'overbooked_refunded',
+  PaymentMismatch = 'payment_mismatch',
+  /** Estado no accionable (mismatch previo, pago inexistente): revisión manual. */
+  Ignored = 'ignored',
+}
+
 export enum PaymentStatus {
   Pending = 'pending',
   Succeeded = 'succeeded',
