@@ -58,8 +58,76 @@ jobs:
       - name: Typecheck (worker)
         run: pnpm --dir worker typecheck
 
+      - name: Typecheck (shared)
+        run: pnpm --dir shared typecheck
+
       - name: Tests (web)
         run: pnpm --dir web test
 
       - name: Tests (worker)
         run: pnpm --dir worker test
+
+  # spec 0028 (C8): las suites de integracion cubren lo mas critico del sistema
+  # (refunds, RPCs de dinero, carreras) y antes NINGUN gate las ejecutaba.
+  integration:
+    name: Tests de integración (Supabase local)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            web/pnpm-lock.yaml
+            worker/pnpm-lock.yaml
+            shared/pnpm-lock.yaml
+
+      - name: Instalar dependencias root
+        run: HUSKY=0 pnpm install --frozen-lockfile
+
+      - name: Instalar dependencias web
+        run: pnpm --dir web install --frozen-lockfile
+
+      - name: Instalar dependencias worker
+        run: pnpm --dir worker install --frozen-lockfile
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Levantar Supabase local (aplica migraciones + seed)
+        run: |
+          supabase start
+          supabase db reset
+
+      - name: Exportar env de tests
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "APP_URL=http://localhost:3000"
+            echo "ONVOPAY_SECRET_KEY=onvo_test_ci"
+            echo "ONVOPAY_WEBHOOK_SECRET=ci-webhook-secret"
+            echo "NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY=onvo_test_pk_ci"
+            echo "INVITE_SIGNING_SECRET=ci-invite-signing-secret"
+          } >> "$GITHUB_ENV"
+
+      - name: Tests de integración (web)
+        run: pnpm --dir web test:integration
+
+      - name: Tests de integración (worker)
+        run: pnpm --dir worker test:integration
