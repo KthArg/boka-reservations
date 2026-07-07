@@ -39,16 +39,17 @@ export async function assignGuide(instanceId: string, guideId: string): Promise<
     return { ok: false, error: GuideAssignmentError.NotAGuide };
   }
 
-  const { error: delErr } = await db
+  // Upsert atómico (spec 0028, B9): el UNIQUE de tour_instance_guides(tour_instance_id)
+  // (migración …041) garantiza un guía por salida a nivel DB. El delete+insert previo
+  // permitía que dos asignaciones concurrentes dejaran dos guías (o ninguna ante fallo
+  // parcial); ahora la última escritura gana, en una sola operación.
+  const { error: upsertErr } = await db
     .from('tour_instance_guides')
-    .delete()
-    .eq('tour_instance_id', instanceId);
-  if (delErr) return { ok: false, error: GuideAssignmentError.WriteFailed };
-
-  const { error: insErr } = await db
-    .from('tour_instance_guides')
-    .insert({ tour_instance_id: instanceId, guide_id: guideId, assigned_by: user.id });
-  if (insErr) return { ok: false, error: GuideAssignmentError.WriteFailed };
+    .upsert(
+      { tour_instance_id: instanceId, guide_id: guideId, assigned_by: user.id },
+      { onConflict: 'tour_instance_id' },
+    );
+  if (upsertErr) return { ok: false, error: GuideAssignmentError.WriteFailed };
 
   const enqueueErr = await enqueueAssignmentEmail(db, instanceId, guide);
   if (enqueueErr) return { ok: false, error: GuideAssignmentError.WriteFailed };

@@ -2,15 +2,23 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { maskEmail } from '@/lib/format/mask-email';
+import { BookingStatus } from '@shared/constants/enums';
 import styles from './success.module.css';
 
 type Props = { searchParams: Promise<{ booking?: string }> };
+
+type SuccessBooking = {
+  id: string;
+  customer_email: string;
+  tour_instance_id: string;
+  status: string;
+};
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const { booking: bookingId } = await searchParams;
   const [t, locale] = await Promise.all([getTranslations('checkout'), getLocale()]);
 
-  let booking = null;
+  let booking: SuccessBooking | null = null;
   let tourName: string | null = null;
   let dateLabel: string | null = null;
 
@@ -22,24 +30,18 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
       .from('bookings')
       .select('id, customer_email, tour_instance_id, status')
       .eq('id', bookingId)
-      .single();
+      .maybeSingle();
 
     if (data) {
       booking = data;
       const { data: instance } = await db
         .from('tour_instances')
-        .select('starts_at, tour_id')
+        .select('starts_at, tour_id, tours!inner(name_es, name_en)')
         .eq('id', data.tour_instance_id)
-        .single();
+        .maybeSingle<{ starts_at: string; tours: { name_es: string; name_en: string } }>();
 
       if (instance) {
-        const { data: tour } = await db
-          .from('tours')
-          .select('name_es, name_en')
-          .eq('id', instance.tour_id)
-          .single();
-
-        tourName = tour ? (locale === 'es' ? tour.name_es : tour.name_en) : null;
+        tourName = locale === 'es' ? instance.tours.name_es : instance.tours.name_en;
         dateLabel = new Date(instance.starts_at).toLocaleString(
           locale === 'es' ? 'es-CR' : 'en-US',
           {
@@ -56,10 +58,24 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
     }
   }
 
+  // Honestidad del estado (spec 0028, B5): "¡Reserva confirmada!" SOLO con status
+  // confirmed. Un pago aún en proceso (el webhook puede demorar) muestra "procesando";
+  // cualquier otro estado (cancelada, mismatch, URL vieja del historial) un mensaje
+  // neutro — antes cualquier UUID renderizaba la confirmación.
+  const isConfirmed = booking?.status === BookingStatus.Confirmed;
+  const isProcessing = booking?.status === BookingStatus.PendingPayment;
+  const title = isConfirmed
+    ? t('success-title')
+    : isProcessing
+      ? t('success-processing-title')
+      : t('success-neutral-title');
+
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>{t('success-title')}</h1>
-      {booking ? (
+      <h1 className={styles.title}>{title}</h1>
+      {isProcessing && <p className={styles.body}>{t('success-processing-body')}</p>}
+      {!isConfirmed && !isProcessing && <p className={styles.body}>{t('success-neutral-body')}</p>}
+      {booking && isConfirmed ? (
         <div className={styles.card}>
           <p>
             <strong>{t('success-booking')}</strong>

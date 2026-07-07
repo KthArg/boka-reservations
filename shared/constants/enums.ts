@@ -59,6 +59,17 @@ export enum ConfirmBookingOutcome {
   Ignored = 'ignored',
 }
 
+/** Estado de un hold de cupo en `tour_holds` (specs 0005, 0025). Antes solo existía
+ *  como unión en types/database.ts y el código usaba string literals (spec 0028). */
+export enum HoldStatus {
+  Active = 'active',
+  Released = 'released',
+  Expired = 'expired',
+  Converted = 'converted',
+  /** Payment intent creado: el cupo queda retenido durante el ciclo de pago (spec 0025). */
+  Paying = 'paying',
+}
+
 export enum PaymentStatus {
   Pending = 'pending',
   Succeeded = 'succeeded',

@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
+import { isMagicLinkThrottled } from '@/lib/security/magic-link-throttle';
 import { hashGuideToken } from './hash';
 
 export { hashGuideToken } from './hash';
@@ -16,6 +17,9 @@ export async function validateGuideToken(
   db: ServiceClient,
   plaintext: string,
 ): Promise<string | null> {
+  // Excedido el throttle por IP (spec 0028, B10): misma respuesta que token inválido.
+  if (await isMagicLinkThrottled()) return null;
+
   const tokenHash = hashGuideToken(plaintext);
   const { data } = await db
     .from('guide_access_tokens')

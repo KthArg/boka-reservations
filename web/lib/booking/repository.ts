@@ -1,6 +1,10 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { ADMIN_BOOKINGS_PAGE_SIZE } from '@shared/constants/bookings';
+// Día del negocio = día calendario de Costa Rica (spec 0028, B4): antes los límites eran
+// el día UTC y todo tour de 18:00–23:59 CR caía en el día equivocado del listado y del
+// export contable. Límites [inicio del día CR, inicio del día CR siguiente).
+import { crDayStartIso, crNextDayStartIso } from '@/lib/dates/cr-date';
 import type { BookingFilters, AdminBookingRow, AdminBookingPage } from './admin-types';
 
 const LIST_SELECT = `
@@ -29,9 +33,7 @@ interface RawListRow {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- builder de PostgREST sobre columnas embebidas
 export type FilterBuilder = any;
 
-const startOfDay = (d: string) => `${d}T00:00:00Z`;
 const FIRST_PAGE = 1;
-const endOfDay = (d: string) => `${d}T23:59:59.999Z`;
 const sanitizeSearch = (s: string) => s.replace(/[,()*\\]/g, '');
 
 function toRow(r: RawListRow): AdminBookingRow {
@@ -51,8 +53,8 @@ export function applyFilters(query: FilterBuilder, filters: BookingFilters): Fil
   let q = query;
   if (filters.status) q = q.eq('status', filters.status);
   if (filters.tourId) q = q.eq('tour_instances.tour_id', filters.tourId);
-  if (filters.dateFrom) q = q.gte('tour_instances.starts_at', startOfDay(filters.dateFrom));
-  if (filters.dateTo) q = q.lte('tour_instances.starts_at', endOfDay(filters.dateTo));
+  if (filters.dateFrom) q = q.gte('tour_instances.starts_at', crDayStartIso(filters.dateFrom));
+  if (filters.dateTo) q = q.lt('tour_instances.starts_at', crNextDayStartIso(filters.dateTo));
   if (filters.search) {
     const s = sanitizeSearch(filters.search);
     q = q.or(`customer_name.ilike.%${s}%,customer_email.ilike.%${s}%`);

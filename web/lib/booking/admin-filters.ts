@@ -9,6 +9,7 @@ const FIRST_PAGE = 1;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const BOOKING_STATUSES = new Set<string>(Object.values(BookingStatus));
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function parsePage(raw: string | undefined): number {
   const n = Number(raw);
@@ -21,12 +22,16 @@ function parseStatus(raw: string | undefined): BookingStatus | undefined {
   return undefined;
 }
 
-/** Mapea query params crudos a filtros tipados. Ignora valores inválidos. */
+/**
+ * Mapea query params crudos a filtros tipados. Ignora valores inválidos — también en
+ * formato (spec 0028, B8): antes `?dateFrom=basura` o `?tourId=no-uuid` llegaban crudos
+ * al query builder y PostgREST lanzaba (error page del panel).
+ */
 export function parseBookingFilters(params: Record<string, string | undefined>): BookingFilters {
   const filters: BookingFilters = { page: parsePage(params.page) };
-  if (params.dateFrom) filters.dateFrom = params.dateFrom;
-  if (params.dateTo) filters.dateTo = params.dateTo;
-  if (params.tourId) filters.tourId = params.tourId;
+  if (params.dateFrom && ISO_DATE.test(params.dateFrom)) filters.dateFrom = params.dateFrom;
+  if (params.dateTo && ISO_DATE.test(params.dateTo)) filters.dateTo = params.dateTo;
+  if (params.tourId && UUID_RE.test(params.tourId)) filters.tourId = params.tourId;
   const search = params.search?.trim();
   if (search) filters.search = search;
   const status = parseStatus(params.status);
@@ -62,6 +67,8 @@ export function validateExportRange(filters: BookingFilters): ExportRangeError |
   const from = Date.parse(filters.dateFrom);
   const to = Date.parse(filters.dateTo);
   if (Number.isNaN(from) || Number.isNaN(to)) return ExportRangeError.Missing;
+  // Rango invertido (spec 0028, B8): antes `from > to` pasaba y el export salía vacío.
+  if (to < from) return ExportRangeError.Missing;
   if ((to - from) / MS_PER_DAY > EXPORT_MAX_RANGE_DAYS) return ExportRangeError.TooLong;
   return null;
 }

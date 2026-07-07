@@ -2,9 +2,9 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
+import { releaseHeldBooking } from '@/lib/booking/release-hold';
+import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
 import styles from './cancel.module.css';
-
-const HOLD_SESSION_COOKIE = 'hold_session';
 
 type Props = { searchParams: Promise<{ booking?: string }> };
 
@@ -15,51 +15,18 @@ export default async function CheckoutCancelPage({ searchParams }: Props) {
   let tourSlug: string | null = null;
 
   if (bookingId) {
+    // La liberación vive en lib/ (spec 0028, B6): valida propiedad por cookie, chequea
+    // errores y es idempotente. El GET con side-effect es el tradeoff documentado ahí.
+    const cookieToken = (await cookies()).get(HOLD_SESSION_COOKIE)?.value;
+    if (cookieToken) await releaseHeldBooking(bookingId, cookieToken);
+
     const db = createSupabaseServiceClient();
     const { data: booking } = await db
       .from('bookings')
-      .select('id, hold_id, tour_instance_id, status')
+      .select('tour_instance_id, tour_instances!inner(tours!inner(slug))')
       .eq('id', bookingId)
-      .single();
-
-    if (booking) {
-      // ACCESS-03 (spec 0023): liberar el hold SOLO si la cookie HttpOnly del checkout coincide
-      // con el session_token del hold (prueba de propiedad), no solo por el UUID crudo en la URL.
-      // Si no coincide o falta, no se toca: el hold expira por su TTL de 15 min igual.
-      if (booking.hold_id && booking.status === 'pending_payment') {
-        const cookieToken = (await cookies()).get(HOLD_SESSION_COOKIE)?.value;
-        if (cookieToken) {
-          const { data: hold } = await db
-            .from('tour_holds')
-            .select('session_token')
-            .eq('id', booking.hold_id)
-            .single();
-          if (hold?.session_token === cookieToken) {
-            await db
-              .from('tour_holds')
-              .update({ status: 'released' })
-              .eq('id', booking.hold_id)
-              .eq('status', 'active');
-          }
-        }
-      }
-
-      const { data: instance } = await db
-        .from('tour_instances')
-        .select('tour_id')
-        .eq('id', booking.tour_instance_id)
-        .single();
-
-      if (instance) {
-        const { data: tour } = await db
-          .from('tours')
-          .select('slug')
-          .eq('id', instance.tour_id)
-          .single();
-
-        tourSlug = tour?.slug ?? null;
-      }
-    }
+      .maybeSingle<{ tour_instances: { tours: { slug: string } } }>();
+    tourSlug = booking?.tour_instances?.tours?.slug ?? null;
   }
 
   const retryHref = tourSlug ? `/${locale}/tours/${tourSlug}` : `/${locale}/tours`;

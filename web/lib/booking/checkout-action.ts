@@ -10,14 +10,14 @@ import { checkRateLimit } from '@/lib/security/rate-limit';
 import { getClientIp } from '@/lib/security/client-ip';
 import { rateLimitKey } from '@/lib/security/rate-limit-key';
 import { RATE_LIMITS, RATE_LIMIT_KEY_PREFIX } from '@shared/constants/rate-limit';
+import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
 
 const EmailSchema = z.string().email();
 // APPSEC-02 (spec 0023): cota de longitud del nombre (higiene de input; evita persistir e
 // inyectar en el email un nombre de varios MB). El endpoint de checkout es público.
 const NameSchema = z.string().trim().min(1).max(120);
-// ACCESS-03 (spec 0023): cookie HttpOnly con el session_token del hold; la página de
-// cancelación la usa para probar propiedad antes de liberar el hold. Vida ~ hold (15 min) + margen.
-const HOLD_SESSION_COOKIE = 'hold_session';
+// ACCESS-03 (spec 0023): la cookie HttpOnly (HOLD_SESSION_COOKIE, compartida) prueba la
+// propiedad del hold desde /checkout/cancel. Vida ~ hold (15 min) + margen.
 const HOLD_SESSION_MAX_AGE_S = 20 * 60;
 
 /**
@@ -108,6 +108,9 @@ export async function checkoutAction(
     // PRIV-06 (spec 0023): no volcar el objeto `err` completo (puede embeber PII de DB/OnvoPay).
     console.error('[checkout-action] error:', msg);
     if (msg === 'HOLD_NO_CAPACITY') return { error: 'no-availability' };
+    // Salida ya ocurrida (spec 0028, B7): mensaje específico en vez del genérico. El
+    // calendario ya no las ofrece, pero cubre pestañas viejas / URLs directas.
+    if (msg === 'HOLD_INSTANCE_PAST') return { error: 'instance-past' };
     return { error: 'error-generic' };
   }
 }

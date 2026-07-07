@@ -7,7 +7,12 @@ const envSchema = z.object({
   ONVOPAY_SECRET_KEY: z.string().min(1),
   ONVOPAY_WEBHOOK_SECRET: z.string().min(1),
   NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY: z.string().min(1),
-  RESEND_API_KEY: z.string().min(1),
+  // Base del API de OnvoPay (spec 0028). Default producción; sandbox:
+  // https://api.dev.onvopay.com/v1 con llaves onvo_test_*.
+  ONVOPAY_API_BASE_URL: z.string().url().default('https://api.onvopay.com/v1'),
+  // RESEND_API_KEY se ELIMINÓ de este schema (spec 0028, B11): el web no envía emails
+  // (van por la cola `notifications` que procesa el worker); exigirla acá tumbaba
+  // flujos del web por una variable que ni usa.
   APP_URL: z.string().url(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
@@ -33,4 +38,6 @@ function parseEnv() {
   return result.data;
 }
 
+// instrumentation.ts importa este módulo al ARRANCAR el server (spec 0028, B11): un
+// deploy con env incompleta muere al boot, no a mitad de un request de checkout.
 export const env = parseEnv();
