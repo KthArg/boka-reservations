@@ -3,6 +3,21 @@
 Spec: [0028-cierre-hallazgos-code-review-integral.md](./0028-cierre-hallazgos-code-review-integral.md)
 Ramas: `fix/0028-dinero` (workstream A), `fix/0028-panel-portal` (workstream B), `chore/0028-deuda-menor-ci` (workstream C)
 
+## 2026-07-07 — Reviews pre-PR del workstream C aplicados
+
+**Hecho**:
+
+- Veredictos: payment-flow-auditor **APTO** (LEAST verificado extremo a extremo: monto idéntico byte a byte con la política binaria; replay >90 días cubierto por 3 capas; generador insert-only no toca instancias con reservas); db-schema-guardian **APTO** (cuerpo de cancel_booking replicado sin drift; anti-TOCTOU verificado bajo READ COMMITTED — el lock en el PERFORM garantiza snapshot fresco); code-reviewer **requirió cambios** (aplicados):
+  - **Tests exigidos por §10**: integración anti-TOCTOU (dos desactivaciones concurrentes de los dos últimos admins → a lo sumo una gana) + último admin bloqueado; integración del cap de cancel_booking (p_refund > pago → encola el pago; 0 → nada); unit del generador con bordes de día CR (salida 19:00 CR del día valid_until incluida); unit de webhookEventCutoff + integración de purge_old_webhook_events (evento viejo purgado, fresco conservado).
+  - **CI**: `pnpm --dir shared install` en el job de integración (zod vive en shared/node_modules) y CLI de Supabase pinneada (2.101.0) — el primer run verde se valida en el propio PR.
+  - `setUserActive` sobre un usuario ya inactivo vuelve a ser no-op ok (la RPC devolvía false y se confundía con LastAdmin); `paymentType` tipado a la constante.
+  - Del payment-flow-auditor: validación de vigencia invertida en horarios (`tour_schedule_range_invalid`, i18n) — un rango invertido apagaba la generación de salidas EN SILENCIO.
+- **Deuda aceptada y documentada**: C3 quedó PARCIAL en el worker — quedan literales de estado en release-expired-holds, notifications/repository, handle-refund, generate-tour-instances (`.eq('status','active')`) y el mapeo del adapter web (`'succeeded'/'failed'`); son typo-safe por unions y las reglas ESLint (warn) los vigilan; completarlos es follow-up. También: `valid_until` no retira instancias YA generadas dentro del lookahead (documentar en la UI del schedule / follow-up operativo); audit `booking.cancelled` registra el monto de la política sin capar (el de `refund.requested` sí va capado — divergencia solo posible con política parcial futura); lock de admins también para targets no-admin (costo nulo al volumen).
+
+**Pendiente**:
+
+- Verificación final → push + PR del workstream C (stacked sobre #68).
+
 ## 2026-07-07 — Workstream C implementado (deuda menor + CI); verificación corriendo
 
 **Hecho**:

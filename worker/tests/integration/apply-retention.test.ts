@@ -63,6 +63,24 @@ describe('applyRetention (job)', () => {
     expect(data ?? []).toHaveLength(0);
   });
 
+  it('purga eventos de webhook >90 días y conserva los recientes (spec 0028, C1)', async () => {
+    const oldId = `evt-old-${crypto.randomUUID()}`;
+    const freshId = `evt-fresh-${crypto.randomUUID()}`;
+    await admin.from('processed_webhook_events').insert([
+      { id: oldId, processed_at: new Date(Date.now() - 120 * DAY_MS).toISOString() },
+      { id: freshId, processed_at: new Date().toISOString() },
+    ]);
+
+    await applyRetention();
+
+    const { data: rows } = await admin
+      .from('processed_webhook_events')
+      .select('id')
+      .in('id', [oldId, freshId]);
+    expect((rows ?? []).map((r) => r.id)).toEqual([freshId]);
+    await admin.from('processed_webhook_events').delete().eq('id', freshId);
+  });
+
   it('con RETENTION_ENABLED=false no toca nada', async () => {
     mockEnv.RETENTION_ENABLED = false;
     const hash = await seedExpiredGuideToken('worker-noop');

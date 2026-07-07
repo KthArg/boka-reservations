@@ -33,6 +33,10 @@ export async function setUserActive(
   const db = createSupabaseServiceClient();
 
   if (!active) {
+    // Ya inactivo: no-op idempotente (comportamiento previo; la RPC devolvería false
+    // y se confundiría con el guard del último admin).
+    if (!target.active) return { ok: true };
+
     // Pre-chequeo para errores amigables (self / último admin)…
     const guard = checkDeactivation({
       targetId: id,

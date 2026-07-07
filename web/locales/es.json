@@ -111,6 +111,7 @@
       "tour_schedules_write_failed": "Error al guardar los horarios.",
       "tour_season_dates_incomplete": "Una temporada necesita fecha de inicio Y de fin (o ninguna, para el precio base).",
       "tour_season_range_invalid": "La fecha de inicio de una temporada debe ser anterior a la de fin.",
+      "tour_schedule_range_invalid": "La vigencia de un horario tiene la fecha de inicio después de la de fin.",
       "tour_pricing_overlap": "Hay temporadas activas con fechas solapadas para el mismo tipo de tiquete.",
       "tour_base_price_duplicate": "Hay más de un precio base activo para el mismo tipo de tiquete.",
       "tour_schedule_in_use": "No se puede eliminar un horario con salidas ya generadas; desactivalo.",

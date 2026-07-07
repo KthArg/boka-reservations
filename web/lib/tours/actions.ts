@@ -8,7 +8,12 @@ import { TourActionError } from '@shared/constants/tours';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { TourFormSchema } from './types';
 import type { ActionResult } from './types';
-import { detectPricingOverlaps, hasHalfOpenSeasons, hasInvalidSeasonRange } from './validation';
+import {
+  detectPricingOverlaps,
+  hasHalfOpenSeasons,
+  hasInvalidScheduleRange,
+  hasInvalidSeasonRange,
+} from './validation';
 import { slugExists } from './repository';
 import { parseTourFields } from './parse';
 import { mapPricing, mapSchedules } from './map';
@@ -44,6 +49,9 @@ export async function createTour(
   }
   if (hasInvalidSeasonRange(pricing)) {
     return { success: false, errors: { _form: [TourActionError.SeasonRangeInvalid] } };
+  }
+  if (hasInvalidScheduleRange(schedules)) {
+    return { success: false, errors: { _form: [TourActionError.ScheduleRangeInvalid] } };
   }
   const overlapErrors = detectPricingOverlaps(pricing);
   if (overlapErrors.length > 0) {
@@ -107,6 +115,9 @@ export async function updateTour(
   }
   if (hasInvalidSeasonRange(pricing)) {
     return { success: false, errors: { _form: [TourActionError.SeasonRangeInvalid] } };
+  }
+  if (hasInvalidScheduleRange(schedules)) {
+    return { success: false, errors: { _form: [TourActionError.ScheduleRangeInvalid] } };
   }
   const overlapErrors = detectPricingOverlaps(pricing);
   if (overlapErrors.length > 0) {

@@ -2,10 +2,12 @@
 // usa CheckoutForm. Reemplaza los 4 `any` con eslint-disable sin justificación.
 // Doc: https://docs.onvopay.com/ (widget de pago).
 
+import type { ONVO_PAYMENT_TYPE_ONE_TIME } from '@shared/constants/payments';
+
 export type OnvoPayConfig = {
   publicKey: string | undefined;
   paymentIntentId: string;
-  paymentType: string;
+  paymentType: typeof ONVO_PAYMENT_TYPE_ONE_TIME;
   onSuccess: () => void;
   onError: () => void;
 };

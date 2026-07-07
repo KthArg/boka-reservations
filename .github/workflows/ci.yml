@@ -102,10 +102,15 @@ jobs:
       - name: Instalar dependencias worker
         run: pnpm --dir worker install --frozen-lockfile
 
+      - name: Instalar dependencias shared
+        run: pnpm --dir shared install --frozen-lockfile
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinneada (reproducible): los nombres de claves de `supabase status -o env`
+          # han cambiado entre versiones. Alinear con el CLI local al actualizar.
+          version: 2.101.0
 
       - name: Levantar Supabase local (aplica migraciones + seed)
         run: |

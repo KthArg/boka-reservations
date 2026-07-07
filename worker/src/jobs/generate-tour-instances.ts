@@ -96,3 +96,5 @@ export async function generateTourInstances(): Promise<void> {
 
   console.log(`[generate-tour-instances] done — ${totalInserted} instancias nuevas`);
 }
+
+export const __testing = { withinValidity, crDateOf };
