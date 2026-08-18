@@ -1,6 +1,6 @@
 # Consulta a OnvoPay — cobro diferido con tarjeta retenida
 
-- **Estado**: pendiente de enviar
+- **Estado**: enviada 2026-08-13 — respuesta parcial e insuficiente; escalada a técnico/compliance pendiente (ver al final)
 - **Dueño**: Kenneth / cliente (titular de la cuenta OnvoPay)
 - **Creado**: 2026-08-13
 - **Relacionado**: [spec 0029 — Cupo mínimo y cobro diferido](specs/0029-cupo-minimo-y-cobro-diferido.md) §13 (Q1)
@@ -54,7 +54,7 @@ Se hacen en paralelo, contra `https://api.dev.onvopay.com/v1`, y valen como evid
 - [ ] Guardar un método de pago con la publishable key **desde el navegador** y confirmar que el PAN no sale hacia nuestro backend (pestaña de red).
 - [ ] Cobrar ese método varios días después y registrar el `status` devuelto (`succeeded` vs `requires_action`).
 - [ ] Probar el rechazo con `4000000000000002` y anotar el `declineCode` exacto, que es lo que se persiste en `bookings.charge_last_error`.
-- [ ] Llamar `POST /v1/payment-intents/{id}/cancel` sobre un intent en `requires_payment_method` y sobre uno ya `succeeded`; anotar códigos de respuesta.
+- [ ] **(decisiva)** Llamar `POST /v1/payment-intents/{id}/cancel` sobre un intent en **`requires_action`** — soporte no lo incluyó entre los estados cancelables y de esto depende la regla anti-doble-cobro. Probar también sobre `requires_payment_method` y sobre uno ya `succeeded`; anotar códigos de respuesta.
 - [ ] Confirmar dos veces el mismo intent y ver si OnvoPay lo rechaza o cobra dos veces.
 
 ## Dónde se aplica la respuesta
@@ -66,3 +66,43 @@ Se hacen en paralelo, contra `https://api.dev.onvopay.com/v1`, y valen como evid
 - **Pregunta 7** → si es afirmativa, se revisa §5.2 del spec 0029 y se evita el salto de SAQ A a SAQ A-EP.
 
 Registrar las respuestas en [spec 0029 §13](specs/0029-cupo-minimo-y-cobro-diferido.md) y, si alguna cambia el diseño, actualizar el spec y pedir re-aprobación antes de implementar.
+
+## Respuestas recibidas (2026-08-13) — primer nivel de soporte
+
+Respondió un asistente que busca sobre la documentación, no una persona del equipo técnico. Salvo un punto, todas las respuestas fueron "no aparece información en los resultados", que **no equivale a una respuesta**: no confirma ni descarta nada. Se registran igual porque acotan qué está y qué no está documentado públicamente.
+
+| #   | Tema                                                              | Respuesta                                                                                                                             | Sirve?                    |
+| --- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| 1   | MIT / credencial almacenada                                       | Sin información                                                                                                                       | No                        |
+| 2   | 3DS en cobros off-session y autenticación al guardar              | Sin información                                                                                                                       | No                        |
+| 3   | Vigencia del `paymentMethodId` y account updater                  | Sin información                                                                                                                       | No                        |
+| 4   | Cancelación de intents                                            | **Existe**; aplica sobre `requires_payment_method` y `requires_capture`. Sobre estados terminales (`succeeded`, `canceled`) no aplica | Parcial — ver abajo       |
+| 5   | Expiración de intents no confirmados                              | Sin información                                                                                                                       | No                        |
+| 6   | Baja de datos personales (detach de tarjeta, borrado de customer) | Sin información                                                                                                                       | No                        |
+| 7   | Modo "guardar tarjeta sin cobrar" en SDK/Checkout                 | No documentado; solo `one_time` y `subscription`                                                                                      | Sí (confirma el supuesto) |
+
+Ofrecieron derivar a un agente del equipo técnico/compliance para tratar MIT, 3DS off-session, retención de tokens y privacidad. **Hay que aceptar esa derivación**: son justamente los temas que bloquean el workstream C.
+
+### La respuesta 4 abre un problema, no lo cierra
+
+Los estados que enumeran son `requires_payment_method` y `requires_capture`. **No mencionan `requires_action`**, que es el estado en el que queda un intent esperando 3DS — y es exactamente el caso donde el spec necesita cancelar (§5.6, §5.7): si el turista abandona la autenticación y luego la completa tarde, un intent nuevo creado mientras tanto produce un doble cobro que nuestro modelo de reembolsos **no puede reparar** (un solo refund activo por reserva).
+
+No se puede concluir que sea imposible: la respuesta viene de un bot que enumeró lo que encontró, no una negación explícita. Pero tampoco se puede asumir que funciona. Queda como el punto a confirmar con prioridad, por las dos vías (agente técnico y prueba en sandbox). Mientras tanto, el spec adopta la regla de contingencia de §5.7: con un intent vivo en `requires_action`, la reserva no genera intents nuevos; si la ventana vence sin autenticación, se cancela en vez de reintentarse.
+
+La respuesta 7 sí es útil en sentido negativo: confirma que no hay modo _setup_ documentado, lo que respalda la decisión ya tomada de usar formulario propio y asumir SAQ A-EP.
+
+## Seguimiento pendiente — escalar a técnico/compliance
+
+Aceptar la derivación ofrecida y pedir respuesta explícita, por escrito, a estos puntos. Vale la pena aclararles que un "no está documentado" no nos sirve: necesitamos un sí o un no del equipo.
+
+> Gracias. Sí, por favor conectame con el equipo técnico/compliance. Necesitamos respuestas explícitas (sí/no), no solo lo que esté documentado, porque de esto depende el diseño de un cobro que ejecutamos sin el cliente presente:
+>
+> 1. **Cancelación en 3DS**: ¿se puede cancelar un payment intent que está en `requires_action` (esperando autenticación 3DS)? Es el punto más importante para nosotros. Si no se puede, ¿qué le pasa a ese intent si el cliente nunca autentica: expira, y en cuánto tiempo?
+> 2. **Doble confirmación**: si confirmamos dos veces el mismo payment intent, o confirmamos uno que el cliente ya autenticó por su cuenta, ¿lo rechazan o se generan dos cargos?
+> 3. **Credencial almacenada**: ¿marcan estos cobros como _merchant-initiated_ ante el emisor? Si no lo hacen hoy, ¿está en el roadmap? Queremos entender qué tasa de rechazo esperar frente a un cobro con el cliente presente.
+> 4. **3DS off-session**: ¿qué proporción de estos cobros esperan que devuelva `requires_action`? ¿Se puede autenticar la tarjeta al guardarla para evitarlo después?
+> 5. **Vigencia del token**: ¿por cuánto tiempo sigue siendo cobrable un `paymentMethodId`? ¿Actualizan automáticamente tarjetas vencidas o renumeradas?
+> 6. **Privacidad (Ley 8968)**: ¿qué endpoints usamos para desvincular un método de pago y eliminar un `customer` a pedido del titular? ¿Cuánto tiempo retienen ustedes esos datos?
+> 7. **Contrato**: ¿guardar la tarjeta del cliente para cobrarle después requiere alguna habilitación o acuerdo adicional en nuestra cuenta de comercio?
+
+Si el equipo técnico tampoco puede confirmar el punto 1, la verificación en sandbox pasa a ser la única evidencia y **debe hacerse antes de aprobar el workstream C**.
