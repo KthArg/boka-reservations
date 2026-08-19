@@ -45,7 +45,16 @@ Ninguna de las tres se puede asumir sin confirmación (regla de `external-servic
 >
 > ¡Gracias!
 
-**Canales**: WhatsApp de soporte (el más rápido según reseñas) · `notificaciones@onvopay.com` · `soporte.onvopay.com` · `/contact-us`.
+**Canales** (verificados en `onvopay.com/contact-us`, 2026-08-13):
+
+- `ayuda@onvopay.com` — soporte al cliente
+- `ventas@onvopay.com` — ventas y nuevos servicios
+- `rp@onvopay.com` — prensa
+- WhatsApp **7019-6686** · portal `soporte.onvopay.com`
+
+Corrección: una versión previa de este documento anotaba `notificaciones@onvopay.com`, que **no** figura como canal de contacto y por el nombre parece una casilla de envío automático. No usarla.
+
+**Cuál usar para esta consulta**: `ayuda@onvopay.com`, referenciando el ticket del chat. Vale la pena copiar a `ventas@onvopay.com`: parte de lo que preguntamos es si la capacidad existe y si requiere habilitación contractual en la cuenta de comercio, que es tema comercial y no de soporte — y ventas suele tener más incentivo y mejor acceso para hacer que alguien conteste. El correo además deja constancia escrita, que el chat no.
 
 ## Verificaciones en sandbox (no dependen de la respuesta)
 
