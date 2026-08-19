@@ -1,6 +1,6 @@
 # Consulta a OnvoPay — cobro diferido con tarjeta retenida
 
-- **Estado**: enviada 2026-08-13 — respuesta parcial e insuficiente; escalada a técnico/compliance pendiente (ver al final)
+- **Estado**: en conversación con soporte (Priscilla Rodríguez, 2026-08-13). Respuesta de primer nivel insuficiente; se reformuló el planteo por caso de negocio y se pasó a preguntar de a una
 - **Dueño**: Kenneth / cliente (titular de la cuenta OnvoPay)
 - **Creado**: 2026-08-13
 - **Relacionado**: [spec 0029 — Cupo mínimo y cobro diferido](specs/0029-cupo-minimo-y-cobro-diferido.md) §13 (Q1)
@@ -106,3 +106,22 @@ Aceptar la derivación ofrecida y pedir respuesta explícita, por escrito, a est
 > 7. **Contrato**: ¿guardar la tarjeta del cliente para cobrarle después requiere alguna habilitación o acuerdo adicional en nuestra cuenta de comercio?
 
 Si el equipo técnico tampoco puede confirmar el punto 1, la verificación en sandbox pasa a ser la única evidencia y **debe hacerse antes de aprobar el workstream C**.
+
+## Aprendizaje sobre cómo consultar a OnvoPay (2026-08-13)
+
+La escalada llegó a una agente de soporte (Priscilla Rodríguez), cuya primera reacción fue que **siete preguntas técnicas juntas causan confusión** y pidió que le explicáramos el problema de fondo antes que los detalles.
+
+Es una corrección válida y cambia el método para futuras consultas a este proveedor:
+
+- **Soporte no es ingeniería.** Nombrar endpoints, estados de un intent o parámetros de API no ayuda; lo que destraba la conversación es el caso de negocio en lenguaje llano.
+- **Una pregunta por vez**, y encadenada: la siguiente solo tiene sentido si la anterior dio verde.
+- **Primero la pregunta que puede matar el diseño.** Si no soportan cobro con credencial almacenada, las otras seis son irrelevantes y el spec 0029 se cae entero.
+
+Orden acordado para esta conversación:
+
+1. ¿Soportan cobrar después, sin el cliente presente, con la tarjeta guardada? ¿Requiere habilitación en la cuenta de comercio? **← planteada**
+2. ¿Qué pasa si ese cobro pide 3DS y el cliente no está para autenticar? (de acá sale lo de `requires_action`)
+3. ¿Cuánto tiempo sigue siendo cobrable la tarjeta guardada?
+4. Baja de datos del titular (Ley 8968).
+
+Las preguntas 1 y 2 de esta lista son las que bloquean el workstream C. Las de detalle técnico (cancelación de intents en cada estado, doble confirmación, expiración) probablemente se resuelvan antes por **verificación en sandbox** que por soporte — mantener esa vía como la principal.
