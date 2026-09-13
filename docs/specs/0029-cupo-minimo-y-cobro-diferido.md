@@ -9,7 +9,7 @@
 
 > **Prerrequisito cumplido**: el spec 0028 está en `dev` (PRs #67, #68 y #69, mergeados el 2026-09-13). Las citas a archivo y línea de este spec se revalidaron contra ese código.
 
-> **Historial de revisión.** Aprobado el 2026-08-13 con este mismo mecanismo. El 2026-09-13 se evaluó y **descartó** autorizar al reservar y capturar después (§5.1), y se volvió a este diseño con lo aprendido: la especificación OpenAPI de OnvoPay, la evidencia de sus suscripciones y cinco rondas de revisión. **Requiere re-aprobación.**
+> **Historial de revisión.** Aprobado el 2026-08-13 con este mismo mecanismo. El 2026-09-13 se evaluó y **descartó** autorizar al reservar y capturar después (§5.1), y se volvió a este diseño con lo aprendido: la especificación OpenAPI de OnvoPay, la evidencia de sus suscripciones y seis rondas de revisión. **Requiere re-aprobación.**
 
 ## 1. Contexto y motivación
 
@@ -109,7 +109,7 @@ El SDK embebido solo sabe cobrar un intent; **no puede guardar una tarjeta sin c
 
 Hoy el checkout escribe la reserva (`web/lib/booking/create.ts:58`), el pago (`:91`) y el paso del hold a `paying` (`:107-108`) en sentencias separadas. Replicarlo podría dejar una `pending_minimum` con el hold `active`, que vence a los 15 minutos: contaría para el mínimo sin ocupar cupo. De ahí la función atómica.
 
-**Checkout abandonado**: cuando expira un hold con `customer_external_id` y sin reserva, el worker hace `detach` del método de pago que exista y `DELETE` del customer en OnvoPay. Sin esto quedarían datos del turista en el proveedor sin ninguna reserva que los justifique (spec 0022).
+**Checkout abandonado**: cuando un hold con `customer_external_id` vence o se libera sin reserva, `close-payment-intents` borra el customer en OnvoPay (§5.9). `release-expired-holds` no puede hacerlo: es un `UPDATE` masivo sin HTTP. Sin esto quedarían datos del turista en el proveedor sin ninguna reserva que los justifique (spec 0022).
 
 **Consecuencia de cumplimiento, decidida y aceptada por el usuario (2026-08-13)**: se pasa de **SAQ A** a **SAQ A-EP**, aunque los datos nunca toquen nuestro servidor. Es obligación del **cliente** (el comercio). Se suma al `pre-production-checklist`.
 
@@ -162,7 +162,7 @@ sequenceDiagram
 `fetchStalePendingBookings` filtra por `.lt('created_at', olderThanIso)` (`worker/src/reconciliation/repository.ts:53`): una reserva creada hace tres semanas es "stale" en el primer ciclo apenas pasa a `pending_payment`, y `cancel_stale_pending_booking` la cancelaría destruyendo el camino de reintentos.
 
 - Nueva columna `bookings.charge_started_at`, fijada en cada intento. El reconciliador excluye las reservas que la tienen: su ciclo lo posee el worker de cobro. El criterio es por **presencia, no por contador**, porque `charge_attempts` vale 0 en el primer intento.
-- **El gate va dentro de la función.** Filtrar solo en la consulta deja un TOCTOU. `cancel_stale_pending_booking` (`…036:281`) ya toma `FOR UPDATE` (`:293`) y gatea por estado (`:299`); bajo ese lock se agrega `IF v_booking.charge_started_at IS NOT NULL THEN RETURN false`. **Ninguna función que cancela una `pending_payment` depende de que el caller haya filtrado.** Para que el dueño legítimo cierre su propio ciclo existe `cancel_charge_in_flight` (§6).
+- **El gate va dentro de la función.** Filtrar solo en la consulta deja un TOCTOU. `cancel_stale_pending_booking` (`…036:281`) ya toma `FOR UPDATE` (`:293`) y gatea por estado (`:299`); bajo ese lock se agrega `IF v_booking.charge_started_at IS NOT NULL THEN RETURN false`. **Ninguna función que cancela una `pending_payment` depende de que el caller haya filtrado.** Para que el dueño legítimo cierre su propio ciclo existe `cancel_charge_in_flight` (§6); la otra única vía es `cancel_departure`, para la cohorte de cobros en vuelo de §5.8.
 - El mapeo peligroso es `requires_payment_method → NotPaid` (`worker/src/reconciliation/onvopay.ts:41`), no `requires_action` (`:43`).
 - `recover.ts:30` toma `booking.payments[0]`. Si alguna vez hubo que crear un intent nuevo, puede haber más de una fila; `reconcile-pending-payments` recorre todas las no terminales.
 
@@ -177,11 +177,13 @@ Una reserva `pending_minimum` ocupa cupo desde que se crea, reusando **tal cual*
 - **Automática**: `charge-bookings` detecta el mínimo alcanzado y fija `minimum_charge_triggered_at`, `minimum_resolution = 'reached'` y `minimum_resolved_at`.
 - **Manual**: "Confirmar salida" llama a `confirm_departure`, que fija `minimum_charge_triggered_at`, `minimum_resolution = 'staff_confirmed'`, `minimum_resolved_at` y `minimum_resolved_by`. Sin esto, una salida confirmada a mano saldría con todas sus reservas sin cobrar.
 
-**El disparo es terminal.** `resolve-minimum-window` solo selecciona salidas con `minimum_resolved_at IS NULL`: nunca cancela una salida disparada, aunque sus cobros fallen. Si varias reservas terminan canceladas, el staff ve bajar los asientos y decide si cancela la salida (§5.8, Q7).
+**El disparo es terminal.** `resolve-minimum-window` solo selecciona salidas con `minimum_resolved_at IS NULL`: nunca cancela una salida disparada, aunque sus cobros fallen. Las reservas cuyo cobro falla reciben el aviso para reintentar con otra tarjeta (§5.7) hasta su plazo; el staff ve bajar los asientos y decide si cancela la salida (§5.8). Decidido por el usuario (Q7).
 
 **La unidad de trabajo del cobro es la RESERVA, no la salida.** Si el worker muere a mitad del lote, ninguna reserva puede quedar fuera de toda selección:
 
-> reservas `pending_minimum` de una salida disparada, con (`charge_next_attempt_at IS NULL OR <= now()`) y `now() < recovery_deadline` si hubo un fallo.
+> reservas `pending_minimum` de una salida disparada, con `charge_attempts = 0` **o** `charge_next_attempt_at <= now()`, y `now() < recovery_deadline` si hubo un fallo.
+
+Sin margen o con los reintentos agotados, `charge_next_attempt_at` queda nulo y la reserva **no se selecciona**: una tarjeta rechazada no se re-confirma cada minuto, patrón que las marcas penalizan. Actualizar la tarjeta lo fija en `now()`.
 
 Invariante a sostener y testear: _toda reserva de una salida disparada termina cobrada, reintentada o cancelada; **ninguna queda sin dueño en ningún estado**._ Una reserva **nueva** sobre una salida ya disparada se cobra de inmediato.
 
@@ -196,6 +198,8 @@ Invariante a sostener y testear: _toda reserva de una salida disparada termina c
 | `requires_payment_method`                             | `charge_attempt_failed`, intent re-confirmable                                                                                       |
 | `canceled` o `failed`                                 | `charge_attempt_failed`, intent terminal                                                                                             |
 | `processing`                                          | Espera; con más de 24 h desde `charge_started_at`, alerta de nivel error y nunca cancela, porque el dinero puede estar en movimiento |
+
+**Orden de evaluación del watchdog**: primero el `GET`. `succeeded` confirma, y `processing` espera y alerta aunque el plazo haya vencido; recién en los demás casos, al vencer el plazo, cancelar tiene precedencia sobre intentar.
 
 ### 5.6. Anti-doble-cobro: el invariante que sostiene todo
 
@@ -216,13 +220,14 @@ Los fallos se registran con dos funciones condicionales, ambas con gate `status 
 
 - La reserva vuelve a `pending_minimum`; la fila de pago sigue `pending` si el intent es re-confirmable, o pasa a `failed` si es terminal. Se incrementa `charge_attempts` y se guarda `charge_last_error`.
 - En el primer fallo fija `recovery_deadline = GREATEST(inicio de la ventana de decisión, now() + 6 h)`, nunca posterior a `starts_at`.
-- **Hay margen si `recovery_deadline − now() ≥ 2 h`.** Con margen, agenda `charge_next_attempt_at = LEAST(now() + backoff, recovery_deadline)` (backoff de 1 h, 6 h y 24 h) y encola el aviso con enlace para actualizar la tarjeta: `charge_failed_action_required_1`, `_2` o `_3`. Sin margen, no envía enlace ni agenda reintentos: la reserva espera la cancelación en `recovery_deadline`.
-- **Agotar los tres reintentos no cancela antes de `recovery_deadline`.** Si el turista actualiza la tarjeta mientras `now() < recovery_deadline`, se agenda un intento inmediato.
+- **Hay margen si `recovery_deadline − now() ≥ 2 h`.** Con margen, agenda `charge_next_attempt_at = LEAST(now() + backoff, recovery_deadline)` (backoff de 1 h, 6 h y 24 h). Sin margen, no agenda reintentos automáticos y la reserva espera la cancelación en `recovery_deadline`.
+- **En ambos casos encola el aviso** con enlace para actualizar la tarjeta, válido hasta `recovery_deadline`: `charge_failed_action_required_1`, `_2` o `_3`. Decidido por el usuario (Q7): todo cobro fallido se notifica para que el turista reintente.
+- **Agotar los tres reintentos no cancela antes de `recovery_deadline`** (Q8). Tras el tercero, `charge_next_attempt_at` queda nulo. Si el turista actualiza la tarjeta mientras `now() < recovery_deadline`, se agenda un intento inmediato.
 - **Al vencer `recovery_deadline`, cancelar tiene precedencia sobre intentar.** `watch-charges` cancela con `cancel_unpaid_booking` (reserva en `pending_minimum`) o con `cancel_charge_in_flight` (cobro en vuelo).
 
 **3DS — `charge_requires_action`.**
 
-- La reserva queda en `pending_payment` con `awaiting_action_until`, calculado como `recovery_deadline` y con la misma regla de margen. Encola `charge_requires_action` con enlace a `/booking/[token]/authenticate`, que completa la autenticación con `handleNextAction`.
+- La reserva queda en `pending_payment` con `awaiting_action_until`, calculado como `recovery_deadline`. **Nunca queda nulo** tras esta llamada: sin margen se fija igual y el enlace se envía igual, así el watchdog cancela al vencer y no vuelve a entrar por "plazo nulo". Encola `charge_requires_action` con enlace a `/booking/[token]/authenticate`, que completa la autenticación con `handleNextAction`.
 - **Contingencia**, que rige salvo que la precondición (c) demuestre lo contrario: mientras exista un intent en `requires_action`, la reserva **no genera intents nuevos**.
 - Vencido el plazo, `watch-charges` llama a `cancel_charge_in_flight` (reserva cancelada, pago `failed`, hold liberado) e intenta cancelar el intent. Si el turista autentica tarde y el cobro liquida, la rama `cancelled` de `confirm_booking` acepta pagos `pending` o `failed` (`…040:144-154`) y encola el refund total por `late_payment_refunded`. Si el webhook se pierde, lo detecta `close-payment-intents` (§5.9).
 
@@ -249,13 +254,15 @@ Los enlaces usan el patrón de token del spec 0011: **cada email emite el suyo**
 
 Cuatro jobs nuevos, self-contained (sin `@shared` en runtime), con guard `isRunning`, aislamiento por ítem y graceful shutdown (patrón 0028):
 
-- **`watch-charges`** (cada minuto, **workstream B**): el watchdog de §5.5 y la aplicación de plazos de §5.7. Existe desde B porque el cobro manual del panel ya puede terminar en 3DS, timeout o webhook perdido, y no puede quedar sin dueño.
+- **`watch-charges`** (cada minuto, **workstream B**): el watchdog de §5.5 y la aplicación de plazos de §5.7. Existe desde B porque el cobro manual del panel ya puede terminar en 3DS, timeout o webhook perdido, y no puede quedar sin dueño. Incluye la **red terminal de `pending_minimum`**: alerta en el panel toda reserva `pending_minimum` cuya salida entra en la ventana de decisión sin haberse cobrado, y al llegar a `starts_at` la cancela con `cancel_unpaid_booking` (razón `departure_started`) y aviso, **esté o no disparada la salida**. En C, `resolve-minimum-window` y el barrido terminal actúan antes; esta regla queda como red.
 - **`close-payment-intents`** (cada 5 min, **workstream B**): **barrido de intents no cerrados.** Selecciona las filas `failed` con `provider_closed_at IS NULL` de reservas canceladas del flujo diferido (`payment_method_id IS NOT NULL`), durante 7 días desde `payments.failed_at`. Una fila `pending` sobre una reserva cancelada no debería existir (§5.8); si aparece, entra igual y alerta. Por cada intent hace `GET`:
   - `succeeded`: llama a `confirm_booking` con el monto pagado y `p_event_id = external_payment_id`, la misma clave que usa el webhook (`web/lib/payments/adapters/onvopay.ts:117-119`), así un webhook tardío devuelve `already_processed`. El outcome esperado es `late_payment_refunded`; un `ignored` alerta de inmediato con nivel error.
   - `requires_action` o `requires_payment_method`: reintenta `POST /cancel`.
   - `canceled` o `failed`: fija `provider_closed_at`.
 
-  A los 7 días sin cierre, alerta con nivel error.
+  A los 7 días sin cierre, alerta con nivel error. El panel permite entonces registrar `provider_closed_at` a mano, con auditoría y actor, tras verificar el intent en el dashboard de OnvoPay; es la única otra forma de liberar la exclusión de retención (§6).
+
+  El mismo job **limpia los customers de checkouts abandonados**: selecciona holds `expired` o `released` con `customer_external_id`, sin reserva y con `customer_cleaned_at IS NULL`; hace `detach` del método de pago que exista y `DELETE` del customer, y fija `customer_cleaned_at`. Un fallo se reintenta en el ciclo siguiente.
 
 - **`charge-bookings`** (cada minuto, workstream C): disparo automático, cobro de las reservas seleccionadas (§5.5) y reintentos agendados.
 - **`resolve-minimum-window`** (cada 5 min, workstream C): salidas en la ventana con `minimum_resolved_at IS NULL` que no alcanzaron el mínimo → cancelación automática o marca para decisión del staff. Barre también **rezagados** (salidas ya pasadas sin resolver, si el worker estuvo caído) y el **barrido terminal** (salidas disparadas que llegan a T-0 con reservas `pending_minimum`, que se cancelan con aviso).
@@ -282,7 +289,7 @@ Migración: `supabase/migrations/20260913000043_minimum_participants_deferred_ch
 
 **`tours`**: `auto_cancel_below_minimum boolean NOT NULL DEFAULT false`. (`min_participants` ya existe.)
 
-**`tour_holds`**: `customer_external_id text NULL`, el customer creado en el checkout (§5.2).
+**`tour_holds`**: `customer_external_id text NULL`, el customer creado en el checkout (§5.2), y `customer_cleaned_at timestamptz NULL`, la marca de limpieza en OnvoPay (§5.9).
 
 **`bookings`**:
 
@@ -307,9 +314,9 @@ Migración: `supabase/migrations/20260913000043_minimum_participants_deferred_ch
 
 - `create_deferred_booking(...)` — inserta la reserva en `pending_minimum`, con los datos de tarjeta obtenidos por el servidor, el customer del hold y la evidencia de consentimiento, y pasa el hold `active → paying`, en una transacción. Monto server-side (spec 0015).
 - `charge_booking_start(p_booking_id, p_external_payment_id)` — `pending_minimum → pending_payment` y fija `charge_started_at`. **Si la reserva no tiene fila `pending`** (primer intento, o anterior terminal) inserta una; si la tiene, exige ese mismo `external_payment_id`. Deriva el monto de `bookings.total_amount_cents`.
-- `charge_attempt_failed(p_booking_id, p_error_code, p_intent_terminal)` — §5.7.
+- `charge_attempt_failed(p_booking_id, p_error_code, p_intent_terminal)` — §5.7. Con `p_intent_terminal = true` fija también `provider_closed_at`, porque el `GET` ya comprobó el cierre.
 - `charge_requires_action(p_booking_id)` — fija `awaiting_action_until` con la regla de margen y encola `charge_requires_action` (§5.7).
-- `cancel_charge_in_flight(p_booking_id, p_reason)` — **la única** que cancela una `pending_payment` con `charge_started_at`; la invoca solo `watch-charges`. Bajo `FOR UPDATE` exige, según la razón, `awaiting_action_until < now()` o `recovery_deadline < now()`. Cancela, pago `pending → failed`, hold `paying → released`, audita y avisa.
+- `cancel_charge_in_flight(p_booking_id, p_reason)` — junto con `cancel_departure` para la cohorte de cobros en vuelo de §5.8, **la única** que cancela una `pending_payment` con `charge_started_at`; la invoca solo `watch-charges`. Bajo `FOR UPDATE` exige, según la razón, `awaiting_action_until < now()` o `recovery_deadline < now()`. Cancela, pago `pending → failed`, hold `paying → released`, audita y avisa.
 - `cancel_unpaid_booking(p_booking_id, p_actor_id, p_reason)` — cancela una `pending_minimum`: hold liberado, pago `pending → failed`. Actor nulo si cancela el turista.
 - `confirm_departure(p_instance_id, p_actor_id)` — disparo manual (§5.5).
 - `cancel_departure(p_instance_id, p_actor_id, p_resolution)` — atómica, aplica §5.8.
@@ -368,7 +375,7 @@ stateDiagram-v2
 - **Checkout abandonado.** No hay reserva; el hold vence y el worker borra el customer en OnvoPay (§5.2).
 - **`paymentMethodId` de otro customer, o tarjeta ya usada en otra reserva viva.** Rechazado, en el checkout y en la actualización de tarjeta (§5.2).
 - **Tarjeta que vence antes del tour.** Rechazada con datos obtenidos por el servidor (§5.2).
-- **Rechazo con poco margen.** Sin enlace ni reintentos; cancelación en `recovery_deadline` (§5.7).
+- **Rechazo con poco margen.** Sin reintentos automáticos; el aviso con enlace sale igual y la reserva se cancela en `recovery_deadline` (§5.7).
 - **Todos los cobros de una salida fallan.** La salida sigue disparada; las reservas se cancelan al vencer su plazo y el staff decide (§5.5, Q7).
 - **El turista cancela con un cobro en vuelo.** Rechazado; la UI pide reintentar (§5.8).
 - **Purga o baja de datos con un intent abierto.** Excluida en SQL (§6).
@@ -378,14 +385,15 @@ stateDiagram-v2
 - **Salida disparada que llega a T-0 con reservas sin cobrar.** Barrido terminal (§5.9).
 - **Worker caído por días.** Barrido de rezagados y alerta de liveness (§11). Sin worker no se cobra: es un riesgo operativo.
 - **`reminder_24h` en el pasado.** `…040:317-326` lo agenda en `starts_at - 24h`; si la confirmación cae dentro de esas 24 h, se omite.
-- **Archivar un tour con reservas `pending_minimum`.** `web/lib/tours/archive-action.ts:72` hoy solo bloquea por `PendingPayment`/`Confirmed`: hay que incluir el estado nuevo.
+- **Archivar un tour con reservas `pending_minimum`.** `web/lib/tours/archive-action.ts:72` hoy solo bloquea por `PendingPayment`/`Confirmed`: hay que incluir el estado nuevo **desde el workstream B**, o el archivado cancela las salidas y deja esas reservas vivas.
+- **Reserva `pending_minimum` que nadie cobra en el workstream B.** La red terminal de `watch-charges` la cancela al llegar a `starts_at` (§5.9).
 
 ## 9. Impacto en otras áreas
 
 - **Panel**: toggle de tours, `/dashboard/settings`, bandeja de decisión, columnas de mínimo y cobro manual.
 - **Portal**: formulario de tarjeta propio; éxito y detalle distinguen "reservado, sin cargo" de "cobrado"; páginas de actualización de tarjeta y de 3DS, visibles solo en su estado.
 - **Emails** (ES y EN): `booking_reserved`, `departure_cancelled_minimum`, el aviso de tarjeta rechazada (una plantilla para sus tres `kind`) y `charge_requires_action`. `booking_confirmation` se reusa para el cobro exitoso.
-- **Worker**: cuatro jobs nuevos, reconciliador ajustado (§5.4), limpieza de customers en la expiración de holds, retención con baja en OnvoPay.
+- **Worker**: cuatro jobs nuevos, reconciliador ajustado (§5.4), limpieza de customers de checkouts abandonados, retención con baja en OnvoPay.
 - **Reportes**: los ingresos se corren al mes del cobro; ocupación y "pasajeros confirmados" (spec 0009) necesitan los asientos comprometidos; `report_refunds_summary` (`…036:395`) cuenta toda `cancelled` en la tasa de cancelación, así que las cancelaciones por mínimo se separan con `minimum_resolution` o la auditoría.
 - **Auditoría**: toda decisión de dinero deja entrada en `audit_logs` (disparo con snapshot, intentos con código, cancelaciones por plazo, cierres del barrido).
 - **Seguridad**: superficie nueva en el navegador, SAQ A-EP y cambios de CSP ⇒ pasada de auditoría antes del cutover.
@@ -410,7 +418,13 @@ stateDiagram-v2
 - **3DS vencido** ⇒ reserva cancelada, pago `failed`, hold liberado; un `succeeded` posterior encola refund total.
 - **Salida cancelada con cobro en vuelo y webhook perdido** ⇒ el pago queda `failed` y `close-payment-intents` encola el refund.
 - **Barrido y webhook sobre el mismo cobro tardío** ⇒ un solo refund y sin alerta falsa.
-- **Rechazo sin margen** ⇒ sin enlace ni reintentos; cancelación en el plazo.
+- **Rechazo sin margen** ⇒ sin reintentos automáticos, con aviso y enlace; cancelación en el plazo.
+- **Selección de `charge-bookings`**: una reserva sin margen o con los reintentos agotados no se selecciona.
+- **`cancel_departure` cancela un cobro en vuelo antes de su plazo**, sin pasar por `cancel_charge_in_flight`.
+- **3DS sin margen** ⇒ plazo fijado igual; cancelación al vencer, sin loop del watchdog.
+- **Red terminal en B**: `pending_minimum` sin cobrar al llegar a `starts_at` ⇒ cancelada, hold liberado y aviso; archivar un tour con solo reservas `pending_minimum` ⇒ bloqueado.
+- **`provider_closed_at`**: lo fija `charge_attempt_failed` con intent terminal, y el registro manual del panel queda auditado.
+- **Limpieza de customers**: un `DELETE` fallido se reintenta y `customer_cleaned_at` evita repetirlo.
 - **Cancelación de salida con las tres cohortes**, y **a menos de 24 h** ⇒ refund del 100% a los cobrados.
 - **Turista cancela** una `pending_minimum` ⇒ cupo liberado, pago `failed`; con cobro en vuelo ⇒ rechazado.
 - **Cobro manual rechazado** ⇒ "Volver a cobrar" re-confirma el mismo intent.
@@ -427,7 +441,8 @@ stateDiagram-v2
 - **A — Configuración y modelo, sin tocar dinero**: migración de esquema (columnas, estados, `kind`, índices, `business_settings`), toggle por tour y `/dashboard/settings`.
 - **B — Tarjeta guardada, cobro manual y red de seguridad completa**: todo lo que un cobro real necesita para no quedar sin dueño.
   - Funciones: `create_deferred_booking`, `charge_booking_start`, `charge_attempt_failed`, `charge_requires_action`, `cancel_charge_in_flight`, `cancel_unpaid_booking`, los cambios a `confirm_booking` y `flag_payment_mismatch`, el gate de `cancel_stale_pending_booking` y las exclusiones de retención.
-  - Jobs: `watch-charges`, `close-payment-intents` y la limpieza de customers al vencer holds.
+  - Jobs: `watch-charges` (con la red terminal de `pending_minimum`) y `close-payment-intents` (con la limpieza de customers).
+  - Bloqueo de archivado por `pending_minimum` (`web/lib/tours/archive-action.ts:72`).
   - UI: formulario de tarjeta con verificación server-side, actualización de tarjeta, página de 3DS, cancelación del turista y cobro manual con "Volver a cobrar".
   - Emails: `booking_reserved`, avisos de tarjeta rechazada y `charge_requires_action`.
   - **Antes de aprobar B se cierran las precondiciones (a), (b), (c), (e) y (f), y la respuesta de OnvoPay a Q1.**
@@ -457,5 +472,5 @@ Otras condiciones:
 - [ ] **Q4 — "Confirmar salida": ¿cobra también a reservas ya canceladas por plazo vencido?** Se asume que no: una reserva cancelada es terminal. **Dueño**: cliente. **Antes de**: implementar C.
 - [ ] **Q5 — ¿El portal muestra "faltan N personas para confirmar la salida"?** **Dueño**: cliente. **Antes de**: implementar B.
 - [x] **Q6 — ¿Autorizar al reservar y capturar al alcanzar el mínimo?** **Resuelta 2026-09-13: descartada** (§5.1).
-- [ ] **Q7 — ¿Una salida disparada se sostiene aunque sus cobros fallen?** Propuesta: **sí**, el disparo es terminal y el staff decide si cancela (§5.5). La alternativa, re-evaluar el mínimo tras los fallos, abre carreras entre el disparo y la cancelación automática. **Dueño**: Kenneth (decisión de producto). **Antes de**: re-aprobar el spec.
-- [ ] **Q8 — Tras agotar los reintentos, ¿la reserva espera hasta el plazo de recuperación?** Propuesta: **sí**, para que el turista pueda cambiar la tarjeta a tiempo; la alternativa es cancelar apenas se agotan (~31 h tras el primer rechazo). **Dueño**: Kenneth (decisión de producto). **Antes de**: re-aprobar el spec.
+- [x] **Q7 — ¿Una salida disparada se sostiene aunque sus cobros fallen?** **Resuelta por el usuario (2026-09-13):** sí, el staff decide si la cancela, y a todo cobro fallido se le envía un aviso para que el turista reintente con otra tarjeta (§5.5, §5.7).
+- [x] **Q8 — Tras agotar los reintentos, ¿la reserva espera hasta el plazo de recuperación?** **Resuelta por el usuario (2026-09-13):** sí, espera hasta `recovery_deadline` para que el turista pueda cambiar la tarjeta (§5.7).
