@@ -812,6 +812,14 @@ export type Database = {
         };
         Returns: boolean;
       };
+      deactivate_internal_user: {
+        Args: { p_user_id: string };
+        Returns: boolean;
+      };
+      purge_old_webhook_events: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
       cancel_stale_pending_booking: {
         Args: { p_booking_id: string; p_reason: string };
         Returns: boolean;

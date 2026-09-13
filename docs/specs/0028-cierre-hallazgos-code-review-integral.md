@@ -146,7 +146,7 @@ Los ~7 mensajes de error en español se reemplazan por códigos + claves i18n ES
 
 ### Workstream C — deuda menor + CI (`chore/0028-deuda-menor-ci`)
 
-**C1. Cierres SQL menores** (migración `20260706000042`): `cancel_booking` encola `p_refund_amount_cents` (el monto que audita) en lugar de `v_payment.amount_cents` — hoy idénticos, elimina el footgun del refund parcial futuro; guard atómico anti-TOCTOU de "último admin" (la desactivación valida y actualiza en un solo statement/función); se elimina la política `users_delete_admin` (el delete real siempre falla por FKs; la operación soportada es desactivar — se documenta); el job de retención purga `processed_webhook_events` mayores a 90 días (constante nueva en la config de retención).
+**C1. Cierres SQL menores** (migración `20260707000042`): `cancel_booking` encola `p_refund_amount_cents` (el monto que audita) en lugar de `v_payment.amount_cents` — hoy idénticos, elimina el footgun del refund parcial futuro; guard atómico anti-TOCTOU de "último admin" (la desactivación valida y actualiza en un solo statement/función); se elimina la política `users_delete_admin` (el delete real siempre falla por FKs; la operación soportada es desactivar — se documenta); el job de retención purga `processed_webhook_events` mayores a 90 días (constante nueva en la config de retención).
 
 **C2. Renombrado de ruta**: `/dashboard/bookings/hoy` → `/dashboard/bookings/today` (regla de segmentos en inglés; barato antes del go-live, caro después).
 
@@ -158,7 +158,7 @@ Los ~7 mensajes de error en español se reemplazan por códigos + claves i18n ES
 
 **C6. `tour_schedules.valid_from/valid_until` dejan de ser columnas muertas**: el generador de instancias del worker las respeta (no genera salidas fuera de la ventana de vigencia del horario).
 
-**C7. `shared/index.ts` re-exporta los 13 módulos de constantes.**
+**C7. `shared/index.ts` re-exporta todos los módulos de constantes (15 al cierre) + types + schemas.**
 
 **C8. CI con tests de integración** (`.github/workflows/ci.yml`): job nuevo que levanta Supabase local (`supabase start` + `db reset`), corre `pnpm test:integration` de web y worker, y typecheck de `shared/`. Gate obligatorio del PR (junto al job actual).
 
@@ -172,7 +172,7 @@ Sin tablas ni columnas nuevas. Tres migraciones:
   - **`bookings`/`payments`/`refunds`**: CHECK `currency IN ('USD','CRC')`.
   - **`tour_instance_guides`**: UNIQUE `(tour_instance_id)`.
   - **Índices**: `bookings(hold_id)`, `bookings(checked_in_by)`, `refunds(payment_id)`, `audit_logs(actor_id)`, `notifications(guide_id)`, `tour_instance_guides(assigned_by)`, funcional `lower(customer_email)` en `bookings`.
-- **`20260706000042_cierres_menores.sql`** — `cancel_booking` (monto encolado = monto auditado); función/statement atómico de desactivación de admin (anti-TOCTOU último admin); DROP POLICY `users_delete_admin` **en su versión vigente (la recreada por `20260523000009`)**, documentando "solo desactivación"; retención de `processed_webhook_events` (90 días) en el job de retención.
+- **`20260707000042_cierres_menores.sql`** — `cancel_booking` (monto encolado = monto auditado); función/statement atómico de desactivación de admin (anti-TOCTOU último admin); DROP POLICY `users_delete_admin` **en su versión vigente (la recreada por `20260523000009`)**, documentando "solo desactivación"; retención de `processed_webhook_events` (90 días) en el job de retención.
 
 Reversibilidad: cada migración documenta su down; el DROP de `confirm_booking` se revierte re-creando la versión de `…037`.
 

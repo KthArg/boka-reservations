@@ -1,5 +1,5 @@
 import { TourActionError } from '@shared/constants/tours';
-import type { PricingRow } from './types';
+import type { PricingRow, ScheduleRow } from './types';
 
 export function slugify(text: string): string {
   return text
@@ -56,6 +56,18 @@ export function hasInvalidSeasonRange(rows: PricingRow[]): boolean {
   return rows.some(
     (r) =>
       r.active && r.valid_from != null && r.valid_until != null && r.valid_from >= r.valid_until,
+  );
+}
+
+/**
+ * Horarios con vigencia invertida (review pre-PR del workstream C): un rango
+ * `valid_from > valid_until` hace que el generador no cree salidas SILENCIOSAMENTE
+ * (lucro cesante sin alerta). tour_schedules no tiene CHECK propio en DB.
+ */
+export function hasInvalidScheduleRange(rows: ScheduleRow[]): boolean {
+  return rows.some(
+    (r) =>
+      r.active && r.valid_from != null && r.valid_until != null && r.valid_from > r.valid_until,
   );
 }
 

@@ -70,7 +70,7 @@ export async function getGuideUpcomingTours(
   const { data: guide } = await db.from('users').select('active').eq('id', guideId).maybeSingle();
   if (!guide?.active) return null;
 
-  const nowIso = new Date().toISOString();
+  const nowMs = Date.now();
   const { data, error } = await db
     .from('tour_instance_guides')
     .select(ASSIGNED_SELECT)
@@ -80,7 +80,10 @@ export async function getGuideUpcomingTours(
   return ((data as unknown as RawAssignedRow[] | null) ?? [])
     .map((r) => r.tour_instances)
     .filter((inst): inst is RawInstance => inst !== null)
-    .filter((inst) => inst.status !== InstanceStatus.Cancelled && inst.starts_at >= nowIso)
+    .filter(
+      (inst) =>
+        inst.status !== InstanceStatus.Cancelled && new Date(inst.starts_at).getTime() >= nowMs,
+    )
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
     .map((inst) => toUpcoming(inst, locale));
 }

@@ -3,6 +3,39 @@
 Spec: [0028-cierre-hallazgos-code-review-integral.md](./0028-cierre-hallazgos-code-review-integral.md)
 Ramas: `fix/0028-dinero` (workstream A), `fix/0028-panel-portal` (workstream B), `chore/0028-deuda-menor-ci` (workstream C)
 
+## 2026-07-07 — Reviews pre-PR del workstream C aplicados
+
+**Hecho**:
+
+- Veredictos: payment-flow-auditor **APTO** (LEAST verificado extremo a extremo: monto idéntico byte a byte con la política binaria; replay >90 días cubierto por 3 capas; generador insert-only no toca instancias con reservas); db-schema-guardian **APTO** (cuerpo de cancel_booking replicado sin drift; anti-TOCTOU verificado bajo READ COMMITTED — el lock en el PERFORM garantiza snapshot fresco); code-reviewer **requirió cambios** (aplicados):
+  - **Tests exigidos por §10**: integración anti-TOCTOU (dos desactivaciones concurrentes de los dos últimos admins → a lo sumo una gana) + último admin bloqueado; integración del cap de cancel_booking (p_refund > pago → encola el pago; 0 → nada); unit del generador con bordes de día CR (salida 19:00 CR del día valid_until incluida); unit de webhookEventCutoff + integración de purge_old_webhook_events (evento viejo purgado, fresco conservado).
+  - **CI**: `pnpm --dir shared install` en el job de integración (zod vive en shared/node_modules) y CLI de Supabase pinneada (2.101.0) — el primer run verde se valida en el propio PR.
+  - `setUserActive` sobre un usuario ya inactivo vuelve a ser no-op ok (la RPC devolvía false y se confundía con LastAdmin); `paymentType` tipado a la constante.
+  - Del payment-flow-auditor: validación de vigencia invertida en horarios (`tour_schedule_range_invalid`, i18n) — un rango invertido apagaba la generación de salidas EN SILENCIO.
+- **Deuda aceptada y documentada**: C3 quedó PARCIAL en el worker — quedan literales de estado en release-expired-holds, notifications/repository, handle-refund, generate-tour-instances (`.eq('status','active')`) y el mapeo del adapter web (`'succeeded'/'failed'`); son typo-safe por unions y las reglas ESLint (warn) los vigilan; completarlos es follow-up. También: `valid_until` no retira instancias YA generadas dentro del lookahead (documentar en la UI del schedule / follow-up operativo); audit `booking.cancelled` registra el monto de la política sin capar (el de `refund.requested` sí va capado — divergencia solo posible con política parcial futura); lock de admins también para targets no-admin (costo nulo al volumen).
+
+**Pendiente**:
+
+- Verificación final → push + PR del workstream C (stacked sobre #68).
+
+## 2026-07-07 — Workstream C implementado (deuda menor + CI); verificación corriendo
+
+**Hecho**:
+
+- Migración `20260707000042`: `cancel_booking` encola `LEAST(p_refund_amount_cents, pago)` (lo auditado = lo encolado, jamás más que lo cobrado — cierra el footgun del refund parcial futuro); `deactivate_internal_user` atómica (FOR UPDATE sobre admins activos, cierra el TOCTOU del último admin); DROP de `users_delete_admin` (la operación soportada es desactivar); `purge_old_webhook_events` (90 días) sumada al job `apply-retention` del worker.
+- `setUserActive` desactiva vía la RPC (pre-chequeo amigable + guard atómico en DB); tipos curados actualizados a mano.
+- `/dashboard/bookings/hoy` → `/today` (regla de URLs en inglés) con link actualizado.
+- Strings mágicos: `HoldStatus`/`InstanceStatus` en `availability.ts` y `create.ts`; comparaciones de timestamps numéricas (`getTime()`) en `availability.ts` y `guide-view.ts` (C5).
+- `CheckoutForm` tipado (`OnvoSdk`, adiós los 4 `any` con disable) + `ONVO_SDK_URL`/`ONVO_PAYMENT_TYPE_ONE_TIME` en `shared/constants/payments.ts` + dedupe/cleanup del `<script>` del SDK.
+- `generate-tour-instances` respeta `valid_from`/`valid_until` (día CR, espejo local self-contained) — dejaron de ser columnas muertas.
+- `shared/index.ts` re-exporta los 17 módulos reales.
+- CI: typecheck de `shared` en el job principal + job nuevo `integration` con Supabase local (`supabase start` + `db reset` + env exportada de `supabase status`) corriendo `test:integration` de web y worker — lo más crítico del sistema por fin gatea.
+- Reglas `no-magic-numbers`/`no-restricted-syntax` del worker quedan en `warn` (43 avisos preexistentes, mayormente números en definiciones de constantes; subirlas a error es follow-up).
+
+**Pendiente**:
+
+- Verificación completa + reviews obligatorios + PR del workstream C.
+
 ## 2026-07-07 — Reviews pre-PR del workstream B aplicados
 
 **Hecho**:

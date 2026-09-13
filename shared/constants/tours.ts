@@ -19,6 +19,8 @@ export enum TourActionError {
   SeasonRangeInvalid = 'tour_season_range_invalid',
   /** Dos precios base activos para el mismo tipo. */
   BasePriceDuplicate = 'tour_base_price_duplicate',
+  /** Horario con vigencia invertida: el generador no crearía salidas en silencio. */
+  ScheduleRangeInvalid = 'tour_schedule_range_invalid',
   /** No se puede eliminar un horario con salidas ya generadas (FK); desactivarlo. */
   ScheduleInUse = 'tour_schedule_in_use',
   /** No se archiva un tour con reservas activas en salidas futuras (spec 0028, B12). */

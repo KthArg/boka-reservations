@@ -4,6 +4,7 @@ import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import { getPaymentProvider } from '@/lib/payments';
 import type { TicketQuantities } from '@/lib/booking/quantities';
 import { PRIVACY_NOTICE_VERSION } from '@shared/constants/legal';
+import { HoldStatus } from '@shared/constants/enums';
 
 export type BookingLocale = 'es' | 'en';
 
@@ -104,9 +105,9 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
     // Se hace al final: si algo falla antes, el hold sigue `active` y el catch lo libera.
     const { error: holdErr } = await db
       .from('tour_holds')
-      .update({ status: 'paying' })
+      .update({ status: HoldStatus.Paying })
       .eq('id', holdId)
-      .eq('status', 'active');
+      .eq('status', HoldStatus.Active);
     if (holdErr) throw new Error(holdErr.message);
 
     return { externalPaymentId: session.externalPaymentId, bookingId: booking.id };

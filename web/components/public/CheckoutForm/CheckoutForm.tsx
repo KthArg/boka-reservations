@@ -1,12 +1,12 @@
 'use client';
 
-import { useActionState, useState, useEffect } from 'react';
+import { useActionState, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import type { PublicPricing } from '@/lib/public/tours';
 import { checkoutAction } from '@/lib/booking/checkout-action';
 import { calculateTotalCents } from '@/lib/booking/pricing-math';
 import { MAX_TICKETS_PER_BOOKING } from '@/lib/booking/quantities';
+import { OnvoPaymentWidget } from './OnvoPaymentWidget';
 import styles from './CheckoutForm.module.css';
 
 type Props = {
@@ -15,12 +15,10 @@ type Props = {
 };
 
 const TICKET_TYPES = ['adult', 'child', 'student'] as const;
-const ONVO_SDK_URL = 'https://sdk.onvopay.com/sdk.js';
 
 export function CheckoutForm({ instanceId, pricing }: Props) {
   const t = useTranslations('checkout');
   const locale = useLocale();
-  const router = useRouter();
   const [state, action, pending] = useActionState(checkoutAction, null);
   const [quantities, setQuantities] = useState({ adult: 1, child: 0, student: 0 });
 
@@ -33,43 +31,13 @@ export function CheckoutForm({ instanceId, pricing }: Props) {
 
   const paymentState = state && 'paymentIntentId' in state ? state : null;
 
-  useEffect(() => {
-    if (!paymentState) return;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const renderWidget = (onvo: any) => {
-      onvo
-        .pay({
-          publicKey: process.env.NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY,
-          paymentIntentId: paymentState.paymentIntentId,
-          paymentType: 'one_time',
-          onSuccess: () => {
-            router.push(`/${locale}/checkout/success?booking=${paymentState.bookingId}`);
-          },
-          onError: () => {
-            router.push(`/${locale}/checkout/cancel?booking=${paymentState.bookingId}`);
-          },
-        })
-        .render('#onvo-payment-container');
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((window as any).onvo) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      renderWidget((window as any).onvo);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = ONVO_SDK_URL;
-    script.async = true;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    script.onload = () => renderWidget((window as any).onvo);
-    document.head.appendChild(script);
-  }, [paymentState, locale, router]);
-
   if (paymentState) {
-    return <div id="onvo-payment-container" className={styles.widgetContainer} />;
+    return (
+      <OnvoPaymentWidget
+        paymentIntentId={paymentState.paymentIntentId}
+        bookingId={paymentState.bookingId}
+      />
+    );
   }
 
   return (
