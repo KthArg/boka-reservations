@@ -1,6 +1,6 @@
 # Consulta a OnvoPay — cobro diferido con tarjeta retenida
 
-- **Estado**: en conversación con soporte (Priscilla Rodríguez, 2026-08-13). Respuesta de primer nivel insuficiente; se reformuló el planteo por caso de negocio y se pasó a preguntar de a una
+- **Estado**: mayormente resuelta por la documentación oficial (2026-09-12) tras tres rondas de soporte sin respuesta útil. Quedan pruebas de sandbox y una decisión de diseño (Q6 del spec)
 - **Dueño**: Kenneth / cliente (titular de la cuenta OnvoPay)
 - **Creado**: 2026-08-13
 - **Relacionado**: [spec 0029 — Cupo mínimo y cobro diferido](specs/0029-cupo-minimo-y-cobro-diferido.md) §13 (Q1)
@@ -65,6 +65,10 @@ Se hacen en paralelo, contra `https://api.dev.onvopay.com/v1`, y valen como evid
 - [ ] Probar el rechazo con `4000000000000002` y anotar el `declineCode` exacto, que es lo que se persiste en `bookings.charge_last_error`.
 - [ ] **(decisiva)** Llamar `POST /v1/payment-intents/{id}/cancel` sobre un intent en **`requires_action`** — soporte no lo incluyó entre los estados cancelables y de esto depende la regla anti-doble-cobro. Probar también sobre `requires_payment_method` y sobre uno ya `succeeded`; anotar códigos de respuesta.
 - [ ] Confirmar dos veces el mismo intent y ver si OnvoPay lo rechaza o cobra dos veces.
+- [ ] **(decisiva)** Confirmar un intent con un método de pago guardado **sin enviar `cvv`**, días después de haberlo creado. Si OnvoPay lo exige, el cobro diferido no es viable tal como está diseñado: guardar el CVV está prohibido por PCI.
+- [ ] Tras un rechazo, re-confirmar **el mismo** intent con otro método de pago y verificar que funciona, como indica la documentación.
+- [ ] Autorizar con `captureMethod: "manual"` y dejarlo sin capturar: registrar si la retención se libera antes de los 30 días que documenta OnvoPay.
+- [ ] Cancelar un intent en `requires_capture` y verificar que libera la retención (base de la alternativa Q6 del spec).
 
 ## Dónde se aplica la respuesta
 
@@ -134,3 +138,40 @@ Orden acordado para esta conversación:
 4. Baja de datos del titular (Ley 8968).
 
 Las preguntas 1 y 2 de esta lista son las que bloquean el workstream C. Las de detalle técnico (cancelación de intents en cada estado, doble confirmación, expiración) probablemente se resuelvan antes por **verificación en sandbox** que por soporte — mantener esa vía como la principal.
+
+## Respuesta por correo (2026-09-12)
+
+`ayuda@onvopay.com` respondió:
+
+> Si puedes hacerlo por lo onvo loop puedes ver mas información acá, pero si puedes hacer pagos recurrentes por el tiempo que elijas con el cliente. https://docs.onvopay.com/
+
+Tampoco resuelve la consulta. Responde sobre **cobros recurrentes** (suscripciones), que no es nuestro caso: necesitamos **un solo cobro**, en un momento que no conocemos de antemano. "Onvo Loop" **no aparece ni una vez** en la documentación; probablemente sea el nombre comercial de las suscripciones. Lo único aprovechable fue la remisión a la documentación, que resultó ser donde estaban las respuestas.
+
+## Lo que resuelve la documentación oficial (2026-09-12)
+
+Tres rondas de soporte no respondieron lo que la especificación publicada responde directamente. Fuentes: `https://docs.onvopay.com/openapi.yaml` (contrato de la API, fuente de verdad) y `https://docs.onvopay.com/en/llms-full.txt` (guías).
+
+| Pregunta                                                    | Qué dice la documentación                                                                                                                                                                                                                                                                                          | Estado                                                       |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| 1. ¿Cobran una tarjeta guardada sin el cliente presente?    | Sí, es una capacidad de primera clase: las suscripciones "crean un payment intent para ese período y lo confirman con el método de pago" en cada renovación. Para un cobro único el flujo documentado es el mismo: crear el intent y confirmarlo con `paymentMethodId` desde el servidor.                          | **Resuelta**                                                 |
+| 1b. ¿Hay parámetro para declarar el cobro como off-session? | **No.** `ConfirmPaymentIntent` acepta solo `paymentMethodId`, `cvv`, `credixInstallmentMonths` y `returnUrl`. `setupFutureUsage` existe, pero únicamente al confirmar una sesión de Checkout. Si ONVO marca estos cobros ante el emisor, no está expuesto.                                                         | **Resuelta** (en negativo)                                   |
+| 2. 3DS sin el cliente presente                              | `requires_action` con `nextAction.redirectToUrl`, o `onvo.handleNextAction({ paymentIntentId })` con su librería web (`https://js.onvopay.com/v1/`). Permite que el turista complete el 3DS desde un enlace a **nuestro** sitio. La frecuencia esperada no está documentada.                                       | Parcial — la frecuencia solo se mide en sandbox o producción |
+| 3. Vigencia de la tarjeta guardada                          | No documentada. Sí se exponen `card.expMonth` y `card.expYear`: se puede detectar **al reservar** una tarjeta que vence antes de la fecha del tour.                                                                                                                                                                | Abierta                                                      |
+| 4. Cancelación de intents                                   | `POST /v1/payment-intents/{id}/cancel` existe, pero **no documenta** sobre qué estados funciona. La lista que dio el bot de soporte (`requires_payment_method`, `requires_capture`) no figura en la especificación.                                                                                                | Abierta — sandbox                                            |
+| 4b. Reintentar tras un rechazo                              | Un intent rechazado **permanece** en `requires_payment_method` y se re-confirma "indicando uno diferente". OnvoPay recomienda "exactamente un intent por pago".                                                                                                                                                    | **Resuelta** — simplifica §5.6 del spec                      |
+| 5. Expiración de intents no confirmados                     | No documentada.                                                                                                                                                                                                                                                                                                    | Abierta                                                      |
+| 6. Baja de datos (Ley 8968)                                 | `POST /v1/payment-methods/{id}/detach`: el estado `detached` es **irreversible** y el método no se puede reutilizar. `DELETE /v1/customers/{id}` existe, sin documentar si desvincula los métodos de pago, así que hay que hacer `detach` explícito antes. El bot de soporte dijo que estos endpoints no existían. | **Resuelta**                                                 |
+| 7. Guardar tarjeta sin cobrar desde SDK o Checkout          | El SDK solo documenta `paymentType: "one_time"` y `"subscription"`. "Verify a Payment Method" es para cuentas bancarias (IBAN), no para tarjetas.                                                                                                                                                                  | **Resuelta** (no existe)                                     |
+
+### Riesgo nuevo: CVV al confirmar
+
+Al crear el método de pago el `cvv` es **opcional** ("si lo enviás, debe contener 3 o 4 dígitos"). Pero `ConfirmPaymentIntent` también acepta `cvv`, y lo describe así: _"ONVO lo usa cuando el método de pago requiere confirmación con CVV"_. Si una tarjeta guardada lo exigiera al cobrar, el cobro diferido **no se podría hacer**, porque guardar el CVV está prohibido por PCI. Es la prueba de sandbox más importante junto con la cancelación en `requires_action`.
+
+### Hallazgo que reabre el diseño: la captura manual retiene hasta 30 días
+
+El spec 0029 descartó autorizar al reservar y capturar después apoyándose en dos premisas. **Ninguna se sostiene**:
+
+1. _"Solo disponible en integraciones 100% API, no con el SDK embebido."_ Cierto, pero al pasar a formulario propio con tokenización client-side, decisión ya tomada en §5.2, **nuestra integración es 100% API**.
+2. _"Una autorización expira en días."_ El esquema de `captureMethod` dice: _"Si no se completa la captura en un máximo de 30 días, los fondos serán liberados de vuelta al cliente."_
+
+Queda registrado como pregunta Q6 del spec: es una decisión de diseño con consecuencias de producto, no un ajuste de implementación.

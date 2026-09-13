@@ -3,7 +3,7 @@
 - **Estado**: approved
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-08-13
-- **Última actualización**: 2026-08-13
+- **Última actualización**: 2026-09-12
 - **Rama**: (sin asignar — tres workstreams, ver §11)
 - **PR**: (sin asignar)
 
@@ -76,6 +76,8 @@ Verificado contra `docs.onvopay.com/en/llms-full.txt`. No hay proveedor nuevo, a
 - La doc indica crear el payment method **client-side con la publishable key**: _"Do not pass untokenized card data through your server"_.
 
 Descartado: `captureMethod: "manual"` + capture posterior — la doc lo limita a integraciones 100% API (no disponible con el SDK embebido) y una autorización expira en días, no semanas.
+
+**Corrección 2026-09-12 (revisión de la especificación OpenAPI oficial).** Este descarte se apoyaba en dos premisas que no se sostienen. Primero, la restricción "solo integraciones 100% API" **deja de aplicar**: al pasar a formulario propio con tokenización client-side (§5.2), nuestra integración _es_ 100% API. Segundo, la autorización no expira "en días": el esquema de `captureMethod` indica que los fondos se liberan si no se captura _en un máximo de 30 días_. Autorizar al reservar y capturar al alcanzar el mínimo vuelve a ser una alternativa real — ver **Q6** en §13. El diseño aprobado sigue vigente hasta que se decida Q6.
 
 **Precondiciones a verificar en sandbox antes del workstream C** (§13): vigencia del payment method a semanas de distancia, comportamiento off-session/MIT, y existencia real de `POST /payment-intents/{id}/cancel` — de la que depende la regla anti-doble-cobro de §5.6. Esa última es la misma P1 que el spec 0028 dejó abierta.
 
@@ -347,8 +349,9 @@ Otras condiciones:
 
 ## 13. Preguntas abiertas
 
-- [ ] **Q1 — Comportamiento de OnvoPay en el cobro off-session.** **Respuesta parcial recibida el 2026-08-13** (registrada en [`docs/onvopay-consulta-cobro-diferido.md`](../onvopay-consulta-cobro-diferido.md)): el primer nivel de soporte solo confirmó que la cancelación de intents existe y aplica sobre `requires_payment_method` / `requires_capture`; **no respondió** credencial almacenada/MIT, 3DS off-session, vigencia del payment method, expiración de intents ni baja de datos personales, y derivó al equipo técnico/compliance. Sigue **bloqueando el workstream C**, con el agravante de que la cancelación sobre `requires_action` quedó en duda (ver contingencia en §5.7). **Dueño**: Kenneth (escalar a técnico/compliance + verificación en sandbox, que es la evidencia decisiva). **Antes de**: aprobar el workstream C.
+- [ ] **Q1 — Comportamiento de OnvoPay en el cobro off-session.** **Mayormente resuelta por la especificación OpenAPI oficial (2026-09-12)**, después de tres rondas de soporte sin respuesta útil (detalle en [`docs/onvopay-consulta-cobro-diferido.md`](../onvopay-consulta-cobro-diferido.md)). Resuelto: la plataforma cobra tarjetas guardadas sin el cliente presente (lo hacen sus suscripciones); **no existe parámetro** para declarar un cobro como off-session; un intent rechazado se re-confirma sin crear otro, lo que simplifica §5.6; `detach` y `DELETE` de customer existen. **Sigue abierto, solo verificable en sandbox**: si una tarjeta guardada exige CVV al confirmar (bloqueante, porque el CVV no se puede guardar), sobre qué estados funciona la cancelación —en particular `requires_action`—, qué ocurre al confirmar dos veces, y la tasa real de 3DS off-session. **Dueño**: Kenneth (sandbox). **Antes de**: aprobar el workstream C.
 - [ ] **Q2 — ¿La política de 24h se mide desde la salida o desde el cobro?** Con cobro diferido dejan de coincidir: una reserva cobrada el día anterior y cancelada 20h antes no genera refund, aunque el turista reservó seis semanas atrás y no tuvo oportunidad de reconsiderar después del cargo. **Dueño**: cliente. **Antes de**: implementar B.
 - [ ] **Q3 — ¿Cuál es el tiempo máximo admisible entre reserva y cobro?** Impacta la vigencia del payment method, la retención de 90 días y el horizonte de generación de instancias. **Dueño**: cliente. **Antes de**: implementar A (define el TTL de `pending_minimum`).
 - [ ] **Q4 — "Confirmar salida" manual: ¿cobra también a las reservas cuyos reintentos ya se agotaron y fueron canceladas?** Este spec asume que no (una reserva cancelada es terminal). **Dueño**: cliente. **Antes de**: implementar C.
 - [ ] **Q5 — ¿El portal público muestra "faltan N personas para confirmar la salida"?** Afecta conversión y hoy no está ni en alcance ni fuera de alcance. **Dueño**: cliente. **Antes de**: implementar B.
+- [ ] **Q6 — ¿Autorizar al reservar y capturar al alcanzar el mínimo, en vez de —o combinado con— el cobro diferido?** Reabierta el 2026-09-12 (ver la corrección de §5.1). Frente al diseño aprobado: el 3DS ocurre con el turista presente, así que desaparece el riesgo de `requires_action` off-session; un cobro ya autorizado no se rechaza después por fondos; el riesgo de doble cobro se reduce drásticamente porque se captura el mismo intent autorizado; y cancelar una salida es liberar la retención, sin reembolso ni comisión. Límites: (a) la retención dura como máximo 30 días según OnvoPay, así que no cubre reservas con más anticipación, lo que sugiere un esquema híbrido; (b) los emisores, sobre todo en débito, pueden liberar antes la retención; (c) si la captura falla, el intent vuelve a `requires_payment_method` y hay que autorizar de nuevo, esta vez sin el turista presente; (d) retener el monto reduce el saldo disponible del turista durante semanas, algo que hay que comunicarle. **Dueño**: Kenneth + cliente. **Antes de**: implementar el workstream B, porque define qué hace el checkout.
