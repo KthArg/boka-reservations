@@ -191,6 +191,28 @@ También se descartó modelar cada reserva como una suscripción con `paymentBeh
 **Pendiente para cerrar esta consulta:**
 
 - **Prueba en sandbox (bloqueante):** confirmar un intent con una tarjeta guardada **sin enviar `cvv`**, días después de guardarla. Si OnvoPay lo exige, el cobro diferido no es viable, porque el CVV no se puede guardar.
-- **Una sola pregunta a OnvoPay, por correo a ayuda@onvopay.com:**
+- **Correo a OnvoPay** (`ayuda@onvopay.com`), redactado para que se pueda responder con un sí o un no sin conocer nuestro sistema. Aplica lo aprendido: lenguaje de negocio, un ejemplo concreto, aclarar que no es una suscripción, y la parte técnica aparte para quien lo escale.
 
-  > Si guardamos la tarjeta del cliente al reservar y días después confirmamos un payment intent con ese `paymentMethodId` desde nuestro servidor, sin el cliente presente, ¿ONVO lo procesa igual que las renovaciones de sus cargos recurrentes?
+**Asunto:** Dos preguntas de sí o no: cobrar una tarjeta guardada días después (un solo cobro)
+
+> Hola,
+>
+> Tenemos **dos preguntas cortas**. Nos alcanza con un sí o un no en cada una.
+>
+> **1. ¿Podemos cobrarle a un cliente, días o semanas después, con la tarjeta que guardó al hacer su reserva, sin que el cliente esté en nuestra página en ese momento?**
+>
+> **2. Ese cobro, ¿necesita que el cliente vuelva a ingresar el código de seguridad (CVV)?**
+>
+> Un ejemplo para que quede claro:
+>
+> - El **1 de octubre**, una clienta reserva un tour en nuestro sitio y guarda su tarjeta. **No le cobramos nada.**
+> - El **20 de octubre**, el tour completa el mínimo de personas. Ese día le cobramos **$70, una sola vez**. Ella no está en la página: el cobro lo hace nuestro sistema.
+>
+> **No es una suscripción ni un cobro recurrente.** Es un único cobro, hecho un tiempo después de guardar la tarjeta. Sabemos que ustedes ya cobran tarjetas guardadas en las renovaciones de los cargos recurrentes; queremos confirmar que un cobro único como este también está permitido.
+>
+> Datos técnicos, por si hace falta pasarlo al equipo de integraciones: guardamos la tarjeta con `POST /v1/payment-methods` y, días después, desde nuestro servidor, creamos una intención de pago y la confirmamos con `POST /v1/payment-intents/{id}/confirm` enviando ese `paymentMethodId`.
+>
+> ¡Muchas gracias!
+>
+> Kenneth
+> [nombre del comercio]
