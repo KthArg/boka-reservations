@@ -9,9 +9,9 @@ import type {
 } from '../types';
 
 // Base URL parametrizable (spec 0028, A6): permite apuntar al sandbox
-// (https://api.dev.onvopay.com/v1) sin editar código. Default: producción.
+// (https://api.dev.onvopay.com/v1) sin editar código. La inyecta getPaymentProvider
+// desde la env TIPADA (review pre-PR de B11); default: producción.
 const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
-const ONVOPAY_API_BASE = process.env.ONVOPAY_API_BASE_URL ?? ONVOPAY_API_BASE_DEFAULT;
 // Timeout defensivo del fetch de creación del payment intent (spec 0020, L-1). Sin esto, una
 // conexión colgada de OnvoPay ataría la función serverless del checkout hasta el timeout de
 // plataforma. Espejo de los clientes del worker (refunds/reconciliación, 15 s). Constante local
@@ -43,10 +43,14 @@ function secretMatches(provided: string, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-export function createOnvopayAdapter(secretKey: string, webhookSecret: string): PaymentProvider {
+export function createOnvopayAdapter(
+  secretKey: string,
+  webhookSecret: string,
+  baseUrl: string = ONVOPAY_API_BASE_DEFAULT,
+): PaymentProvider {
   return {
     async createPaymentSession(params: CreatePaymentParams): Promise<PaymentSession> {
-      const res = await fetch(`${ONVOPAY_API_BASE}/payment-intents`, {
+      const res = await fetch(`${baseUrl}/payment-intents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +77,7 @@ export function createOnvopayAdapter(secretKey: string, webhookSecret: string): 
       // Best-effort (spec 0028, A1): endpoint de cancelación pendiente de verificar en
       // sandbox (P1 del spec). Si no existe (404) o falla, el caller lo tolera: la
       // garantía real es no entregar el intent al widget.
-      const res = await fetch(`${ONVOPAY_API_BASE}/payment-intents/${externalPaymentId}/cancel`, {
+      const res = await fetch(`${baseUrl}/payment-intents/${externalPaymentId}/cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

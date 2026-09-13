@@ -104,7 +104,7 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
                 return (
                   <tr key={`${n.kind}-${i}`} className={styles.row}>
                     <td className={styles.td}>{t(`notif-${n.kind}`)}</td>
-                    <td className={styles.td}>{n.status}</td>
+                    <td className={styles.td}>{t(`notif-status-${n.status}`)}</td>
                     <td className={styles.td}>{n.sentAt ? `${sent.date} ${sent.time}` : '—'}</td>
                   </tr>
                 );

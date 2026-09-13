@@ -45,3 +45,9 @@
 .link:hover {
   opacity: 0.85;
 }
+
+.body {
+  font-size: 0.95rem;
+  color: var(--color-text-muted, #6b7280);
+  margin-bottom: 2rem;
+}

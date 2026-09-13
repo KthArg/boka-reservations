@@ -3,6 +3,53 @@
 Spec: [0028-cierre-hallazgos-code-review-integral.md](./0028-cierre-hallazgos-code-review-integral.md)
 Ramas: `fix/0028-dinero` (workstream A), `fix/0028-panel-portal` (workstream B), `chore/0028-deuda-menor-ci` (workstream C)
 
+## 2026-07-07 — Reviews pre-PR del workstream B aplicados
+
+**Hecho**:
+
+- Veredictos: payment-flow-auditor **APTO** (releaseHold solo toca `active` ✓, día CR exacto como insumo contable ✓, fallo-seguro del checkout en la ventana de reconciliación ✓); db-schema-guardian **APTO con condición** (aplicada); code-reviewer **requirió cambios** (aplicados):
+  - **Tie-break determinista** en `selectEffectivePricing` (defensa si el EXCLUDE faltara: gana la temporada que empezó más tarde) + test.
+  - **Anti-TOCTOU en `archiveTour`**: re-chequeo tras cancelar instancias con reversión; movido a `lib/tours/archive-action.ts` (límite 150 líneas). La ventana residual la cubre `create_hold_atomic` (instancia `cancelled`).
+  - **Temporadas semi-abiertas e inválidas rechazadas temprano** (`hasHalfOpenSeasons`, `hasInvalidSeasonRange` + códigos `tour_season_dates_incomplete`/`tour_season_range_invalid` i18n): el CHECK `valid_season_range` de …005 sigue autoritativo (header de …041 corregido — documentaba semántica inalcanzable).
+  - **Fechas calendario-inválidas** (`2026-13-45`, `2026-02-30` con rollover de V8) rechazadas en `parseBookingFilters` con round-trip (evita el RangeError→500) + tests.
+  - Texto de `tour_pricing_write_failed` corregido (prometía atomicidad que la reconciliación en dos requests no tiene); `ExportRangeError.Inverted` propio; literales → constantes (`TourActionError.*` en validation, `REPORT_UNKNOWN_ERROR`); adapter OnvoPay recibe `baseUrl` desde la env tipada (B11 completo); `getTourBySlug` con `TourStatus.Active`; confirm en `ArchiveTourButton` (clave existente).
+  - **Tests de integración nuevos exigidos por §10**: prioridad temporada>base en el COBRO real (`resolveAuthoritativeCharge` → 6000 no 4000) y B12 archivado (bloqueo con reserva activa → cancelación de salidas + archivado).
+- **Deuda aceptada y documentada** (no bloquea; candidatos a C o post-merge): reconciliación de tours transaccional vía RPC (hoy 2 requests: un fallo del upsert tras el delete deja el tour sin esas filas — fallo-seguro para el dinero: el checkout lanza `CHECKOUT_TICKET_UNAVAILABLE`, jamás cobra 0); unit de la success page; integración del throttle de magic links excedido; unificar `toRangeBounds` con `cr-date`; fallback hardcodeado en `success.module.css`; divergencia display/cobro en la medianoche CR (el monto autoritativo es el del intent); `window.alert` como feedback del archivado. Throttle 300/h (vs "p. ej. 20/h" del spec): deliberado, la barrera es la entropía del token.
+
+**Pendiente**:
+
+- Verificación final en verde → push + PR del workstream B (stacked sobre #67).
+
+## 2026-07-07 — Workstream B implementado (panel/portal); verificación corriendo
+
+**Hecho**:
+
+- Migración `20260706000041`: EXCLUDE anti-solape en `tour_pricing` (solo filas con fechas, btree_gist, bounds `[]`), UNIQUE parcial de un precio base activo por `(tour, ticket_type)`, CHECK de `currency` (USD/CRC) en bookings/payments/refunds, UNIQUE `tour_instance_guides(tour_instance_id)`, 6 índices de FKs + funcional `lower(customer_email)`.
+- **Precios deterministas** (B1): `selectEffectivePricing` (temporada > base) como único punto de selección, consumido por checkout (`loadActivePricing`), detalle público (`getTourPricing`) y "desde $X" del listado (que ahora usa el filtro canónico). `detectPricingOverlaps` con bordes inclusivos, temporadas abiertas (un solo límite) y códigos de error.
+- **`updateTour` confiable** (B1): `reconcileRows` nuevo (el form es el estado final: elimina filas quitadas + upsert, todo chequeado; FK de horarios en uso → código propio; violaciones de constraints …041 mapeadas a códigos). Actions de tours devuelven códigos `tour_*` traducidos en `TourForm`/`ArchiveTourButton` (i18n es/en); mensajes de Zod por campo quedan como texto (deuda menor aceptada).
+- **Archivado coherente** (B12): con reservas activas futuras se bloquea (`tour_archive_has_bookings`); sin ellas, instancias futuras `available` → `cancelled`. Botón cliente nuevo (`ArchiveTourButton`) para mostrar el rechazo (el `<form action>` descartaba el resultado).
+- **Middleware sin loop** (B3): si el primer segmento no es un locale válido, se devuelve el redirect de next-intl y el guard corre sobre la URL localizada; tests del camino (incluye `/fr/dashboard`).
+- **Día del negocio único = día CR** (B4): helper `web/lib/dates/cr-date.ts` (`crDate`, `crDayStartIso`, `crNextDayStartIso`); filtros del listado admin y export CSV con límites `[inicio día CR, día CR siguiente)`; `pricingToday()` en fecha CR; `reports/range.ts` consume el helper compartido.
+- **Success page honesta** (B5): `confirmed` → confirmación; `pending_payment` → "procesando" ; otro/inexistente → mensaje neutro (claves i18n nuevas).
+- **Hold fuera del render** (B6): `releaseHeldBooking` en `lib/booking/release-hold.ts` (cookie + chequeo de error + constantes `HoldStatus`); la page de cancel delega. `HOLD_SESSION_COOKIE` deduplicada a shared.
+- **Portal sin pasado** (B7): `getUpcomingInstances` filtra `starts_at >= now`; `HOLD_INSTANCE_PAST` → error i18n `instance-past`.
+- **Filtros validados** (B8): `dateFrom/dateTo` formato estricto, `tourId` UUID (inválidos se ignoran); export rechaza rango invertido.
+- **Guía atómico** (B9): upsert `ON CONFLICT (tour_instance_id)` (sin delete+insert).
+- **Magic links con throttle** (B10): `isMagicLinkThrottled` (300/h por IP, store del 0017, fail-open sin request context) en ambos validadores; excedido = misma respuesta que token inválido.
+- **Env de web al boot** (B11): `instrumentation.ts` importa `lib/env` (runtime nodejs); `RESEND_API_KEY` eliminada del schema web (no la usa); `ONVOPAY_API_BASE_URL` agregada; `supabase-service` y `payments/index` consumen la env tipada.
+- **B13**: exports 400 con códigos estables; `BookingDetailView` traduce `n.status`; reset-password con clave de error real (`password-invalid`).
+- Tests nuevos: `cr-date` (bordes 18:00/23:59/00:00 CR), `select-effective` (prioridad), `validation-overlaps-0028` (bordes inclusivos/abiertas/códigos), middleware (loop, redirectTo, locale inválido), admin-filters (inválidos ignorados, rango invertido); integración `tour-pricing-constraints` (EXCLUDE con borde compartido, base duplicado, reconciliación elimina/upsertea + mapeo de códigos, upserts concurrentes de guía → 1 fila).
+
+**Por qué / decisiones**:
+
+- Prioridad temporada>base en UN punto (`selectEffectivePricing`) y no en SQL: display y cobro comparten la misma función; los constraints …041 garantizan a lo sumo 1+1 filas vigentes.
+- `archiveTour` usa el service client tras el guard de rol (las instancias las administra el sistema; no hay RLS de escritura admin sobre `tour_instances`).
+- Throttle de magic links con límite MUY holgado (300/h): la barrera real es la entropía del token; esto solo corta el vector de carga sin molestar NAT compartido ni turistas refrescando.
+
+**Pendiente**:
+
+- Verificación completa + reviews obligatorios + PR del workstream B (stacked sobre #67).
+
 ## 2026-07-06 — Reviews pre-PR del workstream A aplicados
 
 **Hecho**:
