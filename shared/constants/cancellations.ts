@@ -18,4 +18,9 @@ export enum RefundRetryError {
   NotFound = 'refund_retry_not_found',
   NotFailed = 'refund_retry_not_failed',
   WriteFailed = 'refund_retry_write_failed',
+  /** El resultado del POST anterior es DESCONOCIDO (timeout ambiguo / claim huérfano
+   *  sin id persistido): re-crear a ciegas arriesga doble reembolso. Verificar en el
+   *  dashboard de OnvoPay (el id, si existe, está en la alerta de Sentry) antes de
+   *  reintentar (spec 0028). */
+  RequiresManualCheck = 'refund_retry_requires_manual_check',
 }

@@ -780,12 +780,19 @@ export type Database = {
         Args: {
           p_booking_id: string;
           p_external_payment_id: string;
-          p_total_seats: number;
+          /** DEPRECATED (spec 0028): la RPC deriva los asientos de la reserva; se ignora. */
+          p_total_seats?: number | null;
           p_event_id?: string | null;
           p_paid_amount_cents?: number | null;
           p_paid_currency?: string | null;
         };
-        Returns: void;
+        Returns:
+          | 'confirmed'
+          | 'already_processed'
+          | 'late_payment_refunded'
+          | 'overbooked_refunded'
+          | 'payment_mismatch'
+          | 'ignored';
       };
       cancel_booking: {
         Args: {

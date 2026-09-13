@@ -47,6 +47,7 @@ const pending = {
   status: 'pending' as const,
   attempts: 0,
   created_at: FRESH,
+  updated_at: FRESH,
 };
 
 describe('process-refunds processOne', () => {
@@ -112,13 +113,78 @@ describe('process-refunds processOne', () => {
     expect(repoMocks.markFailed).not.toHaveBeenCalled();
   });
 
-  it('marca failed cuando se agotan los intentos de creacion', async () => {
+  it('el 3er reintento (espera de 30 min) es alcanzable: con attempts=2 aún libera el claim', async () => {
     const c = client({ createRefund: vi.fn().mockRejectedValue(new Error('boom')) });
 
-    await processOne(db, c, { ...pending, attempts: 2 });
+    // updated_at viejo: la espera de 5 min venció; el intento 3 falla pero AÚN queda
+    // el reintento de 30 min (spec 0028: terminal recién al agotar 1/5/30).
+    await processOne(db, c, { ...pending, attempts: 2, updated_at: OLD });
 
-    expect(repoMocks.markFailed).toHaveBeenCalledWith(db, expect.anything(), 'boom', 3);
+    expect(repoMocks.releaseClaim).toHaveBeenCalledWith(db, 'r1', 3);
+    expect(repoMocks.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('marca failed cuando se agotan los intentos de creacion (4to intento)', async () => {
+    const c = client({ createRefund: vi.fn().mockRejectedValue(new Error('boom')) });
+
+    await processOne(db, c, { ...pending, attempts: 3, updated_at: OLD });
+
+    expect(repoMocks.markFailed).toHaveBeenCalledWith(db, expect.anything(), 'boom', 4);
     expect(repoMocks.releaseClaim).not.toHaveBeenCalled();
+  });
+
+  it('respeta el backoff 1/5/30: no re-POSTea antes de la espera mínima (spec 0028)', async () => {
+    const c = client();
+
+    // attempts=1 con updated_at fresco: la espera de 1 min no venció -> no crear todavía.
+    await processOne(db, c, { ...pending, attempts: 1, updated_at: FRESH });
+
+    expect(repoMocks.claimForProcessing).not.toHaveBeenCalled();
+    expect((c as { createRefund: ReturnType<typeof vi.fn> }).createRefund).not.toHaveBeenCalled();
+  });
+
+  it('timeout ambiguo del POST: corta a failed(ambiguous-timeout), nunca re-POSTea (spec 0028)', async () => {
+    const timeoutErr = new Error('timeout');
+    timeoutErr.name = 'TimeoutError';
+    const c = client({ createRefund: vi.fn().mockRejectedValue(timeoutErr) });
+
+    await processOne(db, c, pending);
+
+    expect(repoMocks.markFailed).toHaveBeenCalledWith(
+      db,
+      expect.anything(),
+      'ambiguous-timeout',
+      1,
+    );
+    expect(repoMocks.releaseClaim).not.toHaveBeenCalled();
+  });
+
+  it('pending CON external_refund_id: verifica por GET, jamás re-POSTea (spec 0028)', async () => {
+    const c = client({
+      getRefund: vi.fn().mockResolvedValue({ externalRefundId: 'ref_1', status: 'succeeded' }),
+    });
+
+    await processOne(db, c, { ...pending, external_refund_id: 'ref_1' });
+
+    expect((c as { createRefund: ReturnType<typeof vi.fn> }).createRefund).not.toHaveBeenCalled();
+    expect(repoMocks.claimForProcessing).toHaveBeenCalledWith(db, 'r1', 0);
+    expect(repoMocks.markSucceeded).toHaveBeenCalledTimes(1);
+  });
+
+  it('si markProcessing falla tras un POST exitoso, NO libera el claim ni asienta (spec 0028)', async () => {
+    repoMocks.markProcessing.mockRejectedValue(new Error('db down'));
+    const c = client({
+      createRefund: vi.fn().mockResolvedValue({ externalRefundId: 'ref_9', status: 'succeeded' }),
+    });
+
+    await processOne(db, c, pending);
+
+    // Reintenta la persistencia una vez (2 llamadas) y luego alerta; sin releaseClaim
+    // (un release volvería la fila a pending sin id -> re-POST -> doble refund).
+    expect(repoMocks.markProcessing).toHaveBeenCalledTimes(2);
+    expect(repoMocks.releaseClaim).not.toHaveBeenCalled();
+    expect(repoMocks.markSucceeded).not.toHaveBeenCalled();
+    expect(repoMocks.markFailed).not.toHaveBeenCalled();
   });
 
   it('pollea un refund processing y lo cierra succeeded', async () => {

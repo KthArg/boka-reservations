@@ -8,9 +8,16 @@ export enum AuditActorType {
   System = 'system',
 }
 
-/** Acción registrada en `audit_logs`. Cadenas estables `entidad.evento`. */
+/** Acción registrada en `audit_logs`. Cadenas estables `entidad.evento`.
+ *  Incluye las que escribe el worker/las RPCs (drift cerrado en spec 0028). */
 export enum AuditAction {
   BookingCancelled = 'booking.cancelled',
+  BookingConfirmed = 'booking.confirmed',
+  BookingOverbookedRefunded = 'booking.overbooked_refunded',
+  BookingLatePaymentRefunded = 'booking.late_payment_refunded',
+  BookingRecoveredViaReconcile = 'booking.recovered_via_reconcile',
+  BookingPaymentMismatch = 'booking.payment_mismatch',
+  BookingExpiredPending = 'booking.expired_pending',
   RefundRequested = 'refund.requested',
   RefundSucceeded = 'refund.succeeded',
   RefundFailed = 'refund.failed',

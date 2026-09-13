@@ -82,12 +82,21 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
       description: tourName,
     });
 
-    await db.from('payments').insert({
+    // Chequeo obligatorio (spec 0028, A1): sin fila en `payments`, el webhook no puede
+    // correlacionar el cobro y el reconciliador cancelaría como `no_payment` sin refund.
+    // Si el INSERT falla: cancelar el intent best-effort (endpoint pendiente de verificar
+    // en sandbox, P1 del spec; si no existe, el intent igual nunca llega al widget) y
+    // abortar — el catch de abajo libera el hold de inmediato.
+    const { error: paymentErr } = await db.from('payments').insert({
       booking_id: booking.id,
       external_payment_id: session.externalPaymentId,
       amount_cents: totalAmountCents,
       currency: CHECKOUT_CURRENCY,
     });
+    if (paymentErr) {
+      await provider.cancelPaymentSession(session.externalPaymentId).catch(() => undefined);
+      throw new Error(paymentErr.message);
+    }
 
     // Capa 1 anti-sobreventa (spec 0025): con el payment intent creado, el hold pasa de
     // `active` a `paying`. release-expired-holds (que solo toca `active`) ya no lo libera, así

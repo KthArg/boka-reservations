@@ -9,13 +9,11 @@ import {
 } from '../reconciliation/onvopay.js';
 import {
   cancelStaleBooking,
-  confirmRecoveredBooking,
-  fetchBookingStatus,
   fetchStalePendingBookings,
-  flagPaymentMismatch,
-  writeRecoveredAudit,
   type StalePendingBooking,
 } from '../reconciliation/repository.js';
+import { recover } from '../reconciliation/recover.js';
+import { alert, MSG_STUCK } from '../reconciliation/alerts.js';
 
 // Umbrales (worker self-contained: no importa @shared en runtime).
 // Antigüedad mínima en pending_payment para procesar una reserva. Con la Capa 1 anti-sobreventa
@@ -29,14 +27,6 @@ const STUCK_PROCESSING_ALERT_AFTER_MS = 24 * 60 * 60 * 1000;
 // Lote acotado por ciclo (cada reserva implica un GET a OnvoPay).
 const BATCH_SIZE = 50;
 const NO_PAYMENT_REASON = 'no_payment';
-
-// Mensajes de las alertas a Sentry, como constantes (sin strings mágicos; deja los call-sites
-// de alert() en una sola línea).
-const MSG_UNVERIFIABLE = '[reconcile] pago no verificable (sin monto en el GET); revisión manual';
-const MSG_MISMATCH = '[reconcile] pago con monto/moneda no coincidente';
-const MSG_RECOVERED = '[reconcile] reserva recuperada (webhook perdido)';
-const MSG_OVERBOOKED = '[reconcile] recuperada sin cupo';
-const MSG_STUCK = '[reconcile] pago estancado en processing >24h (revisión manual)';
 
 // Single-flight a nivel módulo: si el ciclo anterior sigue corriendo, este se
 // saltea. Evita apilar ciclos y duplicar llamadas a OnvoPay.
@@ -71,7 +61,7 @@ async function runCycle(): Promise<void> {
   if (bookings.length === 0) return;
 
   const client = env.ONVOPAY_SECRET_KEY
-    ? createOnvopayPaymentIntentClient(env.ONVOPAY_SECRET_KEY)
+    ? createOnvopayPaymentIntentClient(env.ONVOPAY_SECRET_KEY, env.ONVOPAY_API_BASE_URL)
     : null;
 
   for (const booking of bookings) {
@@ -130,75 +120,11 @@ async function applyOutcome(
   }
 }
 
-async function recover(
-  db: SupabaseClient,
-  booking: StalePendingBooking,
-  result: PaymentIntentResult,
-): Promise<void> {
-  const payment = booking.payments[0];
-  if (!payment) return;
-
-  // Validación de monto (spec 0014): no recuperar a ciegas un pago succeeded.
-  // (a) Si OnvoPay no devolvió monto/moneda, es no verificable: saltear sin tocar
-  // la reserva (igual que el principio de "nunca a ciegas" del 0013).
-  if (result.amountCents === undefined || result.currency === undefined) {
-    alert(MSG_UNVERIFIABLE, 'reconcile-amount-unverifiable', booking.id);
-    return;
-  }
-  // (b) Si el monto/moneda no coincide con lo esperado, marcar payment_mismatch.
-  // Moneda normalizada a mayúsculas (ISO 4217 case-insensitive) para no marcar
-  // falso-mismatch por formato.
-  const currencyMismatch = result.currency.toUpperCase() !== payment.currency.toUpperCase();
-  if (result.amountCents !== payment.amount_cents || currencyMismatch) {
-    await flagPaymentMismatch(db, booking.id, result.amountCents, result.currency);
-    alert(MSG_MISMATCH, 'reconcile-payment-mismatch', booking.id);
-    return;
-  }
-
-  // (c) Coincide: recuperar (confirmar la reserva como lo haría el webhook). El monto/moneda
-  // (ya validados arriba) van al guard de payment_mismatch interno de confirm_booking (spec 0026).
-  const totalSeats = booking.tickets_adult + booking.tickets_child + booking.tickets_student;
-  await confirmRecoveredBooking(
-    db,
-    booking.id,
-    payment.external_payment_id,
-    totalSeats,
-    result.amountCents,
-    result.currency,
-  );
-  // Una recuperación = un webhook perdido. Señal de salud del sistema, agrupada.
-  // Se emite ANTES del audit (best-effort) para no perderla si el audit falla.
-  alert(MSG_RECOVERED, 'reconcile-recovered', booking.id);
-  await writeRecoveredAudit(db, booking.id, {
-    seats: totalSeats,
-    external_payment_id: payment.external_payment_id,
-  });
-
-  // Sobreventa (spec 0025): confirm_booking ya NO confirma en sobrecupo; si el cupo estaba
-  // agotado dejó la reserva en `overbooked_refunded` con refund total encolado. Se re-lee el
-  // estado para alertar (el audit `booking.overbooked_refunded` lo emite la RPC).
-  const recovered = await fetchBookingStatus(db, booking.id);
-  if (recovered === 'overbooked_refunded') {
-    alert(MSG_OVERBOOKED, 'booking-overbooked-refunded', booking.id);
-  }
-}
-
 function alertIfStuck(booking: StalePendingBooking): void {
   const ageMs = Date.now() - new Date(booking.created_at).getTime();
   if (ageMs <= STUCK_PROCESSING_ALERT_AFTER_MS) return;
   // Estancado demasiado tiempo en processing/requires_action: revisión manual.
   alert(MSG_STUCK, 'reconcile-stuck-processing', booking.id);
-}
-
-// Alerta agregada a Sentry: una sola issue por fingerprint, no un evento por
-// reserva ni por ciclo. En dev/CI (sin SENTRY_DSN) es no-op.
-function alert(message: string, fingerprint: string, bookingId: string): void {
-  Sentry.withScope((scope) => {
-    scope.setLevel('warning');
-    scope.setFingerprint([fingerprint]);
-    scope.setExtra('bookingId', bookingId);
-    Sentry.captureMessage(message);
-  });
 }
 
 export const __testing = { reconcileOne, applyOutcome };

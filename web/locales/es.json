@@ -259,7 +259,8 @@
     "refund-status-failed": "Falló",
     "refund-retry": "Reintentar reembolso",
     "refund-retry-confirm": "¿Reintentar el reembolso fallido?",
-    "refund-retry-error": "No se pudo reintentar el reembolso."
+    "refund-retry-error": "No se pudo reintentar el reembolso.",
+    "refund-retry-manual-check": "Este reembolso requiere verificación manual en OnvoPay antes de reintentarse (el resultado del intento anterior es desconocido). Revisa la alerta en Sentry."
   },
   "guides": {
     "nav-label": "Salidas",

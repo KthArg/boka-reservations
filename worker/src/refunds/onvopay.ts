@@ -2,7 +2,9 @@
 // job de refunds es quien llama a OnvoPay; el worker es self-contained.
 // Vetting 2026-06-02: POST /v1/refunds (asíncrono, SIN webhook) + GET para
 // pollear. Status del Refund: pending -> succeeded | failed.
-const ONVOPAY_API_BASE = 'https://api.onvopay.com/v1';
+// Default de producción; el job pasa env.ONVOPAY_API_BASE_URL (spec 0028, A6) para poder
+// apuntar al sandbox sin editar código. El cliente queda libre de imports de env (testeable).
+const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
 const DEFAULT_REASON = 'requested_by_customer';
 // Timeout defensivo: sin esto una conexión colgada de OnvoPay bloquea el ciclo
 // del job más de 60s y el setInterval del worker apila ciclos solapados.
@@ -44,7 +46,7 @@ function toResult(data: OnvopayRefundBody): RefundResult {
   };
 }
 
-export function createOnvopayRefundClient(secretKey: string) {
+export function createOnvopayRefundClient(secretKey: string, baseUrl = ONVOPAY_API_BASE_DEFAULT) {
   const headers = {
     Authorization: `Bearer ${secretKey}`,
     'Content-Type': 'application/json',
@@ -58,7 +60,7 @@ export function createOnvopayRefundClient(secretKey: string) {
       };
       if (input.amountCents !== undefined) body.amount = input.amountCents;
 
-      const res = await fetch(`${ONVOPAY_API_BASE}/refunds`, {
+      const res = await fetch(`${baseUrl}/refunds`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
@@ -69,7 +71,7 @@ export function createOnvopayRefundClient(secretKey: string) {
     },
 
     async getRefund(externalRefundId: string): Promise<RefundResult> {
-      const res = await fetch(`${ONVOPAY_API_BASE}/refunds/${externalRefundId}`, {
+      const res = await fetch(`${baseUrl}/refunds/${externalRefundId}`, {
         headers,
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });

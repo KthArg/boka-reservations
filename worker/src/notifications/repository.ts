@@ -67,16 +67,19 @@ export async function loadLatestRefund(
   return data ? { amountCents: data.amount_cents, currency: data.currency } : null;
 }
 
+// Todas las escrituras verifican `error` y lanzan (spec 0028): supabase-js no lanza,
+// solo devuelve { error } — y un fallo silencioso acá deja la cola en estados falsos.
 export async function cancelNotification(
   db: SupabaseClient,
   id: string,
   reason: string,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('notifications')
     .update({ status: 'cancelled', cancelled_reason: reason })
     .eq('id', id)
     .eq('status', 'pending');
+  if (error) throw new Error(`cancel notification: ${error.message}`);
 }
 
 export async function markSent(
@@ -85,7 +88,7 @@ export async function markSent(
   provider: string,
   messageId: string,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('notifications')
     .update({
       status: 'sent',
@@ -94,6 +97,7 @@ export async function markSent(
       sent_at: new Date().toISOString(),
     })
     .eq('id', id);
+  if (error) throw new Error(`mark sent: ${error.message}`);
 }
 
 export async function markFailed(
@@ -103,10 +107,11 @@ export async function markFailed(
   attempts: number,
   lastError: string,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('notifications')
     .update({ status: 'failed', provider, attempts, last_error: lastError })
     .eq('id', id);
+  if (error) throw new Error(`mark failed: ${error.message}`);
 }
 
 export async function handleTransient(
@@ -120,7 +125,7 @@ export async function handleTransient(
     await markFailed(db, notif.id, provider, nextAttempts, lastError);
     return;
   }
-  await db
+  const { error } = await db
     .from('notifications')
     .update({
       attempts: nextAttempts,
@@ -129,4 +134,5 @@ export async function handleTransient(
       last_error: lastError,
     })
     .eq('id', notif.id);
+  if (error) throw new Error(`handle transient: ${error.message}`);
 }

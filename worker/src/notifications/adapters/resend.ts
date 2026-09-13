@@ -2,6 +2,10 @@ import type { EmailAdapter, EmailSendInput, EmailSendResult } from '../types.js'
 import { EmailPermanentError, EmailTransientError } from '../types.js';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+// Timeout defensivo (spec 0028): sin esto una conexión colgada a Resend bloquea el ciclo
+// del job ~5 min (timeout de undici) y el setInterval del worker apila ciclos solapados.
+// Espejo de los clientes de OnvoPay.
+const HTTP_TIMEOUT_MS = 15_000;
 const HTTP_OK_MIN = 200;
 const HTTP_OK_MAX = 300;
 const HTTP_RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
@@ -21,6 +25,7 @@ export function createResendAdapter(apiKey: string, from: string): EmailAdapter 
       try {
         res = await fetch(RESEND_ENDPOINT, {
           method: 'POST',
+          signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
           headers: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',

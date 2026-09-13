@@ -1,10 +1,13 @@
-/** Tipo de notificación encolada en la tabla `notifications` (specs 0007, 0009, 0011). */
+/** Tipo de notificación encolada en la tabla `notifications` (specs 0007, 0009, 0011, 0025). */
 export enum NotificationKind {
   BookingConfirmation = 'booking_confirmation',
   Reminder24h = 'reminder_24h',
   GuideAssignment = 'guide_assignment',
   CancellationConfirmation = 'cancellation_confirmation',
   RefundConfirmation = 'refund_confirmation',
+  /** Cupo agotado al confirmar: reserva auto-reembolsada (spec 0025). Faltaba acá
+   *  aunque el CHECK de DB y el worker ya lo tenían (drift cerrado en spec 0028). */
+  OverbookedRefunded = 'overbooked_refunded',
 }
 
 /** Canal de entrega. Hoy solo email; el enum deja lugar a SMS/WhatsApp futuros. */

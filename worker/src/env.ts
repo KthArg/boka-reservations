@@ -5,6 +5,9 @@ const envSchema = z
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     ONVOPAY_SECRET_KEY: z.string().min(1).optional(),
+    // Base del API de OnvoPay (spec 0028, A6). Default: producción; sandbox:
+    // https://api.dev.onvopay.com/v1 con llaves onvo_test_*.
+    ONVOPAY_API_BASE_URL: z.string().url().default('https://api.onvopay.com/v1'),
     APP_URL: z.string().url(),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     SENTRY_DSN: z.string().url().optional(),
@@ -30,6 +33,25 @@ const envSchema = z
         path: ['RESEND_API_KEY'],
         message: 'RESEND_API_KEY es obligatorio cuando EMAIL_PROVIDER=resend',
       });
+    }
+    // Combos de producción (spec 0028, A6): el proceso muere al arrancar en vez de
+    // degradar en silencio (refunds acumulándose en pending / emails contra localhost).
+    if (v.NODE_ENV === 'production') {
+      if (!v.ONVOPAY_SECRET_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['ONVOPAY_SECRET_KEY'],
+          message:
+            'ONVOPAY_SECRET_KEY es obligatorio en producción (sin él, refunds y reconciliación se estancan en silencio)',
+        });
+      }
+      if (v.EMAIL_PROVIDER !== 'resend') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['EMAIL_PROVIDER'],
+          message: 'EMAIL_PROVIDER debe ser resend en producción (mailpit es solo local)',
+        });
+      }
     }
   });
 
