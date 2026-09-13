@@ -1,6 +1,6 @@
 # Consulta a OnvoPay — cobro diferido con tarjeta retenida
 
-- **Estado**: mayormente resuelta por la documentación oficial (2026-09-12) tras tres rondas de soporte sin respuesta útil. Quedan pruebas de sandbox y una decisión de diseño (Q6 del spec)
+- **Estado**: abierta. Se evaluó y descartó la autorización con captura (validez real ~7 días) y se volvió al cobro con tarjeta guardada (2026-09-13). Pendientes: prueba del CVV en sandbox y una pregunta a OnvoPay
 - **Dueño**: Kenneth / cliente (titular de la cuenta OnvoPay)
 - **Creado**: 2026-08-13
 - **Relacionado**: [spec 0029 — Cupo mínimo y cobro diferido](specs/0029-cupo-minimo-y-cobro-diferido.md) §13 (Q1)
@@ -175,3 +175,22 @@ El spec 0029 descartó autorizar al reservar y capturar después apoyándose en 
 2. _"Una autorización expira en días."_ El esquema de `captureMethod` dice: _"Si no se completa la captura en un máximo de 30 días, los fondos serán liberados de vuelta al cliente."_
 
 Queda registrado como pregunta Q6 del spec: es una decisión de diseño con consecuencias de producto, no un ajuste de implementación.
+
+## Decisión (2026-09-13)
+
+Se evaluó y **se descartó** autorizar al reservar y capturar al alcanzar el mínimo:
+
+- El OpenAPI de OnvoPay dice que la captura manual libera los fondos si no se captura "en un máximo de 30 días", pero ese es el plazo de **su sistema**, no de la marca. Las marcas fijan la validez de una autorización online en **unos 7 días**. Los 30 días corresponden a una **autorización extendida**, que el procesador tiene que pedir explícitamente (la API de OnvoPay no lo expone), restringida a rubros como hotelería, alquiler de autos y cruceros, y pensada para cuando no se conoce el monto final. Fuentes: documentación de Stripe sobre autorización extendida y cambios al marco de autorización de Visa (abril 2024).
+- La guía de autorización y captura de OnvoPay no menciona los 30 días y pone como ejemplos hoteles y alquileres.
+- Con unos 7 días de validez, y midiendo la retención hasta la fecha del tour (en modo manual nada obliga a decidir antes), el límite de anticipación de reserva quedaba en 5–6 días: comercialmente inviable.
+
+Se **vuelve al diseño original**: tarjeta guardada y cobro cuando se alcanza el mínimo. Lo respaldan las suscripciones de OnvoPay: cada renovación es un payment intent nuevo que OnvoPay confirma con la tarjeta guardada, sin el cliente presente. La plataforma ya hace ese tipo de cobro como producto.
+
+También se descartó modelar cada reserva como una suscripción con `paymentBehavior: "allow_incomplete"` para que el cobro lo hiciera el motor de suscripciones: presenta una compra única como recurrente ante la marca y, si la cancelación de la suscripción falla, genera un segundo cobro que el modelo de reembolsos no puede reparar.
+
+**Pendiente para cerrar esta consulta:**
+
+- **Prueba en sandbox (bloqueante):** confirmar un intent con una tarjeta guardada **sin enviar `cvv`**, días después de guardarla. Si OnvoPay lo exige, el cobro diferido no es viable, porque el CVV no se puede guardar.
+- **Una sola pregunta a OnvoPay, por correo a ayuda@onvopay.com:**
+
+  > Si guardamos la tarjeta del cliente al reservar y días después confirmamos un payment intent con ese `paymentMethodId` desde nuestro servidor, sin el cliente presente, ¿ONVO lo procesa igual que las renovaciones de sus cargos recurrentes?

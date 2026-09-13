@@ -1,13 +1,27 @@
 # 0029 — Cupo mínimo por salida y cobro diferido con tarjeta retenida
 
-- **Estado**: approved
+- **Estado**: in-review
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-08-13
-- **Última actualización**: 2026-09-12
+- **Última actualización**: 2026-09-13
 - **Rama**: (sin asignar — tres workstreams, ver §11)
 - **PR**: (sin asignar)
 
 > **Prerrequisito bloqueante**: modifica `confirm_booking`, el checkout, el webhook y los jobs del worker — todos reescritos por el spec 0028, hoy en tres PRs sin mergear (#67 → #68 → #69, migraciones `…040`–`…042`). **0029 no arranca hasta que 0028 esté en `dev`.**
+
+> **Revisión pendiente (2026-09-13) — requiere re-aprobación.** Se evaluó y descartó autorizar al reservar y capturar después: una autorización online vale unos 7 días según las marcas, y los 30 días son una autorización extendida que la API de OnvoPay no expone, restringida a rubros como hotelería y alquiler de autos. El usuario confirmó volver a este mecanismo —tarjeta guardada y cobro al alcanzar el mínimo—, respaldado por las suscripciones de OnvoPay: cada renovación es un payment intent nuevo que OnvoPay confirma con la tarjeta guardada, sin el cliente presente. Detalle en `docs/onvopay-consulta-cobro-diferido.md`. **Antes de re-aprobar, incorporar al cuerpo:**
+>
+> 1. **§5.1** — reemplazar la "Corrección 2026-09-12" (que reabría la captura manual) por el motivo del descarte definitivo; citar las suscripciones como evidencia de cobro sin el cliente presente; sumar la precondición de sandbox (f): que `confirm` con tarjeta guardada emita `payment-intent.succeeded`.
+> 2. **§5.6 / §5.7 — reintento sobre el mismo intent.** La especificación documenta que un intent rechazado queda en `requires_payment_method` y se re-confirma "indicando uno diferente": los reintentos re-confirman el mismo intent. "Cancelar el anterior antes de crear otro" queda solo para cuando no se pueda re-confirmar (verificar en sandbox), incluida la contingencia de `requires_action`.
+> 3. **§5.2 — CVV y vencimiento.** El formulario envía el CVV al tokenizar. Queda abierto el riesgo de que `confirm` exija CVV con tarjeta guardada (prueba de sandbox **bloqueante**: el CVV no se puede guardar). Al reservar, rechazar tarjetas cuyo `card.expMonth`/`card.expYear` venza antes de la salida.
+> 4. **§5.4 — gate dentro de la función.** `cancel_stale_pending_booking` devuelve `false` bajo el `FOR UPDATE` si `charge_started_at IS NOT NULL`; filtrar solo en la consulta del reconciliador deja un TOCTOU. Sumarla a la lista de funciones de §6.
+> 5. **`confirm_booking`** — con el flag encendido, el camino feliz con `charge_started_at IS NULL` devuelve `confirmed_unclaimed`. Corregir la redacción: el `default:` que se traga outcomes es de `recover.ts`; el webhook es una cadena de `if/else` que también los ignora.
+> 6. **Baja de datos a pedido.** `anonymize_booking_pii_by_email` (`…034:93` en adelante) borra toda reserva sin pago `succeeded`/`refunded`, lo que incluye `pending_minimum`: hold `paying` huérfano y tarjeta viva en OnvoPay. Excluir el estado o cancelar antes de borrar. El `detach` del método de pago y el `DELETE` del customer son un paso del **worker** previo a purgar o borrar, porque SQL no puede llamar a OnvoPay.
+> 7. **Plazo de recuperación** — el enlace para actualizar la tarjeta vence en `GREATEST(inicio de la ventana, now() + R)`, nunca después de `starts_at`; sin margen, se cancela con aviso.
+> 8. **CSP (spec 0024)** — el SDK hoy se inyecta con `document.createElement('script')` desde el bundle con nonce (`CheckoutForm.tsx:63-64`, `csp.ts:41`); la librería de 3DS (`https://js.onvopay.com/v1/`) se carga igual. `frame-src https://*.onvopay.com` (`csp.ts:18,46`) ya cubre `checkout.onvopay.com`, pero el desafío 3DS del emisor puede chocar con `frame-src` y `form-action 'self'` (`csp.ts:46,49`): probar con la CSP en modo enforce.
+> 9. **Reportes** — `report_refunds_summary` (`…022:161`, última definición en `…036`) cuenta toda reserva `cancelled`: las cancelaciones por mínimo inflan la tasa de cancelación. Sumarlo a §9.
+> 10. **Citas** — las referencias a `…040`–`…042`, `recover.ts` y `archive-action.ts` se verificaron contra el árbol de 0028 y se revalidan tras su merge.
+> 11. **§13** — Q6 resuelta (descartada la captura manual, con el motivo). Q1 se reduce a la prueba del CVV en sandbox, la precondición (f) y una sola pregunta a OnvoPay: si un cobro único con tarjeta guardada se procesa igual que una renovación de cargo recurrente.
 
 ## 1. Contexto y motivación
 
