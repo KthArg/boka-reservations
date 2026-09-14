@@ -1,6 +1,6 @@
 # Consulta a OnvoPay — cobro diferido con tarjeta retenida
 
-- **Estado**: abierta. Se evaluó y descartó la autorización con captura (validez real ~7 días) y se volvió al cobro con tarjeta guardada (2026-09-13). Pendientes: prueba del CVV en sandbox y una pregunta a OnvoPay
+- **Estado**: la parte bloqueante se resolvió **por nuestra cuenta en sandbox** (2026-09-14): el cobro con tarjeta guardada no exige CVV. Queda pendiente solo lo que no podemos medir: si OnvoPay marca el cobro como credencial almacenada y la tasa real de rechazo
 - **Dueño**: Kenneth / cliente (titular de la cuenta OnvoPay)
 - **Creado**: 2026-08-13
 - **Relacionado**: [spec 0029 — Cupo mínimo y cobro diferido](specs/0029-cupo-minimo-y-cobro-diferido.md) §13 (Q1)
@@ -216,3 +216,28 @@ También se descartó modelar cada reserva como una suscripción con `paymentBeh
 >
 > Kenneth
 > [nombre del comercio]
+
+## Verificado por nuestra cuenta en sandbox (2026-09-14)
+
+Tras tres respuestas de soporte que no resolvieron la consulta (suscripciones, "Onvo Loop" y el DPOS), las preguntas técnicas se respondieron con una batería de pruebas contra la API.
+
+**Dónde se corrió**: `https://api.onvopay.com/v1` con llaves `onvo_test_*`. **`api.dev.onvopay.com` devuelve 503**: el modo de prueba vive en el host de producción y lo determina la llave, no el dominio. Ninguna prueba toca dinero real.
+
+| Prueba                                                       | Resultado                                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Cobrar una tarjeta guardada **sin enviar `cvv`**             | `succeeded`. **No exige CVV** — era la pregunta bloqueante          |
+| Re-confirmar el mismo intent tras un rechazo                 | `succeeded`; el intent rechazado queda en `requires_payment_method` |
+| Cancelar un intent en `requires_action` (3DS)                | `canceled`                                                          |
+| Confirmar dos veces un intent ya cobrado                     | `400 "already in status succeeded"`, con **un solo charge**         |
+| Cancelar un intent en `requires_payment_method`              | `canceled`                                                          |
+| Tokenizar con la publishable key y leer la tarjeta con `GET` | Devuelve marca, últimos 4 dígitos, vencimiento y `customerId`       |
+| `detach` del método de pago y `DELETE` del customer          | `detached` y `200`; el `GET` posterior falla                        |
+
+Dos hallazgos de interpretación que el spec incorporó (§5.6):
+
+- **Un rechazo llega como HTTP `201`**, con el resultado en `status`. Tomar el código HTTP como éxito sería un error de dinero.
+- **Confirmar un intent ya cobrado devuelve `400`**, no un rechazo. Hay que tratarlo como "ya cobrado".
+
+**Lo que sigue sin respuesta y no se puede medir en sandbox**: si estos cobros se marcan como credencial almacenada ante el emisor, la tasa real de rechazo y de 3DS, el efecto de no enviar señales antifraude, y la vigencia de una tarjeta guardada durante semanas. Eso queda para el correo a OnvoPay y para los datos de producción.
+
+**Pendiente de probar** (necesita URL pública con ngrok y el worker corriendo): que un `confirm` hecho desde el servidor emita el webhook `payment-intent.succeeded`.

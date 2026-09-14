@@ -3,7 +3,7 @@
 - **Estado**: in-review
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-08-13
-- **Última actualización**: 2026-09-13
+- **Última actualización**: 2026-09-14
 - **Rama**: (sin asignar — tres workstreams, ver §11)
 - **PR**: (sin asignar)
 
@@ -72,7 +72,7 @@ Actores: **turista** (reserva sin cargo inmediato), **staff** (configura el mín
 
 ## 5. Diseño técnico
 
-### 5.1. Verificación de OnvoPay (2026-09-12)
+### 5.1. Verificación de OnvoPay (documentación 2026-09-12, sandbox 2026-09-14)
 
 Verificado contra la especificación publicada (`https://docs.onvopay.com/openapi.yaml`) y las guías (`https://docs.onvopay.com/en/llms-full.txt`). No hay proveedor nuevo, así que no aplica `external-services-vetting` completo; se documenta la capacidad:
 
@@ -88,15 +88,17 @@ Verificado contra la especificación publicada (`https://docs.onvopay.com/openap
 
 **Descartado: autorizar al reservar y capturar después** (`captureMethod: "manual"`). Los "30 días" del OpenAPI son el plazo del sistema de OnvoPay; las marcas fijan la validez de una autorización online en **unos 7 días**, y los 30 días son una autorización extendida que la API de OnvoPay no expone, restringida a hotelería, alquiler de autos y cruceros. La anticipación de reserva quedaba en 5–6 días. **También descartado**: modelar cada reserva como cargo recurrente (`allow_incomplete`), que la presenta como recurrente ante la marca y arriesga un segundo cobro irreparable. Detalle y fuentes en `docs/onvopay-consulta-cobro-diferido.md`.
 
-**Precondiciones a verificar en sandbox:**
+**Precondiciones verificadas en sandbox (2026-09-14).** Se corrieron contra `https://api.onvopay.com/v1` con llaves `onvo_test_*`: **`api.dev.onvopay.com` devuelve 503**, así que el modo de prueba vive en el mismo host de producción y lo determina la llave, no el dominio.
 
-- **Antes de aprobar el workstream B**, que ya cobra dinero real, reintenta a mano, maneja 3DS y cancela intents:
-  - **(a) — bloqueante:** confirmar con una tarjeta guardada **sin `cvv`**, días después de guardarla. Si OnvoPay lo exige, el cobro diferido no es viable.
-  - **(b)** re-confirmar el mismo intent con otra tarjeta después de un rechazo.
-  - **(c)** qué hace `cancel` sobre un intent en `requires_action`.
-  - **(e)** que `cancel` sobre `requires_payment_method` deje el intent en `canceled`.
-  - **(f)** que el `confirm` emita `payment-intent.succeeded`.
-- **Antes de aprobar el workstream C**: **(d)** qué ocurre al confirmar dos veces el mismo intent.
+- **(a) CVV — resuelta, y a favor.** `POST /payment-intents/{id}/confirm` con `paymentMethodId` y **sin `cvv`** devolvió `succeeded`. Un cobro con tarjeta guardada no exige CVV. Era la precondición bloqueante.
+- **(b) Reintento sobre el mismo intent — confirmado.** Un rechazo (`4000000000000002`) dejó el intent en `requires_payment_method`, y re-confirmarlo con otra tarjeta devolvió `succeeded`.
+- **(c) Cancelar en `requires_action` — funciona.** Un intent en 3DS quedó `canceled`.
+- **(d) Confirmar dos veces — seguro.** La segunda confirmación devolvió `400` con _"Payment Intent cannot be confirmed anymore as it is already in status succeeded"_, y el intent conservó **un solo charge**.
+- **(e) Cancelar en `requires_payment_method` — funciona** (`canceled`).
+- **Privacidad**: `detach` dejó el método en `detached`, `DELETE /customers/{id}` devolvió 200 y el `GET` posterior falla. La tokenización con la **publishable key** y el `GET /v1/payment-methods/{id}` con marca, últimos 4 dígitos, vencimiento y `customerId` también quedaron verificados.
+- **(f) Webhook del `confirm` server-side**: **pendiente**, necesita una URL pública (ngrok) y el worker corriendo.
+
+**Lo que el sandbox no puede responder**, y sigue dependiendo de OnvoPay o de datos de producción: si estos cobros se marcan como credencial almacenada ante el emisor, la tasa real de rechazo y de 3DS, el efecto de no enviar señales antifraude (§9), y la vigencia de una tarjeta guardada durante semanas, que se prueba dejando pasar el tiempo con el mismo `paymentMethodId`.
 
 ### 5.2. Recolección de la tarjeta, verificación y alcance PCI
 
@@ -122,7 +124,7 @@ Reglas no negociables:
 - **La página de actualización de tarjeta aplica las mismas reglas**: `GET`, `customerId` igual al de la reserva, vencimiento e índice único. Además hace `detach` del método reemplazado.
 - **CSP** (`web/lib/security/csp.ts`, con nonces y `strict-dynamic` desde el spec 0024):
   - El SDK se inyecta hoy con `document.createElement('script')` desde el bundle con nonce (`web/components/public/CheckoutForm/OnvoPaymentWidget.tsx:45-55`, `csp.ts:41`). La librería de 3DS se carga igual, **nunca** con un `<script src>` estático sin nonce.
-  - `connect-src` permite `https://api.onvopay.com` (`csp.ts:17,45`) pero no `https://api.dev.onvopay.com`: sumarlo para el sandbox y exponer la base URL como env **pública**.
+  - `connect-src` ya permite `https://api.onvopay.com` (`csp.ts:17,45`), que es **también el host de sandbox**: el modo lo define la llave, no el dominio (`api.dev.onvopay.com` devuelve 503). Solo falta exponer la base URL como env **pública** para el formulario.
   - `frame-src https://*.onvopay.com` (`csp.ts:18,46`) cubre `checkout.onvopay.com`. El desafío 3DS del emisor puede chocar con `frame-src` y `form-action 'self'` (`csp.ts:46,49`): la prueba de 3DS corre con la CSP en modo enforce.
 - **Mandato de credencial almacenada**: texto explícito en el checkout ("autorizo el cargo de $X cuando la salida se confirme") y evidencia con `consent_at`/`consent_version` (spec 0021).
 
@@ -210,6 +212,7 @@ Un doble cobro **no se puede reparar**: `refunds_one_active_per_booking` (`…01
 - **"Terminal", a efectos de crear otro intent, significa solo `canceled` o `failed`.** `succeeded`, `refunded` y `partially_refunded` **nunca** habilitan uno nuevo. Si el anterior sigue en `requires_payment_method` y no se puede reutilizar, primero `POST /cancel` y se exige `GET = canceled`; si no, no se crea nada y se alerta. Es la regla espejo de refunds (`worker/src/refunds/handle-refund.ts:47-51`).
 - **Índice único parcial** `payments (booking_id) WHERE status = 'pending'`.
 - **Ningún intent sin su fila.** Cuando se crea un intent nuevo, se crea justo antes de `charge_booking_start`; si esta falla, ese intent recién creado se cancela best-effort (patrón 0028 A1). Un intent reutilizado se conserva: `charge_booking_start` es atómica y su fallo no mueve la reserva.
+- **El código HTTP no dice el resultado** (verificado en sandbox, §5.1). Un rechazo devuelve `201` con `status: requires_payment_method`, y confirmar un intent ya cobrado devuelve `400` con _"already in status succeeded"_. El worker decide siempre por `status`, trata ese `400` como **ya cobrado** —nunca como rechazo— y relee con `GET`.
 - **Escrituras condicionales con rowcount** (`WHERE id = ? AND status = …`). Rowcount 0 ⇒ alerta y **no** reintentar.
 
 ### 5.7. Reintentos, 3DS y plazo de recuperación
@@ -228,7 +231,7 @@ Los fallos se registran con dos funciones condicionales, ambas con gate `status 
 **3DS — `charge_requires_action`.**
 
 - La reserva queda en `pending_payment` con `awaiting_action_until`, calculado como `recovery_deadline`. **Nunca queda nulo** tras esta llamada: sin margen se fija igual y el enlace se envía igual, así el watchdog cancela al vencer y no vuelve a entrar por "plazo nulo". Encola `charge_requires_action` con enlace a `/booking/[token]/authenticate`, que completa la autenticación con `handleNextAction`.
-- **Contingencia**, que rige salvo que la precondición (c) demuestre lo contrario: mientras exista un intent en `requires_action`, la reserva **no genera intents nuevos**.
+- **Cancelación confirmada**: el sandbox demostró que `cancel` sobre `requires_action` deja el intent en `canceled` (§5.1), así que al vencer el plazo se cancela de verdad y el turista ya no puede autenticarlo tarde. Igual rige la regla de §5.6: no se crea un intent nuevo hasta ver el anterior `canceled`.
 - Vencido el plazo, `watch-charges` llama a `cancel_charge_in_flight` (reserva cancelada, pago `failed`, hold liberado) e intenta cancelar el intent. Si el turista autentica tarde y el cobro liquida, la rama `cancelled` de `confirm_booking` acepta pagos `pending` o `failed` (`…040:144-154`) y encola el refund total por `late_payment_refunded`. Si el webhook se pierde, lo detecta `close-payment-intents` (§5.9).
 
 **Notificaciones: la unicidad no se toca.** `UNIQUE (booking_id, kind)` (`…013:41`) es el árbitro de los `ON CONFLICT` vigentes de `confirm_booking` (`…040:281`, `:315` y `:326`), `cancel_booking` (`…042:80`) y `settle_refund` (`…036:373`). Cambiarla las rompería **en tiempo de ejecución** sin que la migración falle. El aviso repetido usa tres valores de `kind` en el CHECK que la migración ya edita. `notifications.attempts` (`…013:33`) es otra cosa: el contador de reintentos de envío.
@@ -445,8 +448,8 @@ stateDiagram-v2
   - Bloqueo de archivado por `pending_minimum` (`web/lib/tours/archive-action.ts:72`).
   - UI: formulario de tarjeta con verificación server-side, actualización de tarjeta, página de 3DS, cancelación del turista y cobro manual con "Volver a cobrar".
   - Emails: `booking_reserved`, avisos de tarjeta rechazada y `charge_requires_action`.
-  - **Antes de aprobar B se cierran las precondiciones (a), (b), (c), (e) y (f), y la respuesta de OnvoPay a Q1.**
-- **C — Automatización**: `confirm_departure`, `cancel_departure`, `charge-bookings`, `resolve-minimum-window`, bandeja de decisión y `departure_cancelled_minimum`. **Antes de aprobar C se cierra la precondición (d).**
+  - **(a), (b), (c) y (e) ya están verificadas (§5.1); antes de aprobar B queda solo la (f).**
+- **C — Automatización**: `confirm_departure`, `cancel_departure`, `charge-bookings`, `resolve-minimum-window`, bandeja de decisión y `departure_cancelled_minimum`. La precondición (d) ya está verificada (§5.1).
 
 Otras condiciones:
 
@@ -466,7 +469,7 @@ Otras condiciones:
 
 ## 13. Preguntas abiertas
 
-- [ ] **Q1 — ¿OnvoPay procesa un cobro único con tarjeta guardada igual que una renovación, y exige CVV?** Se cierra con el correo de [`docs/onvopay-consulta-cobro-diferido.md`](../onvopay-consulta-cobro-diferido.md) y las precondiciones de sandbox de §5.1. **Dueño**: Kenneth. **Antes de**: aprobar el workstream B.
+- [ ] **Q1 — ¿OnvoPay marca estos cobros como credencial almacenada ante el emisor?** La parte bloqueante quedó resuelta en sandbox el 2026-09-14: el cobro con tarjeta guardada **no exige CVV** (§5.1). Lo que queda no se puede medir por nuestra cuenta: si el cobro se marca como credencial almacenada, la tasa real de rechazo y de 3DS, y el efecto de no enviar señales antifraude. Se persigue con el correo de [`docs/onvopay-consulta-cobro-diferido.md`](../onvopay-consulta-cobro-diferido.md). **Dueño**: Kenneth. **Antes de**: aprobar el workstream C; ya **no bloquea B**.
 - [ ] **Q2 — ¿La política de 24h se mide desde la salida o desde el cobro?** Con cobro diferido dejan de coincidir: una reserva cobrada el día anterior y cancelada 20 h antes no genera refund, aunque el turista reservó semanas atrás. **Dueño**: cliente. **Antes de**: implementar B.
 - [ ] **Q3 — ¿Cuál es el tiempo máximo admisible entre reserva y cobro?** Hoy lo acota el horizonte de 90 días de generación de salidas; el rechazo de tarjetas vencidas no cubre la vigencia de una tarjeta guardada durante meses. **Dueño**: cliente. **Antes de**: implementar A.
 - [ ] **Q4 — "Confirmar salida": ¿cobra también a reservas ya canceladas por plazo vencido?** Se asume que no: una reserva cancelada es terminal. **Dueño**: cliente. **Antes de**: implementar C.
