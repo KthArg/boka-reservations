@@ -3,6 +3,59 @@
 Spec: [0029-cupo-minimo-y-cobro-diferido.md](./0029-cupo-minimo-y-cobro-diferido.md)
 Rama: feat/0029-cupo-minimo-config (workstream A), feat/0029-cobro-diferido (workstream B)
 
+## 2026-09-16 16:30 — Workstream B, unidad 3b: cobro manual, cambio de tarjeta y 3DS
+
+**Hecho**:
+
+- **Cobro manual del panel** ("Cobrar ahora" / "Volver a cobrar", `lib/booking/manual-charge*.ts`):
+  - GET del intent retenido antes de re-confirmar. `succeeded` se asienta sin re-confirmar; `processing` o `requires_action` esperan con alerta; solo `canceled` o `failed` habilitan un intent nuevo, tras `close_pending_payment`.
+  - Inicio bajo lock con `charge_booking_start`. Si el inicio no arranca, el intent recién creado se cancela y un cancel fallido alerta. Un error ambiguo de la RPC se relee antes de cancelar.
+  - Un confirm sin respuesta queda en vuelo para `watch-charges`. El resultado se registra por status con las funciones del worker.
+  - Todo camino a "revisión manual" alerta a Sentry con nivel error.
+- **Cambio de tarjeta** (`/booking/[token]/card`):
+  - Mismas reglas que el checkout.
+  - `update_booking_payment_method` exige la versión del mandato aceptado y la audita (evidencia ante contracargos, spec 0021).
+  - La tarjeta reemplazada se desvincula solo si la nueva sigue vigente. Una tarjeta nueva nuestra que las reglas rechazan también se desvincula; una ajena o en uso nunca.
+- **Página de 3DS** (`/booking/[token]/authenticate`):
+  - Librería `js.onvopay.com` cargada desde el bundle, con `handleNextAction` y fallos reportados a Sentry.
+  - Solo con el cobro esperando autenticación, y tras un GET que confirme `requires_action`. Nunca entrega el intent fuera de su estado.
+  - `connect-src` suma `https://js.onvopay.com`.
+- **Reglas de acceso compartidas** (`deferred-booking-rules.ts`) entre la página de la reserva, que muestra los enlaces, y las páginas de tarjeta y 3DS.
+- **Estados de intent normalizados** en `lib/payments/types.ts` (`PaymentIntentStatus`).
+- **Panel:** tarjeta e intentos de cobro en el detalle, y estado de pago priorizando el pago vigente. `BookingDetailActions` y `admin-today.ts` se separan por tamaño.
+- **Revisión** de payment-flow-auditor y code-reviewer, sin caminos de doble cobro. Arreglos:
+  - un liquidado sin monto ya no marca `payment_mismatch`;
+  - `already_processed` solo se informa como confirmada si la reserva lo está;
+  - rowcount 0 alerta;
+  - mandato en el cambio de tarjeta;
+  - race del detach;
+  - una sola regla de acceso;
+  - constantes, y `CardUpdateError` fuera de un módulo `server-only` que importaba el formulario.
+- **Tests:**
+  - integración del cobro manual: primer cobro, rechazo, 3DS, timeout, reintentos, intent cerrado, concurrencia con dos staff, respuestas incompletas, escrituras sin efecto y alertas;
+  - integración del cambio de tarjeta: rechazos, límite, en vuelo, mandato, detach;
+  - integración del acceso a las páginas y de los enlaces de la vista;
+  - unitario del mapeo de outcomes.
+
+**Por qué / decisiones**:
+
+- El intent nuevo no se crea dentro de la hora posterior al último intento: la regla es de SQL, pero así un click repetido no crea y cancela intents en OnvoPay.
+- El mandato del cambio de tarjeta reusa la versión del aviso de privacidad (`PRIVACY_NOTICE_VERSION`), la misma que estampa el checkout.
+- La página de 3DS ofrece el desafío aunque el GET falle: bloquearla ante un error transitorio de OnvoPay perdería la venta, y el intent igual no se entrega fuera de su estado.
+- Sin test unitario de `next-action.ts`: el repo no tiene `jsdom` y no se suma una dependencia para esto. Lo cubre la prueba manual de 3DS en sandbox con la CSP en modo enforce que el spec exige en el PR.
+
+**Pendiente**:
+
+- Prueba manual en sandbox, antes del merge: flujo completo, rechazo con `4000000000000002` y 3DS con `4000000000003220` con la CSP en modo enforce.
+- PR a `dev` (lo mergea el usuario).
+- Confirmar con el usuario la política de aviso desde el cuarto rechazo.
+- Deudas señaladas por la auditoría, para antes de abrir el flag: tope de tokenizaciones por customer (consultar a OnvoPay), código de rechazo real en `charge_last_error`, validar al boot que las llaves sean del mismo modo, y la costura de PayPal (vault de tarjeta y mapeo de estados dentro del adapter).
+
+**Notas para retomar**:
+
+- `lib/booking/sentry-alert.ts` es la función común de alertas del checkout, el cambio de tarjeta y el cobro manual (solo ids).
+- `manual-charge-edge-cases.test.ts` sincroniza la creación de los dos intents con una barrera, para que la concurrencia sea determinista.
+
 ## 2026-09-16 11:40 — Workstream B, unidades 3a y 4: checkout diferido, cancelación sin cobro y emails del ciclo de cobro
 
 **Hecho**:
