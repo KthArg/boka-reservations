@@ -1,6 +1,6 @@
 # 0029 — Cupo mínimo por salida y cobro diferido con tarjeta guardada
 
-- **Estado**: in-review
+- **Estado**: approved
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-08-13
 - **Última actualización**: 2026-09-15
@@ -9,7 +9,7 @@
 
 > **Prerrequisito cumplido**: el spec 0028 está en `dev` (PRs #67, #68 y #69, mergeados el 2026-09-13). Las citas a archivo y línea de este spec se revalidaron contra ese código.
 
-> **Historial de revisión.** Aprobado el 2026-08-13 con este mismo mecanismo. El 2026-09-13 se evaluó y **descartó** autorizar al reservar y capturar después (§5.1), y se volvió a este diseño con lo aprendido: la especificación OpenAPI de OnvoPay, la evidencia de sus suscripciones y seis rondas de revisión. **Requiere re-aprobación.**
+> **Historial de revisión.** Aprobado el 2026-08-13 con este mismo mecanismo. El 2026-09-13 se evaluó y **descartó** autorizar al reservar y capturar después (§5.1), y se volvió a este diseño con lo aprendido: la especificación OpenAPI de OnvoPay, la evidencia de sus suscripciones y seis rondas de revisión. **Re-aprobado por el usuario el 2026-09-15**, con todas las precondiciones técnicas de sandbox verificadas.
 
 ## 1. Contexto y motivación
 
