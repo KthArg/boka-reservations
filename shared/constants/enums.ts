@@ -62,10 +62,16 @@ export enum BookingStatus {
  *  self-contained y espeja estos valores en `reconciliation/repository.ts`. */
 export enum ConfirmBookingOutcome {
   Confirmed = 'confirmed',
+  /** Reserva diferida confirmada sin cobro iniciado (spec 0029 §5.3): los callers alertan. */
+  ConfirmedUnclaimed = 'confirmed_unclaimed',
   /** Evento ya procesado o reserva ya resuelta: no-op idempotente. */
   AlreadyProcessed = 'already_processed',
   /** Pago llegó para una reserva `cancelled`: refund total encolado (spec 0028). */
   LatePaymentRefunded = 'late_payment_refunded',
+  /** Pago tardío que no se pudo reembolsar solo: ya había un refund activo (spec 0029). */
+  LatePaymentRefundBlocked = 'late_payment_refund_blocked',
+  /** Un segundo intent liquidó sobre una reserva ya resuelta: doble cobro (spec 0029 §5.6). */
+  DuplicatePayment = 'duplicate_payment',
   OverbookedRefunded = 'overbooked_refunded',
   PaymentMismatch = 'payment_mismatch',
   /** Estado no accionable (mismatch previo, pago inexistente): revisión manual. */

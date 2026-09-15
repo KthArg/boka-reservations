@@ -9,6 +9,7 @@ const cancelBase = {
   startsAt: '2026-06-15T13:00:00.000Z',
   refundAmountCents: 9000,
   currency: 'USD',
+  noCharge: false,
   bookingUrl: 'http://localhost:3000/es/booking/tok',
 };
 

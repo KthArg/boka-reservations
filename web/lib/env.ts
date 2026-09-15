@@ -7,8 +7,8 @@ const envSchema = z.object({
   ONVOPAY_SECRET_KEY: z.string().min(1),
   ONVOPAY_WEBHOOK_SECRET: z.string().min(1),
   NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY: z.string().min(1),
-  // Base del API de OnvoPay (spec 0028). Default producción; sandbox:
-  // https://api.dev.onvopay.com/v1 con llaves onvo_test_*.
+  // Base del API de OnvoPay (spec 0028). Default producción, que con llaves onvo_test_* es
+  // también el sandbox: api.dev.onvopay.com devuelve 503 (verificado en spec 0029 §5.1).
   ONVOPAY_API_BASE_URL: z.string().url().default('https://api.onvopay.com/v1'),
   // RESEND_API_KEY se ELIMINÓ de este schema (spec 0028, B11): el web no envía emails
   // (van por la cola `notifications` que procesa el worker); exigirla acá tumbaba
@@ -27,6 +27,13 @@ const envSchema = z.object({
   // = enforcing. El middleware lo lee directo de process.env (corre en edge), no por acá;
   // este campo documenta y valida la variable del lado Node.
   CSP_REPORT_ONLY: z.enum(['true', 'false']).default('false'),
+  // Cobro diferido con tarjeta guardada (spec 0029). 'true' cambia el checkout al formulario
+  // propio: reserva sin cargo y cobro al confirmarse la salida. Solo lo lee la app; SQL deduce
+  // el flujo de la reserva. Apagarlo no revierte lo que ya está en vuelo.
+  DEFERRED_CHARGE_ENABLED: z.enum(['true', 'false']).default('false'),
+  // Base pública del API para tokenizar la tarjeta desde el navegador (spec 0029 §5.2). Default
+  // en el cliente: https://api.onvopay.com/v1, que también sirve el modo de prueba.
+  NEXT_PUBLIC_ONVOPAY_API_BASE_URL: z.string().url().optional(),
 });
 
 function parseEnv() {

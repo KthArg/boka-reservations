@@ -6,8 +6,14 @@ const PENDING_PAYMENT_STATUS = 'pending_payment';
  *  shared/constants/enums.ts (el worker es self-contained: no importa @shared). */
 export const ConfirmOutcome = {
   Confirmed: 'confirmed',
+  /** Reserva diferida confirmada sin cobro iniciado (spec 0029 §5.3). */
+  ConfirmedUnclaimed: 'confirmed_unclaimed',
   AlreadyProcessed: 'already_processed',
   LatePaymentRefunded: 'late_payment_refunded',
+  /** Pago tardío con otro refund activo: no vuelve solo (spec 0029). */
+  LatePaymentRefundBlocked: 'late_payment_refund_blocked',
+  /** Segundo intent cobrado sobre una reserva ya resuelta (spec 0029 §5.6). */
+  DuplicatePayment: 'duplicate_payment',
   OverbookedRefunded: 'overbooked_refunded',
   PaymentMismatch: 'payment_mismatch',
   Ignored: 'ignored',
@@ -50,6 +56,9 @@ export async function fetchStalePendingBookings(
       'id, tour_instance_id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status, created_at, amount_cents, currency)',
     )
     .eq('status', PENDING_PAYMENT_STATUS)
+    // Un cobro diferido en vuelo es de watch-charges, no del reconciliador (spec 0029 §5.4).
+    // La función SQL también lo gatea bajo lock; esto solo evita traerlo.
+    .is('charge_started_at', null)
     .lt('created_at', olderThanIso)
     .order('created_at', { ascending: true })
     .order('created_at', { referencedTable: 'payments', ascending: false })

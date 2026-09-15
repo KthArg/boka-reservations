@@ -15,6 +15,9 @@ const PRODUCTION = 'production';
 
 const ONVO_SDK = 'https://sdk.onvopay.com';
 const ONVO_API = 'https://api.onvopay.com';
+// Librería del 3DS (spec 0029 §5.7): el script lo carga el bundle con nonce; puede pedir recursos
+// a su propio origen. El desafío del banco corre en frames de *.onvopay.com.
+const ONVO_JS = 'https://js.onvopay.com';
 const ONVO_FRAME = 'https://*.onvopay.com';
 const SENTRY = 'https://*.sentry.io';
 
@@ -42,7 +45,7 @@ export function buildCsp(nonce: string): string {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https:`,
     `font-src 'self' data:`,
-    `connect-src 'self' ${http} ${ws} ${ONVO_SDK} ${ONVO_API} ${SENTRY}`,
+    `connect-src 'self' ${http} ${ws} ${ONVO_SDK} ${ONVO_API} ${ONVO_JS} ${SENTRY}`,
     `frame-src ${ONVO_SDK} ${ONVO_FRAME}`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,

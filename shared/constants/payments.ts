@@ -1,5 +1,11 @@
 /** Constantes del flujo de pago con OnvoPay (spec 0028, C4). */
 
+/** Base del API REST de OnvoPay. Es también el host de sandbox: el modo lo define la llave (spec 0029 §5.1). */
+export const ONVOPAY_API_BASE_URL_DEFAULT = 'https://api.onvopay.com/v1';
+
+/** Librería web de OnvoPay para completar el 3DS en un modal (`handleNextAction`, spec 0029 §5.7). */
+export const ONVO_JS_URL = 'https://js.onvopay.com/v1/';
+
 /** URL del SDK embebible (widget de pago). */
 export const ONVO_SDK_URL = 'https://sdk.onvopay.com/sdk.js';
 

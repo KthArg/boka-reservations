@@ -101,6 +101,37 @@ describe('webhook — errores de lectura de payments (spec 0028)', () => {
     expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['webhook-late-payment-refunded']);
   });
 
+  it.each([
+    ['duplicate_payment', 'webhook-duplicate-payment'],
+    ['late_payment_refund_blocked', 'webhook-late-payment-refund-blocked'],
+    ['confirmed_unclaimed', 'webhook-confirmed-unclaimed'],
+    ['algo_nuevo', 'webhook-unknown-outcome'],
+  ])('outcome %s (spec 0029) → 200 + alerta %s', async (outcome, fingerprint) => {
+    dbState.paymentsResult = {
+      data: { booking_id: 'b1', amount_cents: 5000, currency: 'USD' },
+      error: null,
+    };
+    dbState.rpcResult = { data: outcome, error: null };
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(200);
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith([fingerprint]);
+  });
+
+  it('outcome confirmed → 200 sin alertas', async () => {
+    dbState.paymentsResult = {
+      data: { booking_id: 'b1', amount_cents: 5000, currency: 'USD' },
+      error: null,
+    };
+    dbState.rpcResult = { data: 'confirmed', error: null };
+
+    const res = await POST(request());
+
+    expect(res.status).toBe(200);
+    expect(sentryMocks.captureMessage).not.toHaveBeenCalled();
+  });
+
   it('error de la RPC → 500 para que OnvoPay reintente', async () => {
     dbState.paymentsResult = {
       data: { booking_id: 'b1', amount_cents: 5000, currency: 'USD' },

@@ -28,8 +28,11 @@ const repoMocks = vi.hoisted(() => ({
   // El módulo real exporta el espejo de outcomes; el mock lo replica tal cual.
   ConfirmOutcome: {
     Confirmed: 'confirmed',
+    ConfirmedUnclaimed: 'confirmed_unclaimed',
     AlreadyProcessed: 'already_processed',
     LatePaymentRefunded: 'late_payment_refunded',
+    LatePaymentRefundBlocked: 'late_payment_refund_blocked',
+    DuplicatePayment: 'duplicate_payment',
     OverbookedRefunded: 'overbooked_refunded',
     PaymentMismatch: 'payment_mismatch',
     Ignored: 'ignored',
@@ -41,12 +44,17 @@ const sentryMocks = vi.hoisted(() => ({
   captureMessage: vi.fn(),
   captureException: vi.fn(),
   setFingerprint: vi.fn(),
+  setLevel: vi.fn(),
 }));
 vi.mock('@sentry/node', () => ({
   captureException: sentryMocks.captureException,
   captureMessage: sentryMocks.captureMessage,
   withScope: (cb: (scope: unknown) => void) =>
-    cb({ setLevel: vi.fn(), setFingerprint: sentryMocks.setFingerprint, setExtra: vi.fn() }),
+    cb({
+      setLevel: sentryMocks.setLevel,
+      setFingerprint: sentryMocks.setFingerprint,
+      setExtra: vi.fn(),
+    }),
 }));
 
 import {
@@ -187,6 +195,42 @@ describe('reconcileOne — árbol de decisión', () => {
 
     expect(sentryMocks.captureMessage).not.toHaveBeenCalled();
     expect(repoMocks.writeRecoveredAudit).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['duplicate_payment', 'reconcile-duplicate-payment'],
+    ['late_payment_refund_blocked', 'reconcile-late-payment-refund-blocked'],
+  ])(
+    '%s (plata que no vuelve sola): alerta de nivel error sin audit (spec 0029)',
+    async (outcome, fingerprint) => {
+      const c = client(paidMatching);
+      repoMocks.confirmRecoveredBooking.mockResolvedValueOnce(outcome);
+
+      await reconcileOne(db, c, booking());
+
+      expect(sentryMocks.setLevel).toHaveBeenCalledWith('error');
+      expect(sentryMocks.setFingerprint).toHaveBeenCalledWith([fingerprint]);
+      expect(repoMocks.writeRecoveredAudit).not.toHaveBeenCalled();
+    },
+  );
+
+  it('confirmed_unclaimed: alerta la diferida confirmada sin cobro iniciado (spec 0029 §5.3)', async () => {
+    const c = client(paidMatching);
+    repoMocks.confirmRecoveredBooking.mockResolvedValueOnce('confirmed_unclaimed');
+
+    await reconcileOne(db, c, booking());
+
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-confirmed-unclaimed']);
+    expect(repoMocks.writeRecoveredAudit).not.toHaveBeenCalled();
+  });
+
+  it('outcome desconocido o nulo: nunca se traga en silencio (spec 0029 §5.3)', async () => {
+    const c = client(paidMatching);
+    repoMocks.confirmRecoveredBooking.mockResolvedValueOnce('algo_nuevo');
+
+    await reconcileOne(db, c, booking());
+
+    expect(sentryMocks.setFingerprint).toHaveBeenCalledWith(['reconcile-confirm-unknown-outcome']);
   });
 
   it('OnvoPay succeeded con monto distinto: marca payment_mismatch (no confirma) y alerta', async () => {

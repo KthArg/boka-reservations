@@ -11,9 +11,11 @@ import {
   alert,
   MSG_IGNORED,
   MSG_LATE,
+  MSG_MANUAL_REFUND,
   MSG_MISMATCH,
   MSG_OVERBOOKED,
   MSG_RECOVERED,
+  MSG_UNCLAIMED,
   MSG_UNVERIFIABLE,
 } from './alerts.js';
 
@@ -70,17 +72,31 @@ export async function recover(
       });
       return;
     }
+    case ConfirmOutcome.ConfirmedUnclaimed:
+      // Diferida confirmada sin haber pasado por el cobro (spec 0029 §5.3): revisar el origen.
+      alert(MSG_UNCLAIMED, 'reconcile-confirmed-unclaimed', booking.id);
+      return;
     case ConfirmOutcome.OverbookedRefunded:
       alert(MSG_OVERBOOKED, 'booking-overbooked-refunded', booking.id);
       return;
     case ConfirmOutcome.LatePaymentRefunded:
       alert(MSG_LATE, 'reconcile-late-payment-refunded', booking.id);
       return;
+    case ConfirmOutcome.DuplicatePayment:
+      alert(MSG_MANUAL_REFUND, 'reconcile-duplicate-payment', booking.id, 'error');
+      return;
+    case ConfirmOutcome.LatePaymentRefundBlocked:
+      alert(MSG_MANUAL_REFUND, 'reconcile-late-payment-refund-blocked', booking.id, 'error');
+      return;
     case ConfirmOutcome.Ignored:
       alert(MSG_IGNORED, 'reconcile-confirm-ignored', booking.id);
       return;
-    default:
-      // already_processed | payment_mismatch: otro actor resolvió en paralelo; nada que hacer.
+    case ConfirmOutcome.AlreadyProcessed:
+    case ConfirmOutcome.PaymentMismatch:
+      // Otro actor resolvió en paralelo; nada que hacer.
       return;
+    default:
+      // Outcome desconocido o nulo: nunca tragarlo en silencio (spec 0029 §5.3).
+      alert(MSG_IGNORED, 'reconcile-confirm-unknown-outcome', booking.id);
   }
 }

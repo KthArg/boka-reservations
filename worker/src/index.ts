@@ -7,6 +7,8 @@ import { processRefunds } from './jobs/process-refunds.js';
 import { reconcilePendingPayments } from './jobs/reconcile-pending-payments.js';
 import { cleanupRateLimits } from './jobs/cleanup-rate-limits.js';
 import { applyRetention } from './jobs/apply-retention.js';
+import { watchCharges } from './jobs/watch-charges.js';
+import { closePaymentIntents } from './jobs/close-payment-intents.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -80,3 +82,7 @@ schedule('reconcile-pending-payments', reconcilePendingPayments, FIVE_MINUTES_MS
 schedule('cleanup-rate-limits', cleanupRateLimits, ONE_HOUR_MS);
 // apply-retention: al inicio y luego una vez al día (retención de datos / PII, spec 0022)
 schedule('apply-retention', applyRetention, ONE_DAY_MS);
+// watch-charges: al inicio y luego cada minuto (watchdog del cobro diferido, spec 0029)
+schedule('watch-charges', watchCharges, ONE_MINUTE_MS);
+// close-payment-intents: al inicio y luego cada 5 minutos (barrido de intents y customers, spec 0029)
+schedule('close-payment-intents', closePaymentIntents, FIVE_MINUTES_MS);

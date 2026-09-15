@@ -5,6 +5,8 @@ import { BookingStatus } from '@shared/constants/enums';
 import type { AuditActorType } from '@shared/constants/audit';
 import { CancellationError } from '@shared/constants/cancellations';
 import { computeRefund, type RefundEligibility } from '@shared/constants/policies';
+import { cancelUnpaidBooking } from './cancel-unpaid';
+import { isAwaitingAuthentication, isCardUpdateOpen } from './deferred-booking-rules';
 
 type ServiceClient = SupabaseClient<Database>;
 
@@ -22,6 +24,12 @@ export type BookingView = {
   currency: string;
   /** Reembolso que correspondería si se cancelara ahora. */
   refund: RefundEligibility;
+  /** Cobro diferido en curso (spec 0029 §5.8): no se puede cancelar hasta que se resuelva. */
+  chargeInFlight: boolean;
+  /** Sin cobrar y con un rechazo registrado (spec 0029 §5.7): puede cargar otra tarjeta. */
+  canUpdateCard: boolean;
+  /** Cobro esperando la autenticación 3DS del turista, con el plazo vigente. */
+  awaitingAuthentication: boolean;
 };
 
 export type CancelResult =
@@ -36,6 +44,7 @@ type CancelParams = {
 
 const VIEW_SELECT = `
   id, customer_name, status, total_amount_cents, currency,
+  charge_started_at, charge_attempts, awaiting_action_until, recovery_deadline,
   tickets_adult, tickets_child, tickets_student,
   tour_instances!inner ( starts_at, tours!inner ( name_es, name_en ) )
 `;
@@ -46,6 +55,10 @@ interface RawView {
   status: string;
   total_amount_cents: number;
   currency: string;
+  charge_started_at: string | null;
+  charge_attempts: number;
+  awaiting_action_until: string | null;
+  recovery_deadline: string | null;
   tickets_adult: number;
   tickets_child: number;
   tickets_student: number;
@@ -57,6 +70,7 @@ interface RawView {
 
 function toView(r: RawView, now: Date): BookingView {
   const startsAt = r.tour_instances?.starts_at ?? '';
+  const inFlight = r.status === BookingStatus.PendingPayment && r.charge_started_at !== null;
   return {
     id: r.id,
     customerName: r.customer_name,
@@ -74,6 +88,11 @@ function toView(r: RawView, now: Date): BookingView {
       totalAmountCents: r.total_amount_cents,
       now,
     }),
+    chargeInFlight: inFlight,
+    // El enlace a la página de tarjeta solo tras un rechazo; la página aplica la misma regla.
+    canUpdateCard: r.charge_attempts > 0 && isCardUpdateOpen(r.status, r.recovery_deadline, now),
+    awaitingAuthentication:
+      inFlight && isAwaitingAuthentication(r.status, r.awaiting_action_until, now),
   };
 }
 
@@ -102,6 +121,15 @@ export async function cancelBooking(
 ): Promise<CancelResult> {
   const view = await getBookingView(db, params.bookingId, now);
   if (!view) return { ok: false, error: CancellationError.NotFound };
+  // Sin cobrar (spec 0029): una pending_minimum se cancela sin reembolso; una pending_payment
+  // del flujo diferido con el cobro en vuelo se rechaza, y la del widget sigue sin ser
+  // cancelable (la función devuelve not_cancellable).
+  if (
+    view.status === BookingStatus.PendingMinimum ||
+    view.status === BookingStatus.PendingPayment
+  ) {
+    return cancelUnpaidBooking(db, params.bookingId, params.actorType, params.actorId ?? null);
+  }
   if (view.status !== BookingStatus.Confirmed) {
     return { ok: false, error: CancellationError.NotCancellable };
   }
