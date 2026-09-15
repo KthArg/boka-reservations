@@ -1,7 +1,112 @@
 # Changelog — 0029 Cupo mínimo y cobro diferido
 
 Spec: [0029-cupo-minimo-y-cobro-diferido.md](./0029-cupo-minimo-y-cobro-diferido.md)
-Rama: feat/0029-cupo-minimo-config (workstream A)
+Rama: feat/0029-cupo-minimo-config (workstream A), feat/0029-cobro-diferido (workstream B)
+
+## 2026-09-15 23:40 — Workstream B: arreglos de la segunda revisión de las unidades 1 y 2
+
+**Hecho**:
+
+- Segunda revisión (payment-flow-auditor y code-reviewer). Sin hallazgos críticos; un alto, varios medios y cuatro bloqueantes de tipos y tests. Arreglos:
+  - `database.ts`: `update_booking_payment_method` no tenía `p_customer_external_id` ni todos sus outcomes (bloqueante: `tsc` no lo veía por el objeto en variable).
+  - Rotación de lotes (`charges/batch-rotation.ts`) en las tres consultas de `watch-charges`, en el barrido y en la limpieza de customers: 50 filas que solo esperan (3DS con plazo de semanas, processing, holds todavía no limpiables) ya no traban al resto.
+  - `watch-charges` hace GET antes de cancelar una `pending_minimum` que conserva un intent: liquidado se asienta, en processing espera, confirmable se cancela también en OnvoPay. Sin llave, esas reservas esperan.
+  - Un 404 del GET es `not_found`: se trata como intent cerrado y se alerta con nivel error, en lugar de lanzar en cada ciclo para siempre.
+  - `decideInFlight`: vencido un plazo, cancelar tiene precedencia sobre registrar un rechazo o un 3DS (no se encola un aviso sobre una reserva que se cancela igual). Cambió dos tests unitarios existentes, que quedaron obsoletos por esta decisión.
+  - SQL (…044): `charge_booking_start` devuelve `retry_too_soon` dentro de la hora siguiente al último intento; `update_booking_payment_method` devuelve `update_limit_reached` tras 5 cambios de tarjeta; `record_intent_closed` y `record_customer_cleaned` reemplazan los UPDATE directos del barrido y la limpieza, con lock y auditoría; índice único `tour_holds_one_per_customer`; los caminos de mismatch cancelan los avisos de cobro; acción de auditoría propia `booking.late_payment_refund_blocked`; el guard de monto de una diferida solo mira la fila `pending` del intent.
+  - Jobs con pasos aislados; el cancel fallido de un intent alerta; el conteo de fuera de ventana solo cuenta reservas canceladas; switches exhaustivos; un solo espejo de `ConfirmOutcome` y una sola función de alerta en el worker; constantes de estado en `charges/statuses.ts`.
+  - Plata que requiere reembolso manual (`duplicate_payment`, `late_payment_refund_blocked`) alerta con nivel error y fingerprints en kebab-case en el webhook, el reconciliador y los jobs. El webhook mapea outcome → alerta en `lib/payments/webhook-outcome-alert.ts` y alerta un outcome desconocido.
+- Tests nuevos: bordes exactos de las decisiones, rotación, cliente HTTP de OnvoPay del worker, alertas por outcome (settle, reconciliador, webhook); integración de los jobs con fallo y reintento, 404, mismatch, GET sin monto, processing estancado, estado inesperado, plazos vencidos con cobro en vuelo, cancel fallido, reservas con intent retenido, ciclo sin llave, idempotencia del barrido y carrera con el webhook, reintento de detach y alerta de ventana; en web, suite `deferred-booking-safeguards` y borde de 24 h del recordatorio. Orden de tests señalado por la revisión (filas explícitas, asserts de largo antes de desestructurar).
+- Suites verificadas: web unit 254/254, web integración 362/362, worker unit 174/174, worker integración 53/53; `tsc` limpio en web y worker; eslint sin errores.
+
+**Por qué / decisiones**:
+
+- La hora mínima entre intentos vive en SQL y vale también para el cobro manual del panel: "Volver a cobrar" dentro de esa hora recibirá `retry_too_soon`. Protege la reputación de la tarjeta ante las marcas y sostiene el gate por intent. El spec solo fijaba el tope horario para el cambio de tarjeta.
+- El tope de 5 cambios de tarjeta se cuenta en `audit_logs`, que es append-only: no hace falta una columna nueva ni se puede reiniciar. Número elegido por nosotros; el spec no fija uno.
+- Un 404 se trata como cerrado porque un intent que no existe para la llave no puede cobrar en esta cuenta; la alerta cubre el caso de llave o entorno cruzados.
+- `payment_mismatch` sigue sin liberar el customer: queda en revisión manual y la resolución puede necesitar la tarjeta.
+- La rotación guarda el offset en memoria: un reinicio vuelve al principio, que es seguro.
+
+**Pendiente**:
+
+- Commit de las unidades 1 y 2 con estos arreglos.
+- Unidad 3a (escrita, sin commitear): adapter de OnvoPay partido en carpeta con los métodos nuevos, checkout diferido en dos pasos, flag `DEFERRED_CHARGE_ENABLED`, página de éxito y cancelación de `pending_minimum` (turista y panel), bloqueo de archivado. Faltan sus tests de integración (actions con el proveedor simulado y cancelación).
+- Unidad 3b: actualización de tarjeta, página de 3DS y cobro manual del panel.
+- Unidad 4: emails de los kinds nuevos y dispatch explícito en `send-notifications`. Tiene que entrar en el mismo PR que la 3: hoy un kind nuevo cae en la plantilla de reserva y se cancela si la reserva no está `confirmed`.
+- Confirmar con el usuario la política de aviso desde el cuarto fallo.
+
+**Notas para retomar**:
+
+- Los mocks de OnvoPay, Sentry y env de las suites del worker viven en `worker/tests/integration/charge-mocks.ts`; las fábricas de `vi.mock` lo importan y comparten el estado con el test.
+- El fixture `startCharge` (web y worker) simula que pasó la hora entre intentos; los tests de esa separación llaman `charge_booking_start` directo.
+- La nota de la entrada anterior sobre starvation en la limpieza de customers quedó resuelta con la rotación.
+
+## 2026-09-15 19:30 — Workstream B, unidad 2: jobs del worker, y arreglos de la revisión de la unidad 1
+
+**Hecho**:
+
+- Revisión de la migración 044 por db-schema-guardian y payment-flow-auditor (dos hallazgos altos y dos bloqueantes, ninguno alcanzable todavía porque nada llama a estas funciones). Arreglos, con la migración reescrita antes de commitear:
+  - `charge_attempt_failed` y `charge_requires_action` reciben el intent y solo actúan si su fila sigue `pending`: una respuesta vieja de un intento anterior ya no puede cerrar en falso el intento actual (camino a un doble cobro).
+  - `confirm_booking` detecta un segundo intent cobrado sobre una reserva resuelta (`duplicate_payment`), no reporta un refund que no se encoló (`late_payment_refund_blocked`), y una diferida solo confirma contra la fila `pending` de su intent.
+  - `charge_booking_start` exige la tarjeta vigente (`payment_method_changed`) y una salida futura no cancelada (`departure_unavailable`).
+  - `create_deferred_booking` bloquea la salida y rechaza una cancelada mientras el turista tokenizaba (`INSTANCE_UNAVAILABLE`).
+  - Nueva `close_pending_payment` para liberar la fila `pending` de una `pending_minimum` cuyo intent se cerró fuera de un cobro en vuelo.
+  - Cancelar o confirmar cancela los avisos de cobro pendientes; plazo nulo, datos de tarjeta fuera de rango y motivos de cancelación desconocidos fallan explícitos; cierre manual solo tras 7 días; `retained_count` en la baja a pedido; tope de un intento por hora al cambiar la tarjeta; índice para `watch-charges`; comentarios críticos de …040 restaurados.
+- Callers: el webhook y el reconciliador alertan los outcomes nuevos y ya no se tragan un outcome desconocido.
+- Worker (`worker/src/charges/`): cliente de OnvoPay (GET y cancel de intents, métodos del customer, detach, borrado), decisiones puras de la tabla de §5.5, del barrido y de la limpieza de customers, y asentamiento de cobros liquidados con validación de monto.
+- Jobs `watch-charges` (cada minuto: resuelve cobros en vuelo por GET, cancela plazos vencidos y la red terminal de `pending_minimum`) y `close-payment-intents` (cada 5 minutos: cierra intents de reservas canceladas, asienta cobros tardíos, alerta los que pasan 7 días y borra customers que ya nadie necesita), programados en `index.ts`.
+- Tests: unitarios de las decisiones; integración de los dos jobs con OnvoPay simulado; y en web, casos para cada arreglo de la revisión.
+
+**Por qué / decisiones**:
+
+- Aviso desde el cuarto fallo: se reemplaza la fila `_3` ya procesada por una nueva, así cada rechazo se notifica (Q7) con un id nuevo como clave de idempotencia del proveedor de email, sin cambiar la unicidad `(booking_id, kind)`. Reemplaza la interpretación de la entrada anterior (un cuarto fallo sin aviso). **Pendiente de confirmar con el usuario.**
+- `watch-charges` decide siempre por el GET del intent y nunca re-confirma ni crea intents: eso es de `charge-bookings` (C) y del cobro manual del panel.
+- Los pasos solo-SQL de `watch-charges` (plazos vencidos y red terminal) corren aunque falte la llave de OnvoPay.
+- Limpieza de customers: se borra en OnvoPay solo cuando ninguna reserva del hold puede volver a cobrarse (checkout abandonado, reserva cerrada sin intents abiertos, o confirmada con la salida ya empezada). `detach` explícito antes del DELETE, porque la documentación no dice que borrar el customer desvincule sus métodos.
+
+**Pendiente**:
+
+- Segunda revisión (payment-flow-auditor y code-reviewer) y commit de las unidades 1 y 2.
+- Unidad 3: métodos nuevos del adapter de web, checkout con formulario propio, actualización de tarjeta, 3DS, cancelación del turista y cobro manual del panel.
+- Unidad 4: emails de los kinds nuevos, dispatch explícito en `send-notifications`, bloqueo de archivado.
+
+**Notas para retomar**:
+
+- Quien llame a `charge_booking_start` debe cancelar el intent que haya creado ante cualquier outcome distinto de `started`.
+- `flag_payment_mismatch` sobre una `pending_minimum` deja la fila `pending` con un intent potencialmente pagable, y el barrido solo mira reservas canceladas: resolver en la revisión manual del mismatch.
+- La retención usa tres sentencias con snapshots distintos: si un intent se cierra entre ellas, la corrida del día falla por FK y se reintenta al siguiente (no borra de más).
+- Starvation posible en la limpieza de customers si más de 50 holds `expired`/`released` quedan retenidos por intents abiertos (lote ordenado por fecha).
+
+## 2026-09-15 17:00 — Workstream B, unidad 1: funciones SQL del cobro diferido y guardas
+
+**Hecho**:
+
+- Migración `20260915000044_deferred_charge_functions.sql`: `create_deferred_booking` (reserva `pending_minimum` y hold `paying` en una transacción, con customer, asientos, consentimiento y vencimiento de tarjeta validados bajo lock), `charge_booking_start`, `charge_attempt_failed`, `charge_requires_action`, `cancel_charge_in_flight`, `cancel_unpaid_booking`, `update_booking_payment_method` y `mark_payment_provider_closed`.
+- `confirm_booking` con gate positivo de estado y outcome `confirmed_unclaimed`; `flag_payment_mismatch` acepta `pending_minimum`; `cancel_stale_pending_booking` no toca un cobro en vuelo; `anonymize_booking_pii_by_email` y `purge_unpaid_bookings` excluyen reservas vivas e intents potencialmente abiertos (helper `booking_retention_locked`).
+- Callers: el webhook y el reconciliador alertan `confirmed_unclaimed`; el reconciliador ya no trae reservas con `charge_started_at`. `AuditAction` nuevos, `ConfirmBookingOutcome.ConfirmedUnclaimed` y tipos de las funciones en `database.ts`.
+- Tres suites de integración (ciclo de vida, cancelaciones, guardas y retención) con fixtures compartidos; `cleanup.ts` ahora borra `tour_holds`.
+
+**Por qué / decisiones**:
+
+- Reintentos: los fallos 1, 2 y 3 agendan 1 h, 6 h y 24 h y emiten `_1`, `_2` y `_3`. Un cuarto fallo no agenda ni avisa: la unidad `(booking_id, kind)` lo impide y el turista ya tiene el enlace válido hasta `recovery_deadline`. Interpretación de §5.7, que no fija qué pasa tras el tercer aviso.
+- Retención: los pagos `pending` bloquean el borrado en cualquier flujo, como dice §6; los `failed` sin cierre solo en el flujo diferido (recomendación de db-schema-guardian en A).
+- `confirm_booking` ya no encola un `reminder_24h` con la hora vencida (§8). También cambia el flujo con widget.
+- `confirm_booking` usa CREATE OR REPLACE y no DROP + CREATE como decía §6: la firma y el tipo de retorno no cambian.
+- El vencimiento de la tarjeta se valida también en SQL, además de en la app.
+- Tres tests existentes quedaron obsoletos por el spec 0029 y se actualizaron citándolo: `notifications-enqueue` esperaba el recordatorio vencido (§8), y dos de `retention-anonymization` usaban como "abandonada" una `pending_payment` con pago `pending`, que ahora se conserva (§6). Los fixtures pasaron a `cancelled` con pago `failed`, que es como deja el reconciliador un checkout abandonado.
+- **Corrección a la entrada anterior:** dije que auditar el cambio de la ventana requería ampliar los CHECK de `audit_logs`. Es falso: `action` y `entity_type` son texto libre, sin CHECK. La sugerencia sigue sin aplicar, pero no por esa razón.
+
+**Pendiente**:
+
+- Revisión de db-schema-guardian y payment-flow-auditor sobre la migración 044, y commit de la unidad.
+- Unidad 2: métodos nuevos del adapter de OnvoPay y jobs `watch-charges` y `close-payment-intents`.
+- Unidad 3: checkout con formulario propio, actualización de tarjeta, 3DS, cancelación del turista y cobro manual del panel.
+- Unidad 4: emails y dispatch explícito de kinds en el worker de notificaciones; bloqueo de archivado.
+
+**Notas para retomar**:
+
+- `cancel_charge_in_flight` y `cancel_unpaid_booking` encolan `cancellation_confirmation`; su plantilla tiene que decir que no hubo cobro cuando la reserva es diferida.
+- `charge_requires_action` no reenvía el enlace en un segundo 3DS de la misma reserva (misma unicidad); la página de la reserva tiene que ofrecerlo.
 
 ## 2026-09-15 15:20 — Workstream A: esquema, configuración y toggle del mínimo
 
