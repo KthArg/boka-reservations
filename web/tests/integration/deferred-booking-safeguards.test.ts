@@ -51,6 +51,7 @@ function updateCard(bookingId: string, customerId: string, last4: string) {
     p_card_last4: last4,
     p_card_exp_month: 12,
     p_card_exp_year: 2030,
+    p_consent_version: 'test-v1',
   });
 }
 

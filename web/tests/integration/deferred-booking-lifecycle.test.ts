@@ -517,6 +517,7 @@ describe('update_booking_payment_method', () => {
       p_card_last4: '5454',
       p_card_exp_month: 11,
       p_card_exp_year: 2031,
+      p_consent_version: 'test-v1',
       ...overrides,
     };
   }

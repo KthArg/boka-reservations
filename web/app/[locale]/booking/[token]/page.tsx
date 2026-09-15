@@ -49,11 +49,25 @@ export default async function BookingViewPage({ params }: Props) {
           <dd className={styles.metaValue}>{t(`status-${view.status}`)}</dd>
         </dl>
 
-        {view.status === BookingStatus.Confirmed || view.status === BookingStatus.PendingMinimum ? (
-          <Link href={`/booking/${token}/cancel`} className={styles.dangerLink}>
-            {t('cancel-cta')}
-          </Link>
-        ) : null}
+        <div className={styles.actions}>
+          {/* Cobro diferido (spec 0029 §5.7): las páginas de 3DS y de tarjeta, solo en su estado. */}
+          {view.awaitingAuthentication ? (
+            <Link href={`/booking/${token}/authenticate`} className={styles.primaryLink}>
+              {t('authenticate-cta')}
+            </Link>
+          ) : null}
+          {view.canUpdateCard ? (
+            <Link href={`/booking/${token}/card`} className={styles.primaryLink}>
+              {t('card-cta')}
+            </Link>
+          ) : null}
+          {view.status === BookingStatus.Confirmed ||
+          view.status === BookingStatus.PendingMinimum ? (
+            <Link href={`/booking/${token}/cancel`} className={styles.dangerLink}>
+              {t('cancel-cta')}
+            </Link>
+          ) : null}
+        </div>
       </div>
     </main>
   );

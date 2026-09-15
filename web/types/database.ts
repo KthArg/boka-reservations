@@ -1022,6 +1022,7 @@ export type Database = {
           p_card_last4: string;
           p_card_exp_month: number;
           p_card_exp_year: number;
+          p_consent_version: string;
         };
         Returns:
           | 'updated'

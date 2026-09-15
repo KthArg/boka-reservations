@@ -12,6 +12,7 @@ import {
 import { startDeferredCheckout } from '@/lib/booking/deferred-checkout';
 import { completeDeferredCheckout } from '@/lib/booking/deferred-checkout-complete';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
+import { PAYMENT_METHOD_ID_PATTERN } from '@/lib/payments/payment-method-id';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
 import {
   checkoutErrorKey,
@@ -21,9 +22,6 @@ import {
 
 // Server actions del checkout diferido (spec 0029 §5.2). Activas solo con el flag
 // DEFERRED_CHARGE_ENABLED; el paso 2 revalida TODO lo del paso 1, sin confiar en el cliente.
-
-// Ids de OnvoPay: sin `/`, `.` ni `?`, que alterarían la ruta del GET firmado con la secret key.
-const PAYMENT_METHOD_ID = /^[A-Za-z0-9_-]{1,100}$/;
 
 const FieldsSchema = z.object({
   instanceId: z.string().uuid(),
@@ -37,7 +35,7 @@ const FieldsSchema = z.object({
 // Una server action recibe cualquier cosa: se valida la forma completa antes de tocar nada.
 const CompletePayloadSchema = z.object({
   holdId: z.string().uuid(),
-  paymentMethodId: z.string().regex(PAYMENT_METHOD_ID),
+  paymentMethodId: z.string().regex(PAYMENT_METHOD_ID_PATTERN),
   expectedAmountCents: z.number().int().positive(),
   fields: FieldsSchema,
 });

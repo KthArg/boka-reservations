@@ -42,6 +42,19 @@ export type IntentSnapshot = {
   redirectUrl?: string;
 };
 
+/**
+ * Estados de un payment intent que distingue la lógica de negocio (spec 0029 §5.6). Hoy coinciden
+ * con los de OnvoPay; otra pasarela los traduce en su adapter.
+ */
+export const PaymentIntentStatus = {
+  RequiresPaymentMethod: 'requires_payment_method',
+  RequiresAction: 'requires_action',
+  Processing: 'processing',
+  Succeeded: 'succeeded',
+  Canceled: 'canceled',
+  Failed: 'failed',
+} as const;
+
 export interface PaymentProvider {
   createPaymentSession(params: CreatePaymentParams): Promise<PaymentSession>;
   /**

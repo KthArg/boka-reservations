@@ -894,7 +894,8 @@ GRANT EXECUTE ON FUNCTION public.cancel_unpaid_booking(uuid, uuid, text) TO serv
 --    método reemplazado; acá se vuelve a exigir el customer de la reserva bajo lock. Con fallos
 --    previos agenda un intento, como mucho uno por hora. Contra card testing con el enlace de la
 --    reserva, además, un tope de 5 cambios por reserva contados en audit_logs (append-only, no se
---    puede reiniciar). El índice único de …043 rechaza una tarjeta de otra reserva viva.
+--    puede reiniciar). El índice único de …043 rechaza una tarjeta de otra reserva viva. Exige la
+--    versión del mandato que el turista aceptó para la tarjeta nueva y la deja auditada (spec 0021).
 --    Outcomes: 'updated' | 'not_updatable' | 'customer_mismatch' | 'update_limit_reached' |
 --              'recovery_expired' | 'card_data_invalid' | 'card_expires_before_departure'.
 -- ================================================================
@@ -905,7 +906,8 @@ CREATE FUNCTION public.update_booking_payment_method(
   p_card_brand           text,
   p_card_last4           text,
   p_card_exp_month       smallint,
-  p_card_exp_year        smallint
+  p_card_exp_year        smallint,
+  p_consent_version      text
 )
 RETURNS text
 LANGUAGE plpgsql
@@ -923,6 +925,11 @@ BEGIN
 
   IF p_card_exp_month IS NULL OR p_card_exp_year IS NULL THEN
     RAISE EXCEPTION 'CARD_DATA_MISSING';
+  END IF;
+
+  -- Mandato de credencial almacenada para la tarjeta nueva: sin versión aceptada no se guarda.
+  IF p_consent_version IS NULL THEN
+    RAISE EXCEPTION 'CONSENT_REQUIRED';
   END IF;
 
   SELECT * INTO v_booking FROM public.bookings WHERE id = p_booking_id FOR UPDATE;
@@ -984,7 +991,9 @@ BEGIN
       'previous_card_last4', v_booking.card_last4,
       'card_brand', p_card_brand,
       'card_last4', p_card_last4,
-      'charge_attempts', v_booking.charge_attempts
+      'charge_attempts', v_booking.charge_attempts,
+      'consent_version', p_consent_version,
+      'consent_at', now()
     )
   );
 
@@ -993,10 +1002,10 @@ END;
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.update_booking_payment_method(
-  uuid, text, text, text, text, smallint, smallint
+  uuid, text, text, text, text, smallint, smallint, text
 ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.update_booking_payment_method(
-  uuid, text, text, text, text, smallint, smallint
+  uuid, text, text, text, text, smallint, smallint, text
 ) TO service_role;
 
 -- ================================================================
