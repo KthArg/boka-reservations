@@ -3,6 +3,50 @@
 Spec: [0029-cupo-minimo-y-cobro-diferido.md](./0029-cupo-minimo-y-cobro-diferido.md)
 Rama: feat/0029-cupo-minimo-config (workstream A), feat/0029-cobro-diferido (workstream B)
 
+## 2026-09-16 11:40 — Workstream B, unidades 3a y 4: checkout diferido, cancelación sin cobro y emails del ciclo de cobro
+
+**Hecho**:
+
+- Adapter de OnvoPay partido por recurso (`web/lib/payments/adapters/onvopay/`): métodos nuevos `getPaymentIntent`, `confirmWithPaymentMethod` (un 400 se resuelve con GET), `createCustomer`, `getPaymentMethod` (respuesta validada con Zod), `detachPaymentMethod` y `deleteCustomer`. Ids escapados en la ruta y errores sin el cuerpo de la respuesta.
+- Tokenización desde el navegador dentro del adapter, con la costura `lib/payments/card-vault.ts` para los componentes. Timeout, y distinción entre tarjeta rechazada y proveedor no disponible.
+- Checkout diferido en dos pasos detrás de `DEFERRED_CHARGE_ENABLED`:
+  - paso 1: hold y customer guardado en el hold;
+  - paso 2: payload validado entero con Zod, sesión y hold verificados antes de llamar a OnvoPay, tarjeta leída por GET (mismo customer, mismo id, no `detached`), monto recalculado y comparado con el del mandato (`amount-changed`), y reintento idempotente que devuelve la misma reserva.
+- Con el flag encendido, el checkout con widget se rechaza.
+- UI: formulario de tarjeta sin `name` ni `action`, mandato con el monto, botón para empezar de nuevo y datos del paso 1 que sobreviven el reset del form de React 19. Página de éxito para `pending_minimum`.
+- Cancelación de `pending_minimum` por turista y staff vía `cancel_unpaid_booking`. El motivo sale del tipo de actor. Un cobro en vuelo devuelve `ChargeInFlight`, y la página de cancelación lo explica. Archivar un tour con reservas sin cobrar queda bloqueado.
+- Alertas a Sentry, sin PII, cuando un customer de OnvoPay puede quedar huérfano y cuando llega una tarjeta de otro customer.
+- Emails (unidad 4):
+  - `booking_reserved`, aviso de tarjeta rechazada (una plantilla para `_1`, `_2` y `_3`, con enlace a `/booking/[token]/card`) y `charge_requires_action` (enlace a `/booking/[token]/authenticate`).
+  - Cada aviso sale solo en su estado, y el token de su enlace vence con su plazo.
+  - `cancellation_confirmation` dice que no hubo cobro cuando la reserva diferida nunca se cobró.
+- Despacho explícito por kind en `send-notifications` (`notifications/dispatch.ts`): ningún kind cae en la plantilla de reserva confirmada. `departure_cancelled_minimum` (C) se pospone una hora con alerta en vez de cancelarse.
+- Revisión de la 3a por payment-flow-auditor y code-reviewer (sin críticos): los arreglos de arriba salen de ahí.
+- Tests nuevos:
+  - integración de las actions del checkout (validación, sesión, tarjeta, monto, idempotencia, flag), de la cancelación por token y por staff, del archivado y de los emails con Mailpit;
+  - unitarios del adapter y la tokenización con fetch simulado, de las plantillas, del despacho y del kind pospuesto.
+- Suites verificadas: web unit 286/286, web integración 387/387, worker unit 198/198. Worker integración: 53/53 en la última corrida completa, más la suite nueva de emails (6/6) corrida junto con la existente (3/3). `tsc` limpio y eslint sin errores en web y worker.
+
+**Por qué / decisiones**:
+
+- La ruta de actualización de tarjeta es `/booking/[token]/card`: el spec no la nombra y los segmentos de URL van en inglés. Las páginas `card` y `authenticate` llegan con la unidad 3b, en el mismo PR y con el flag apagado.
+- Monto del mandato: el cliente reenvía el monto que mostró y el servidor rechaza si el recalculado difiere, en lugar de guardar el monto del paso 1 en el hold (sin cambio de esquema). Nombre y email del paso 2 pueden diferir de los del customer creado en el paso 1; no afecta el dinero.
+- Un kind sin plantilla se pospone y no se cancela: si el worker queda detrás de la DB, cancelarlo perdería el email.
+- `payment_mismatch` no libera el customer (sin cambios respecto de la entrada anterior).
+
+**Pendiente**:
+
+- Unidad 3b: página de actualización de tarjeta, página de 3DS y cobro manual del panel con "Volver a cobrar".
+- Corrida completa de la integración del worker con la suite nueva, revisión final del PR y PR a `dev`.
+- Confirmar con el usuario la política de aviso desde el cuarto fallo.
+- Diferido para después (señalado por la auditoría): tope de velocidad de tokenizaciones por customer (consultar a OnvoPay), validar al boot que las llaves pública y secreta sean del mismo modo, y costura de PayPal para crear el "vault" de tarjeta (hoy `createCustomer`).
+
+**Notas para retomar**:
+
+- `lib/booking/checkout-action.test.ts` mockea `deferred-flag`: ese flag lee la env tipada al importarse.
+- Las suites web del checkout diferido mockean `@/lib/env` con un Proxy para encender el flag y apagar el rate limit.
+- El reembolso del 100% en una cancelación iniciada por el operador (§5.8) es de `cancel_departure` (workstream C); la cancelación individual de una confirmada desde el panel sigue con `computeRefund`.
+
 ## 2026-09-15 23:40 — Workstream B: arreglos de la segunda revisión de las unidades 1 y 2
 
 **Hecho**:
