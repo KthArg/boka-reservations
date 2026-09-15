@@ -240,4 +240,4 @@ Dos hallazgos de interpretación que el spec incorporó (§5.6):
 
 **Lo que sigue sin respuesta y no se puede medir en sandbox**: si estos cobros se marcan como credencial almacenada ante el emisor, la tasa real de rechazo y de 3DS, el efecto de no enviar señales antifraude, y la vigencia de una tarjeta guardada durante semanas. Eso queda para el correo a OnvoPay y para los datos de producción.
 
-**Pendiente de probar** (necesita URL pública con ngrok y el worker corriendo): que un `confirm` hecho desde el servidor emita el webhook `payment-intent.succeeded`.
+**Webhook — verificado el 2026-09-15** con ngrok y un receptor local: un `confirm` hecho desde el servidor, sin el cliente presente, emite `payment-intent.succeeded` a los pocos segundos, con el secreto, el monto y el `paymentMethodId`. Un intent en 3DS autenticado desde el navegador también liquida y emite el webhook, y OnvoPay redirige a `returnUrl` con `?payment_intent_id=`.

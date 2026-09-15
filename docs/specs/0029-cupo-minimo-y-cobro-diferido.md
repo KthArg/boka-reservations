@@ -3,7 +3,7 @@
 - **Estado**: in-review
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-08-13
-- **Última actualización**: 2026-09-14
+- **Última actualización**: 2026-09-15
 - **Rama**: (sin asignar — tres workstreams, ver §11)
 - **PR**: (sin asignar)
 
@@ -72,7 +72,7 @@ Actores: **turista** (reserva sin cargo inmediato), **staff** (configura el mín
 
 ## 5. Diseño técnico
 
-### 5.1. Verificación de OnvoPay (documentación 2026-09-12, sandbox 2026-09-14)
+### 5.1. Verificación de OnvoPay (documentación 2026-09-12, sandbox 2026-09-14 y 2026-09-15)
 
 Verificado contra la especificación publicada (`https://docs.onvopay.com/openapi.yaml`) y las guías (`https://docs.onvopay.com/en/llms-full.txt`). No hay proveedor nuevo, así que no aplica `external-services-vetting` completo; se documenta la capacidad:
 
@@ -96,7 +96,8 @@ Verificado contra la especificación publicada (`https://docs.onvopay.com/openap
 - **(d) Confirmar dos veces — seguro.** La segunda confirmación devolvió `400` con _"Payment Intent cannot be confirmed anymore as it is already in status succeeded"_, y el intent conservó **un solo charge**.
 - **(e) Cancelar en `requires_payment_method` — funciona** (`canceled`).
 - **Privacidad**: `detach` dejó el método en `detached`, `DELETE /customers/{id}` devolvió 200 y el `GET` posterior falla. La tokenización con la **publishable key** y el `GET /v1/payment-methods/{id}` con marca, últimos 4 dígitos, vencimiento y `customerId` también quedaron verificados.
-- **(f) Webhook del `confirm` server-side**: **pendiente**, necesita una URL pública (ngrok) y el worker corriendo.
+- **(f) Webhook del cobro server-side — verificado (2026-09-15).** Un `confirm` con tarjeta guardada, sin cvv y sin navegador, emitió `payment-intent.succeeded` segundos después, a la ruta configurada `/api/webhooks/onvopay`, con `X-Webhook-Secret`, monto, moneda, `mode: test` y `paymentMethodId`. El mismo webhook que ya procesa `confirm_booking`.
+- **Recuperación por 3DS — verificada (2026-09-15).** Un intent en `requires_action`, autenticado en el navegador (Playwright, página de prueba de OnvoPay), pasó a `succeeded`: OnvoPay redirigió a `returnUrl` con `?payment_intent_id=` y emitió el webhook.
 
 **Lo que el sandbox no puede responder**, y sigue dependiendo de OnvoPay o de datos de producción: si estos cobros se marcan como credencial almacenada ante el emisor, la tasa real de rechazo y de 3DS, el efecto de no enviar señales antifraude (§9), y la vigencia de una tarjeta guardada durante semanas, que se prueba dejando pasar el tiempo con el mismo `paymentMethodId`.
 
@@ -448,7 +449,7 @@ stateDiagram-v2
   - Bloqueo de archivado por `pending_minimum` (`web/lib/tours/archive-action.ts:72`).
   - UI: formulario de tarjeta con verificación server-side, actualización de tarjeta, página de 3DS, cancelación del turista y cobro manual con "Volver a cobrar".
   - Emails: `booking_reserved`, avisos de tarjeta rechazada y `charge_requires_action`.
-  - **(a), (b), (c) y (e) ya están verificadas (§5.1); antes de aprobar B queda solo la (f).**
+    **Las precondiciones (a), (b), (c), (e) y (f) están verificadas (§5.1).**
 - **C — Automatización**: `confirm_departure`, `cancel_departure`, `charge-bookings`, `resolve-minimum-window`, bandeja de decisión y `departure_cancelled_minimum`. La precondición (d) ya está verificada (§5.1).
 
 Otras condiciones:
