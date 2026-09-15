@@ -38,8 +38,9 @@ const SERVICE_ONLY_TABLES = [
   'rate_limits',
 ] as const;
 
-// users no es service-only, pero anon tampoco la lee (grant revocado desde …009).
-const ANON_DENIED_READ_TABLES = ['users', ...SERVICE_ONLY_TABLES] as const;
+// users y business_settings no son service-only, pero anon tampoco las lee (grant revocado
+// desde …009 y …043).
+const ANON_DENIED_READ_TABLES = ['users', 'business_settings', ...SERVICE_ONLY_TABLES] as const;
 
 // Tablas del portal: anon SELECT sí, pero NO escritura (solo SELECT).
 const PORTAL_TABLES = ['tours', 'tour_pricing', 'tour_schedules', 'tour_instances'] as const;
@@ -97,6 +98,7 @@ describe('Grants de tabla explícitos para roles públicos (spec 0027)', () => {
       'tour_instances',
       'users',
       'tour_instance_guides',
+      'business_settings',
     ] as const;
     for (const table of AUTH_READABLE_TABLES) {
       const { error } = await authed.from(table).select('*').limit(1);
