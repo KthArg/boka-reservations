@@ -32,8 +32,21 @@ export enum InstanceStatus {
   Cancelled = 'cancelled',
 }
 
+/** Resolución terminal de una salida frente al mínimo de participantes de su tour (spec 0029). */
+export enum MinimumResolution {
+  /** Se alcanzó el mínimo: el cobro se dispara solo. */
+  Reached = 'reached',
+  /** El staff confirmó la salida bajo el mínimo: se cobra igual. */
+  StaffConfirmed = 'staff_confirmed',
+  StaffCancelled = 'staff_cancelled',
+  /** Tour con cancelación automática: cancelada al llegar la ventana de decisión. */
+  AutoCancelled = 'auto_cancelled',
+}
+
 export enum BookingStatus {
   PendingPayment = 'pending_payment',
+  /** Tarjeta guardada y cupo ocupado, sin cobro: espera el mínimo de la salida (spec 0029). */
+  PendingMinimum = 'pending_minimum',
   Confirmed = 'confirmed',
   Cancelled = 'cancelled',
   Refunded = 'refunded',

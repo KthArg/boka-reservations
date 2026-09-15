@@ -8,7 +8,13 @@ export type NotificationKind =
   | 'guide_assignment'
   | 'cancellation_confirmation'
   | 'refund_confirmation'
-  | 'overbooked_refunded';
+  | 'overbooked_refunded'
+  | 'booking_reserved'
+  | 'departure_cancelled_minimum'
+  | 'charge_failed_action_required_1'
+  | 'charge_failed_action_required_2'
+  | 'charge_failed_action_required_3'
+  | 'charge_requires_action';
 
 export const GUIDE_ASSIGNMENT_KIND: NotificationKind = 'guide_assignment';
 export const CANCELLATION_CONFIRMATION_KIND: NotificationKind = 'cancellation_confirmation';

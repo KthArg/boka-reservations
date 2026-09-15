@@ -73,6 +73,9 @@
     "field-includes-en": "What's included (English)",
     "field-min-participants": "Minimum participants",
     "field-max-capacity": "Maximum capacity",
+    "minimum-policy-section": "Departures below the minimum",
+    "field-auto-cancel-below-minimum": "Cancel automatically, without notifying staff",
+    "hint-auto-cancel-below-minimum": "If a departure hasn't reached the minimum participants when the decision window arrives, it is cancelled automatically and tourists are notified. When off, staff see the departure in the panel and decide whether to confirm or cancel it.",
     "field-cover-image": "Cover image URL (optional)",
     "field-slug": "Slug (URL-friendly identifier)",
     "difficulty-easy": "Easy",
@@ -214,6 +217,7 @@
     "filter-search": "Customer or email",
     "filter-apply": "Filter",
     "filter-clear": "Clear",
+    "status-pending_minimum": "Reserved, not charged",
     "status-pending_payment": "Pending payment",
     "status-confirmed": "Confirmed",
     "status-cancelled": "Cancelled",
@@ -270,6 +274,13 @@
     "notif-cancellation_confirmation": "Cancellation confirmation",
     "notif-refund_confirmation": "Refund confirmation",
     "notif-overbooked_refunded": "Sold out + refund",
+    "notif-guide_assignment": "Guide assignment",
+    "notif-booking_reserved": "Booking without charge",
+    "notif-departure_cancelled_minimum": "Departure cancelled (minimum)",
+    "notif-charge_failed_action_required_1": "Card declined (notice 1)",
+    "notif-charge_failed_action_required_2": "Card declined (notice 2)",
+    "notif-charge_failed_action_required_3": "Card declined (notice 3)",
+    "notif-charge_requires_action": "Charge authentication",
     "detail-cancel": "Cancel booking",
     "cancel-confirm-refund": "This booking is eligible for a {amount} refund. Confirm cancellation?",
     "cancel-confirm-no-refund": "This cancellation has no refund. Confirm cancellation?",
@@ -366,6 +377,7 @@
     "status-confirmed": "Confirmed",
     "status-cancelled": "Cancelled",
     "status-refunded": "Refunded",
+    "status-pending_minimum": "Reserved, not charged",
     "status-pending_payment": "Pending payment",
     "status-payment_mismatch": "Payment mismatch",
     "status-overbooked_refunded": "Sold out (refunded)",
@@ -411,5 +423,19 @@
     "range-error-missing": "Pick a date range (from and to).",
     "range-error-inverted": "The 'from' date cannot be after 'to'.",
     "range-error-too-long": "The range cannot exceed one year."
+  },
+  "settings": {
+    "nav-label": "Settings",
+    "page-title": "Settings",
+    "section-minimum": "Minimum participants",
+    "field-decision-window": "Decision window (hours before departure)",
+    "hint-decision-window": "If a departure hasn't reached its tour's minimum participants, it is resolved this many hours before it starts: staff decide whether to confirm or cancel it, or it is cancelled automatically if the tour is set up that way. Between {min} and {max} hours.",
+    "submit": "Save",
+    "saved": "Settings saved.",
+    "errors": {
+      "settings_unauthorized": "Only an administrator can change settings.",
+      "settings_window_out_of_range": "Enter a whole number of hours between {min} and {max}.",
+      "settings_update_failed": "Settings couldn't be saved. Please try again."
+    }
   }
 }

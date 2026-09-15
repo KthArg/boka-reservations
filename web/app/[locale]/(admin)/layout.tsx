@@ -11,22 +11,24 @@ type Props = { children: React.ReactNode };
 
 export default async function AdminLayout({ children }: Props) {
   // Guard de rol: único choke-point de autorización del panel (F-2, spec 0019).
-  // Solo admin/staff entran; las páginas admin-only (users) suman su requireRole(Admin).
+  // Solo admin/staff entran; las páginas admin-only (users, settings) suman su requireRole(Admin).
   const authorized = await requireAnyRole(ADMIN_PANEL_ROLES).catch(() => null);
   if (!authorized) {
     const locale = await getLocale();
     redirect(`/${locale}/login`);
   }
 
-  const [tAuth, tTours, tBookings, tGuides, tUsers, tReports, tCommon] = await Promise.all([
-    getTranslations('auth'),
-    getTranslations('tours'),
-    getTranslations('bookings'),
-    getTranslations('guides'),
-    getTranslations('users'),
-    getTranslations('reports'),
-    getTranslations('common'),
-  ]);
+  const [tAuth, tTours, tBookings, tGuides, tUsers, tReports, tCommon, tSettings] =
+    await Promise.all([
+      getTranslations('auth'),
+      getTranslations('tours'),
+      getTranslations('bookings'),
+      getTranslations('guides'),
+      getTranslations('users'),
+      getTranslations('reports'),
+      getTranslations('common'),
+      getTranslations('settings'),
+    ]);
   const user = await getCurrentUser();
 
   // primary = se muestran como íconos en la barra móvil; el resto va al menú hamburguesa.
@@ -42,12 +44,15 @@ export default async function AdminLayout({ children }: Props) {
     { href: '/dashboard/reports', label: tReports('nav-label'), icon: 'reports', primary: false },
   ];
   if (user?.role === UserRole.Admin) {
-    items.push({
-      href: '/dashboard/users',
-      label: tUsers('nav-label'),
-      icon: 'users',
-      primary: false,
-    });
+    items.push(
+      { href: '/dashboard/users', label: tUsers('nav-label'), icon: 'users', primary: false },
+      {
+        href: '/dashboard/settings',
+        label: tSettings('nav-label'),
+        icon: 'settings',
+        primary: false,
+      },
+    );
   }
 
   return (
