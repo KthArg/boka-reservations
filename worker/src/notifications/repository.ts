@@ -5,6 +5,10 @@ import type { EmailLocale, NotificationKind } from './types.js';
 
 const BATCH_SIZE = 20;
 
+/** Columnas de BookingRow; los emails del cobro diferido le suman las suyas. */
+export const BOOKING_NOTIFICATION_SELECT =
+  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
+
 export type NotificationRow = {
   id: string;
   booking_id: string | null;
@@ -38,9 +42,7 @@ export async function loadBookingForNotification(
 ): Promise<BookingRow | null> {
   const { data, error } = await db
     .from('bookings')
-    .select(
-      'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))',
-    )
+    .select(BOOKING_NOTIFICATION_SELECT)
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -80,6 +82,20 @@ export async function cancelNotification(
     .eq('id', id)
     .eq('status', 'pending');
   if (error) throw new Error(`cancel notification: ${error.message}`);
+}
+
+/** Reprograma una notificación sin contar un intento (kind que este worker aún no envía). */
+export async function postponeNotification(
+  db: SupabaseClient,
+  id: string,
+  untilIso: string,
+): Promise<void> {
+  const { error } = await db
+    .from('notifications')
+    .update({ scheduled_for: untilIso })
+    .eq('id', id)
+    .eq('status', 'pending');
+  if (error) throw new Error(`postpone notification: ${error.message}`);
 }
 
 export async function markSent(
