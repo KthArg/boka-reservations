@@ -14,6 +14,7 @@ import type {
   TourWithDetails,
 } from '@/lib/tours/types';
 import TourBasicInfoSection from './TourBasicInfoSection';
+import TourMinimumPolicyField from './TourMinimumPolicyField';
 import PricingEditor from './PricingEditor';
 import ScheduleEditor from './ScheduleEditor';
 import styles from './TourForm.module.css';
@@ -91,6 +92,7 @@ export default function TourForm({ defaultValues }: Props) {
   }));
   const setBasicField = (name: keyof TourBasicValues, value: string) =>
     setBasic((b) => ({ ...b, [name]: value }));
+  const [autoCancel, setAutoCancel] = useState(defaultValues?.auto_cancel_below_minimum ?? false);
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -114,6 +116,7 @@ export default function TourForm({ defaultValues }: Props) {
       ))}
 
       <TourBasicInfoSection values={basic} onChange={setBasicField} errors={errors} />
+      <TourMinimumPolicyField checked={autoCancel} onChange={setAutoCancel} />
       <PricingEditor
         value={pricing}
         onChange={setPricing}

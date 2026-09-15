@@ -82,6 +82,21 @@
   box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
+.checkLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: var(--space-sm) 0 0;
+}
+
 .fieldError {
   font-size: var(--text-sm);
   color: var(--color-error);
