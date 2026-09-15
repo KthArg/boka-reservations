@@ -958,7 +958,7 @@ export type Database = {
           p_consent_version: string;
           p_payment_method_id: string;
           p_customer_external_id: string;
-          p_card_brand: string;
+          p_card_brand: string | null;
           p_card_last4: string;
           p_card_exp_month: number;
           p_card_exp_year: number;
@@ -1018,7 +1018,7 @@ export type Database = {
           p_booking_id: string;
           p_customer_external_id: string;
           p_payment_method_id: string;
-          p_card_brand: string;
+          p_card_brand: string | null;
           p_card_last4: string;
           p_card_exp_month: number;
           p_card_exp_year: number;

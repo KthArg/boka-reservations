@@ -155,7 +155,26 @@
     "cancel-title": "Payment cancelled",
     "cancel-body": "You have not been charged. You can try booking again.",
     "cancel-back": "Back to tour",
-    "cancel-retry": "Try again"
+    "cancel-retry": "Try again",
+    "deferred-no-charge-note": "You won't be charged today. We save your card and charge it once the departure reaches its minimum group size. We'll email you.",
+    "deferred-submit": "Continue",
+    "deferred-submitting": "Holding your spot...",
+    "card-section": "Card",
+    "card-holder": "Name on card",
+    "card-number": "Card number",
+    "card-exp-month": "Expiry month (MM)",
+    "card-exp-year": "Expiry year (YYYY)",
+    "card-cvv": "CVV",
+    "card-mandate": "I authorize a charge of {amount} to this card once the departure is confirmed.",
+    "card-submit": "Save card and book",
+    "card-saving": "Saving...",
+    "hold-expired": "Your temporary hold expired. Please start again.",
+    "card-invalid": "We couldn't verify the card. Check the details or use another one.",
+    "card-expires-before-departure": "This card expires before the tour date. Please use another one.",
+    "success-reserved-title": "Booking registered!",
+    "success-reserved-body": "You haven't been charged yet. We'll charge your card once the departure is confirmed and email you.",
+    "amount-changed": "The amount changed since you started the booking. Start again to see the updated amount.",
+    "deferred-restart": "Start again"
   },
   "legal": {
     "privacy-title": "Privacy notice",
@@ -297,7 +316,9 @@
     "refund-retry": "Retry refund",
     "refund-retry-confirm": "Retry the failed refund?",
     "refund-retry-error": "The refund could not be retried.",
-    "refund-retry-manual-check": "This refund requires manual verification in OnvoPay before retrying (the previous attempt outcome is unknown). Check the Sentry alert."
+    "refund-retry-manual-check": "This refund requires manual verification in OnvoPay before retrying (the previous attempt outcome is unknown). Check the Sentry alert.",
+    "cancel-confirm-no-charge": "Cancel this booking? It hasn't been charged yet, so there's no refund.",
+    "cancel-error-in-flight": "This booking's charge is being processed. Please try again in a few minutes."
   },
   "guides": {
     "nav-label": "Departures",
@@ -392,7 +413,10 @@
     "cancelled-no-refund": "Your booking was cancelled. This cancellation had no refund.",
     "already": "This booking is not active.",
     "error-invalid": "This link is invalid or expired.",
-    "error-generic": "The booking could not be cancelled. Please try again."
+    "error-generic": "The booking could not be cancelled. Please try again.",
+    "no-charge-yet": "Nothing has been charged yet, so cancelling is free.",
+    "cancelled-no-charge": "Your booking was cancelled. No charge was made.",
+    "error-charge-in-flight": "We're processing the charge for this booking. Please try again in a few minutes."
   },
   "reports": {
     "nav-label": "Reports",

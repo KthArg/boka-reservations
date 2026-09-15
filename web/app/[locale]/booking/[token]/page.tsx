@@ -49,7 +49,7 @@ export default async function BookingViewPage({ params }: Props) {
           <dd className={styles.metaValue}>{t(`status-${view.status}`)}</dd>
         </dl>
 
-        {view.status === BookingStatus.Confirmed ? (
+        {view.status === BookingStatus.Confirmed || view.status === BookingStatus.PendingMinimum ? (
           <Link href={`/booking/${token}/cancel`} className={styles.dangerLink}>
             {t('cancel-cta')}
           </Link>

@@ -17,6 +17,31 @@ export type WebhookPayload = {
   currency: string;
 };
 
+export type CustomerParams = {
+  name: string;
+  email: string;
+};
+
+/** Datos de una tarjeta guardada, leídos por el servidor (spec 0029 §5.2). */
+export type PaymentMethodDetails = {
+  id: string;
+  status: string | null;
+  customerId: string | null;
+  brand: string | null;
+  last4: string | null;
+  expMonth: number | null;
+  expYear: number | null;
+};
+
+/** Estado de un payment intent según el proveedor. Las decisiones se toman por `status`. */
+export type IntentSnapshot = {
+  status: string;
+  amountCents?: number;
+  currency?: string;
+  /** URL de autenticación 3DS cuando el intent quedó en requires_action. */
+  redirectUrl?: string;
+};
+
 export interface PaymentProvider {
   createPaymentSession(params: CreatePaymentParams): Promise<PaymentSession>;
   /**
@@ -25,5 +50,16 @@ export interface PaymentProvider {
    * real es que el intent no se entrega al widget.
    */
   cancelPaymentSession(externalPaymentId: string): Promise<void>;
+  getPaymentIntent(externalPaymentId: string): Promise<IntentSnapshot>;
+  /** Cobra un intent con una tarjeta guardada; ver la regla del código HTTP en el adapter. */
+  confirmWithPaymentMethod(
+    externalPaymentId: string,
+    paymentMethodId: string,
+    returnUrl: string,
+  ): Promise<IntentSnapshot>;
+  createCustomer(params: CustomerParams): Promise<{ customerId: string }>;
+  getPaymentMethod(paymentMethodId: string): Promise<PaymentMethodDetails>;
+  detachPaymentMethod(paymentMethodId: string): Promise<void>;
+  deleteCustomer(customerId: string): Promise<void>;
   verifyWebhook(rawBody: string, signature: string): WebhookPayload | null;
 }

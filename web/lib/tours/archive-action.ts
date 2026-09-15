@@ -69,7 +69,13 @@ async function hasActiveFutureBookings(
   const { data, error } = await db
     .from('bookings')
     .select('id, tour_instances!inner(tour_id, starts_at)')
-    .in('status', [BookingStatus.PendingPayment, BookingStatus.Confirmed])
+    // pending_minimum (spec 0029): una reserva sin cobrar también ocupa cupo y tiene tarjeta
+    // guardada; archivar cancelaría su salida dejándola viva.
+    .in('status', [
+      BookingStatus.PendingMinimum,
+      BookingStatus.PendingPayment,
+      BookingStatus.Confirmed,
+    ])
     .eq('tour_instances.tour_id', tourId)
     .gte('tour_instances.starts_at', nowIso)
     .limit(1);

@@ -5,6 +5,7 @@ import { BookingStatus } from '@shared/constants/enums';
 import type { AuditActorType } from '@shared/constants/audit';
 import { CancellationError } from '@shared/constants/cancellations';
 import { computeRefund, type RefundEligibility } from '@shared/constants/policies';
+import { cancelUnpaidBooking } from './cancel-unpaid';
 
 type ServiceClient = SupabaseClient<Database>;
 
@@ -22,6 +23,8 @@ export type BookingView = {
   currency: string;
   /** Reembolso que correspondería si se cancelara ahora. */
   refund: RefundEligibility;
+  /** Cobro diferido en curso (spec 0029 §5.8): no se puede cancelar hasta que se resuelva. */
+  chargeInFlight: boolean;
 };
 
 export type CancelResult =
@@ -35,7 +38,7 @@ type CancelParams = {
 };
 
 const VIEW_SELECT = `
-  id, customer_name, status, total_amount_cents, currency,
+  id, customer_name, status, total_amount_cents, currency, charge_started_at,
   tickets_adult, tickets_child, tickets_student,
   tour_instances!inner ( starts_at, tours!inner ( name_es, name_en ) )
 `;
@@ -46,6 +49,7 @@ interface RawView {
   status: string;
   total_amount_cents: number;
   currency: string;
+  charge_started_at: string | null;
   tickets_adult: number;
   tickets_child: number;
   tickets_student: number;
@@ -74,6 +78,7 @@ function toView(r: RawView, now: Date): BookingView {
       totalAmountCents: r.total_amount_cents,
       now,
     }),
+    chargeInFlight: r.status === BookingStatus.PendingPayment && r.charge_started_at !== null,
   };
 }
 
@@ -102,6 +107,15 @@ export async function cancelBooking(
 ): Promise<CancelResult> {
   const view = await getBookingView(db, params.bookingId, now);
   if (!view) return { ok: false, error: CancellationError.NotFound };
+  // Sin cobrar (spec 0029): una pending_minimum se cancela sin reembolso; una pending_payment
+  // del flujo diferido con el cobro en vuelo se rechaza, y la del widget sigue sin ser
+  // cancelable (la función devuelve not_cancellable).
+  if (
+    view.status === BookingStatus.PendingMinimum ||
+    view.status === BookingStatus.PendingPayment
+  ) {
+    return cancelUnpaidBooking(db, params.bookingId, params.actorType, params.actorId ?? null);
+  }
   if (view.status !== BookingStatus.Confirmed) {
     return { ok: false, error: CancellationError.NotCancellable };
   }

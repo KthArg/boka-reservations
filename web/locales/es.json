@@ -155,7 +155,26 @@
     "cancel-title": "Pago cancelado",
     "cancel-body": "No se realizó ningún cobro. Podés intentar reservar de nuevo.",
     "cancel-back": "Volver al tour",
-    "cancel-retry": "Reintentar"
+    "cancel-retry": "Reintentar",
+    "deferred-no-charge-note": "Hoy no se te cobra nada. Guardás tu tarjeta y te cobramos cuando la salida alcance el mínimo de personas. Te avisamos por email.",
+    "deferred-submit": "Continuar",
+    "deferred-submitting": "Reservando tu cupo...",
+    "card-section": "Tarjeta",
+    "card-holder": "Nombre en la tarjeta",
+    "card-number": "Número de tarjeta",
+    "card-exp-month": "Mes de vencimiento (MM)",
+    "card-exp-year": "Año de vencimiento (AAAA)",
+    "card-cvv": "CVV",
+    "card-mandate": "Autorizo que se cobre {amount} a esta tarjeta cuando la salida se confirme.",
+    "card-submit": "Guardar tarjeta y reservar",
+    "card-saving": "Guardando...",
+    "hold-expired": "Tu reserva temporal venció. Empezá de nuevo.",
+    "card-invalid": "No pudimos validar la tarjeta. Revisá los datos o usá otra.",
+    "card-expires-before-departure": "Esta tarjeta vence antes de la fecha del tour. Usá otra.",
+    "success-reserved-title": "¡Reserva registrada!",
+    "success-reserved-body": "Todavía no se te cobró nada. Te cobraremos cuando la salida se confirme y te avisaremos por email.",
+    "amount-changed": "El monto cambió desde que empezaste la reserva. Empezá de nuevo para ver el monto actualizado.",
+    "deferred-restart": "Empezar de nuevo"
   },
   "legal": {
     "privacy-title": "Aviso de privacidad",
@@ -297,7 +316,9 @@
     "refund-retry": "Reintentar reembolso",
     "refund-retry-confirm": "¿Reintentar el reembolso fallido?",
     "refund-retry-error": "No se pudo reintentar el reembolso.",
-    "refund-retry-manual-check": "Este reembolso requiere verificación manual en OnvoPay antes de reintentarse (el resultado del intento anterior es desconocido). Revisa la alerta en Sentry."
+    "refund-retry-manual-check": "Este reembolso requiere verificación manual en OnvoPay antes de reintentarse (el resultado del intento anterior es desconocido). Revisa la alerta en Sentry.",
+    "cancel-confirm-no-charge": "¿Cancelar esta reserva? Todavía no tiene cobro, así que no hay reembolso.",
+    "cancel-error-in-flight": "El cobro de esta reserva está en proceso. Intentá de nuevo en unos minutos."
   },
   "guides": {
     "nav-label": "Salidas",
@@ -392,7 +413,10 @@
     "cancelled-no-refund": "Tu reserva fue cancelada. Esta cancelación no tuvo reembolso.",
     "already": "Esta reserva no está activa.",
     "error-invalid": "Este enlace no es válido o expiró.",
-    "error-generic": "No se pudo cancelar la reserva. Intentá de nuevo."
+    "error-generic": "No se pudo cancelar la reserva. Intentá de nuevo.",
+    "no-charge-yet": "Todavía no se cobró nada: cancelar no tiene costo.",
+    "cancelled-no-charge": "Tu reserva fue cancelada. No se hizo ningún cobro.",
+    "error-charge-in-flight": "Estamos procesando el cobro de esta reserva. Intentá de nuevo en unos minutos."
   },
   "reports": {
     "nav-label": "Reportes",

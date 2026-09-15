@@ -52,6 +52,9 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
           {isConfirmed ? (
             <CancelBookingButton bookingId={booking.id} refundAmount={refundAmountLabel} />
           ) : null}
+          {booking.status === BookingStatus.PendingMinimum ? (
+            <CancelBookingButton bookingId={booking.id} refundAmount={null} unpaid />
+          ) : null}
         </div>
       </div>
 
