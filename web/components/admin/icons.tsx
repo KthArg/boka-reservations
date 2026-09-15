@@ -17,6 +17,7 @@ import {
   Check,
   X,
   RotateCw,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -40,6 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
   checkin: Check,
   cancel: X,
   retry: RotateCw,
+  settings: Settings,
 };
 
 type Props = { name: string; size?: number };

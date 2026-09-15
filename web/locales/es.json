@@ -73,6 +73,9 @@
     "field-includes-en": "Qué incluye (inglés)",
     "field-min-participants": "Mínimo de participantes",
     "field-max-capacity": "Capacidad máxima",
+    "minimum-policy-section": "Salidas bajo el mínimo",
+    "field-auto-cancel-below-minimum": "Cancelar automáticamente, sin avisar al staff",
+    "hint-auto-cancel-below-minimum": "Si una salida no alcanza el mínimo de participantes al llegar la ventana de decisión, se cancela sola y se avisa a los turistas. Si está desactivado, el staff ve la salida en el panel y decide si la confirma o la cancela.",
     "field-cover-image": "URL de imagen de portada (opcional)",
     "field-slug": "Slug (URL amigable)",
     "difficulty-easy": "Fácil",
@@ -214,6 +217,7 @@
     "filter-search": "Cliente o email",
     "filter-apply": "Filtrar",
     "filter-clear": "Limpiar",
+    "status-pending_minimum": "Reservada, sin cobro",
     "status-pending_payment": "Pago pendiente",
     "status-confirmed": "Confirmada",
     "status-cancelled": "Cancelada",
@@ -270,6 +274,13 @@
     "notif-cancellation_confirmation": "Confirmación de cancelación",
     "notif-refund_confirmation": "Confirmación de reembolso",
     "notif-overbooked_refunded": "Cupo agotado + reembolso",
+    "notif-guide_assignment": "Asignación de guía",
+    "notif-booking_reserved": "Reserva sin cobro",
+    "notif-departure_cancelled_minimum": "Salida cancelada por mínimo",
+    "notif-charge_failed_action_required_1": "Tarjeta rechazada (aviso 1)",
+    "notif-charge_failed_action_required_2": "Tarjeta rechazada (aviso 2)",
+    "notif-charge_failed_action_required_3": "Tarjeta rechazada (aviso 3)",
+    "notif-charge_requires_action": "Autenticación del cobro",
     "detail-cancel": "Cancelar reserva",
     "cancel-confirm-refund": "Esta reserva tiene derecho a reembolso de {amount}. ¿Confirmás la cancelación?",
     "cancel-confirm-no-refund": "Esta cancelación no tiene reembolso. ¿Confirmás la cancelación?",
@@ -366,6 +377,7 @@
     "status-confirmed": "Confirmada",
     "status-cancelled": "Cancelada",
     "status-refunded": "Reembolsada",
+    "status-pending_minimum": "Reservada, sin cobro",
     "status-pending_payment": "Pago pendiente",
     "status-payment_mismatch": "Pago no coincide",
     "status-overbooked_refunded": "Cupo agotado (reembolsada)",
@@ -411,5 +423,19 @@
     "range-error-missing": "Definí un rango de fechas (desde y hasta).",
     "range-error-inverted": "La fecha 'desde' no puede ser posterior a 'hasta'.",
     "range-error-too-long": "El rango no puede superar un año."
+  },
+  "settings": {
+    "nav-label": "Configuración",
+    "page-title": "Configuración",
+    "section-minimum": "Mínimo de participantes",
+    "field-decision-window": "Ventana de decisión (horas antes de la salida)",
+    "hint-decision-window": "Si una salida no alcanza el mínimo de participantes de su tour, se resuelve esta cantidad de horas antes de empezar: el staff decide si la confirma o la cancela, o se cancela sola si el tour está configurado así. Entre {min} y {max} horas.",
+    "submit": "Guardar",
+    "saved": "Configuración guardada.",
+    "errors": {
+      "settings_unauthorized": "Solo un administrador puede cambiar la configuración.",
+      "settings_window_out_of_range": "Ingresa un número entero de horas entre {min} y {max}.",
+      "settings_update_failed": "No se pudo guardar la configuración. Intenta de nuevo."
+    }
   }
 }
