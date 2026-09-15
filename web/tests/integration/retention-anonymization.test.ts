@@ -182,10 +182,12 @@ describe('anonymize_booking_pii_by_email (PRIV-02)', () => {
       locale: 'es',
       scheduled_for: new Date().toISOString(),
     });
+    // Abandonada como la deja el reconciliador (cancelled + pago failed). Una pending_payment
+    // con el intent `pending` ya no se borra: podría liquidar (spec 0029 §6, migración …044).
     const unpaidId = await makeBooking({
       email,
-      status: 'pending_payment',
-      paymentStatus: 'pending',
+      status: 'cancelled',
+      paymentStatus: 'failed',
     });
 
     const { data, error } = await admin.rpc('anonymize_booking_pii_by_email', {
@@ -312,16 +314,18 @@ describe('retención automática (PRIV-03)', () => {
   });
 
   it('purge_unpaid_bookings borra abandonadas viejas y conserva recientes y payment_mismatch', async () => {
+    // Abandonadas como las deja el reconciliador (cancelled + pago failed). Una pending_payment
+    // con el intent `pending` ya no se purga: podría liquidar (spec 0029 §6, migración …044).
     const oldUnpaid = await makeBooking({
       email: uniqueEmail('old-unpaid'),
-      status: 'pending_payment',
-      paymentStatus: 'pending',
+      status: 'cancelled',
+      paymentStatus: 'failed',
       createdAt: new Date(Date.now() - 400 * DAY_MS).toISOString(),
     });
     const recentUnpaid = await makeBooking({
       email: uniqueEmail('recent-unpaid'),
-      status: 'pending_payment',
-      paymentStatus: 'pending',
+      status: 'cancelled',
+      paymentStatus: 'failed',
     });
     const oldMismatch = await makeBooking({
       email: uniqueEmail('old-mismatch'),

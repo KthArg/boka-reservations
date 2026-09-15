@@ -16,11 +16,14 @@ const admin = createClient<Database>(SUPABASE_URL, SERVICE_KEY);
 const TEST_SLUG = `notif-enqueue-${crypto.randomUUID().slice(0, 8)}`;
 const TWENTY_FIVE_HOURS_MS = 25 * 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+// Justo por debajo del borde de 24 h del recordatorio (…044 exige `starts_at - 24h > now()`).
+const JUST_UNDER_DAY_MS = 24 * 60 * 60 * 1000 - 60 * 1000;
 
 let tourId: string;
 let scheduleId: string;
 let instanceId: string;
 let nearInstanceId: string;
+let edgeInstanceId: string;
 
 beforeAll(async () => {
   await admin.from('tours').delete().eq('slug', TEST_SLUG);
@@ -82,6 +85,20 @@ beforeAll(async () => {
     .select('id')
     .single();
   nearInstanceId = near!.id;
+
+  const edgeStartsAt = new Date(Date.now() + JUST_UNDER_DAY_MS).toISOString();
+  const { data: edge } = await admin
+    .from('tour_instances')
+    .insert({
+      tour_id: tourId,
+      schedule_id: scheduleId,
+      starts_at: edgeStartsAt,
+      ends_at: edgeStartsAt,
+      capacity_total: 5,
+    })
+    .select('id')
+    .single();
+  edgeInstanceId = edge!.id;
 });
 
 afterAll(async () => {
@@ -191,7 +208,9 @@ describe('confirm_booking encola notifications', () => {
     expect(notifs!.every((n) => n.locale === 'en')).toBe(true);
   });
 
-  it('reminder con starts_at en menos de 24h queda con scheduled_for en el pasado', async () => {
+  // Spec 0029 §8 (migración …044): confirmar dentro de las 24 h previas ya no encola un
+  // recordatorio con la hora vencida, que salía de inmediato junto con la confirmación.
+  it('reminder con starts_at en menos de 24h no se encola; la confirmación sí', async () => {
     const { bookingId, externalPaymentId } = await createBookingAndPayment({
       tourInstanceId: nearInstanceId,
       email: 'near@example.com',
@@ -204,13 +223,32 @@ describe('confirm_booking encola notifications', () => {
       p_total_seats: 1,
     });
 
-    const { data: reminder } = await admin
+    const { data: notifs } = await admin
       .from('notifications')
-      .select('scheduled_for')
-      .eq('booking_id', bookingId)
-      .eq('kind', 'reminder_24h')
-      .single();
+      .select('kind')
+      .eq('booking_id', bookingId);
 
-    expect(new Date(reminder!.scheduled_for).getTime()).toBeLessThan(Date.now());
+    expect((notifs ?? []).map((n) => n.kind)).toEqual(['booking_confirmation']);
+  });
+
+  it('reminder con starts_at a un minuto de las 24h no se encola (borde del §8)', async () => {
+    const { bookingId, externalPaymentId } = await createBookingAndPayment({
+      tourInstanceId: edgeInstanceId,
+      email: 'edge@example.com',
+      locale: 'es',
+    });
+
+    await admin.rpc('confirm_booking', {
+      p_booking_id: bookingId,
+      p_external_payment_id: externalPaymentId,
+      p_total_seats: 1,
+    });
+
+    const { data: notifs } = await admin
+      .from('notifications')
+      .select('kind')
+      .eq('booking_id', bookingId);
+
+    expect((notifs ?? []).map((n) => n.kind)).toEqual(['booking_confirmation']);
   });
 });

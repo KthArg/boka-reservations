@@ -934,11 +934,115 @@ export type Database = {
         };
         Returns:
           | 'confirmed'
+          | 'confirmed_unclaimed'
           | 'already_processed'
           | 'late_payment_refunded'
+          | 'late_payment_refund_blocked'
+          | 'duplicate_payment'
           | 'overbooked_refunded'
           | 'payment_mismatch'
           | 'ignored';
+      };
+      create_deferred_booking: {
+        Args: {
+          p_hold_id: string;
+          p_session_token: string;
+          p_customer_name: string;
+          p_customer_email: string;
+          p_locale: string;
+          p_tickets_adult: number;
+          p_tickets_child: number;
+          p_tickets_student: number;
+          p_total_amount_cents: number;
+          p_currency: string;
+          p_consent_version: string;
+          p_payment_method_id: string;
+          p_customer_external_id: string;
+          p_card_brand: string;
+          p_card_last4: string;
+          p_card_exp_month: number;
+          p_card_exp_year: number;
+        };
+        Returns: string;
+      };
+      charge_booking_start: {
+        Args: {
+          p_booking_id: string;
+          p_external_payment_id: string;
+          p_payment_method_id: string;
+          p_actor_id?: string | null;
+        };
+        Returns:
+          | 'started'
+          | 'not_chargeable'
+          | 'departure_unavailable'
+          | 'recovery_expired'
+          | 'retry_too_soon'
+          | 'payment_method_changed'
+          | 'intent_mismatch';
+      };
+      charge_attempt_failed: {
+        Args: {
+          p_booking_id: string;
+          p_external_payment_id: string;
+          p_error_code: string;
+          p_intent_terminal: boolean;
+        };
+        Returns: boolean;
+      };
+      charge_requires_action: {
+        Args: { p_booking_id: string; p_external_payment_id: string };
+        Returns: boolean;
+      };
+      close_pending_payment: {
+        Args: { p_booking_id: string; p_external_payment_id: string };
+        Returns: boolean;
+      };
+      cancel_charge_in_flight: {
+        Args: {
+          p_booking_id: string;
+          p_reason: 'action_expired' | 'recovery_expired' | 'departure_started';
+        };
+        Returns: boolean;
+      };
+      cancel_unpaid_booking: {
+        Args: {
+          p_booking_id: string;
+          p_actor_id: string | null;
+          p_reason: 'customer_request' | 'staff_request' | 'recovery_expired' | 'departure_started';
+        };
+        Returns: 'cancelled' | 'charge_in_flight' | 'not_cancellable';
+      };
+      update_booking_payment_method: {
+        Args: {
+          p_booking_id: string;
+          p_customer_external_id: string;
+          p_payment_method_id: string;
+          p_card_brand: string;
+          p_card_last4: string;
+          p_card_exp_month: number;
+          p_card_exp_year: number;
+        };
+        Returns:
+          | 'updated'
+          | 'not_updatable'
+          | 'customer_mismatch'
+          | 'update_limit_reached'
+          | 'recovery_expired'
+          | 'card_data_invalid'
+          | 'card_expires_before_departure';
+      };
+      mark_payment_provider_closed: {
+        Args: { p_payment_id: string; p_actor_id: string };
+        Returns: boolean;
+      };
+      record_intent_closed: {
+        Args: { p_payment_id: string; p_intent_status: 'canceled' | 'failed' | 'not_found' };
+        Returns: boolean;
+      };
+      record_customer_cleaned: {
+        Args: { p_hold_id: string; p_detached_count: number };
+        Returns: boolean;
       };
       cancel_booking: {
         Args: {
