@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NotificationRow } from './repository.js';
 import type { PreparedEmail } from './types.js';
 import { loadBookingForNotification, loadLatestRefund } from './repository.js';
+import { loadChargeSummary } from './deferred-repository.js';
 import { bookingViewUrl, localizedTourName } from './prepare.js';
 import { renderCancellationConfirmation } from './templates/cancellation-confirmation.js';
 import { renderRefundConfirmation } from './templates/refund-confirmation.js';
@@ -24,6 +25,8 @@ export async function prepareCancellationEmail(
   if (!booking) return { ok: false, reason: 'booking-not-found' };
 
   const refund = await loadLatestRefund(db, booking.id);
+  // Spec 0029 §5.8: una reserva diferida cancelada antes del cobro no "pierde el reembolso".
+  const charge = await loadChargeSummary(db, booking.id);
   const expiresAt = new Date(Date.now() + POST_CANCELLATION_TOKEN_TTL_MS).toISOString();
   const url = await bookingViewUrl(db, booking, notif.locale, appUrl, expiresAt);
 
@@ -35,6 +38,7 @@ export async function prepareCancellationEmail(
       hasRefund: refund !== null,
       refundAmountCents: refund?.amountCents ?? 0,
       currency: refund?.currency ?? booking.currency,
+      noCharge: charge.deferred && !charge.charged,
       bookingUrl: url,
     },
     notif.locale,

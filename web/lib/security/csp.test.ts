@@ -57,6 +57,8 @@ describe('buildCsp — paridad de directivas con la CSP previa (sin pérdida)', 
     expect(connectSrc).toContain('wss://abcxyz.supabase.co');
     expect(connectSrc).toContain('https://sdk.onvopay.com');
     expect(connectSrc).toContain('https://api.onvopay.com');
+    // Librería del 3DS del cobro diferido (spec 0029 §5.7).
+    expect(connectSrc).toContain('https://js.onvopay.com');
     expect(connectSrc).toContain('https://*.sentry.io');
   });
 

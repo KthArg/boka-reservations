@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { getTourBySlug, getTourPricing, getUpcomingInstances } from '@/lib/public/tours';
+import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { CheckoutForm } from '@/components/public/CheckoutForm/CheckoutForm';
+import { DeferredCheckoutForm } from '@/components/public/CheckoutForm/DeferredCheckoutForm';
 import styles from './checkout.module.css';
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ instance?: string }> };
@@ -56,7 +58,12 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
           </p>
         </div>
       </header>
-      <CheckoutForm instanceId={instanceId} pricing={pricing} />
+      {/* Spec 0029: con el flag, reserva sin cargo y cobro al confirmarse la salida. */}
+      {isDeferredChargeEnabled() ? (
+        <DeferredCheckoutForm instanceId={instanceId} pricing={pricing} />
+      ) : (
+        <CheckoutForm instanceId={instanceId} pricing={pricing} />
+      )}
     </div>
   );
 }

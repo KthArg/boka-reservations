@@ -1,15 +1,11 @@
 import { getTranslations, getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
-import { formatMoneyCents } from '@/lib/format/money';
-import { BookingStatus } from '@shared/constants/enums';
 import { RefundStatus } from '@shared/constants/refunds';
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
-import { computeRefund } from '@shared/constants/policies';
 import type { AdminBookingDetail } from '@/lib/booking/admin-types';
-import { CheckInButton } from '../CheckInButton';
-import { CancelBookingButton } from '../CancelBookingButton';
 import { RetryRefundButton } from '../RetryRefundButton';
+import { BookingDetailActions } from './BookingDetailActions';
 import styles from '../bookings.module.css';
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -28,16 +24,6 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
   const created = formatOperatorDateTime(booking.createdAt);
   const amount = (booking.totalAmountCents / CENTS_PER_UNIT).toFixed(2);
 
-  const isConfirmed = booking.status === BookingStatus.Confirmed;
-  const refundPreview = computeRefund({
-    startsAt: new Date(booking.startsAt),
-    totalAmountCents: booking.totalAmountCents,
-    now: new Date(),
-  });
-  const refundAmountLabel = refundPreview.eligible
-    ? formatMoneyCents(refundPreview.amountCents, booking.currency, locale)
-    : null;
-
   return (
     <div className={styles.page}>
       <Link href="/dashboard/bookings" className={styles.backLink}>
@@ -45,14 +31,7 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
       </Link>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('detail-title')}</h1>
-        <div className={styles.headerActions}>
-          {isConfirmed ? (
-            <CheckInButton bookingId={booking.id} checkedIn={booking.checkedInAt !== null} />
-          ) : null}
-          {isConfirmed ? (
-            <CancelBookingButton bookingId={booking.id} refundAmount={refundAmountLabel} />
-          ) : null}
-        </div>
+        <BookingDetailActions booking={booking} locale={locale} />
       </div>
 
       <div className={styles.detailGrid}>
@@ -70,6 +49,15 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
           value={booking.paymentStatus ? t(`payment-${booking.paymentStatus}`) : t('payment-none')}
         />
         <Row label={t('detail-provider')} value={booking.paymentProvider ?? '—'} />
+        {booking.cardLast4 ? (
+          <Row
+            label={t('detail-card')}
+            value={t('detail-card-value', { last4: booking.cardLast4 })}
+          />
+        ) : null}
+        {booking.hasSavedCard ? (
+          <Row label={t('detail-charge-attempts')} value={String(booking.chargeAttempts)} />
+        ) : null}
         <Row
           label={t('detail-checkin')}
           value={booking.checkedInAt ? `${checkIn.date} ${checkIn.time}` : t('checkin-no')}

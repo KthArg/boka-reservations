@@ -32,6 +32,8 @@ export async function deleteToursDeep(admin: SupabaseClient, tourIds: string[]):
 
     await admin.from('bookings').delete().in('tour_instance_id', instanceIds);
     await admin.from('tour_instance_guides').delete().in('tour_instance_id', instanceIds);
+    // Holds después de las reservas (bookings.hold_id → tour_holds) y antes de las salidas.
+    await admin.from('tour_holds').delete().in('tour_instance_id', instanceIds);
   }
 
   // Hijos directos de tours + el tour.

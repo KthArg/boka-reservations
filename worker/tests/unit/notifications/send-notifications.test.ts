@@ -27,6 +27,7 @@ const repoMocks = vi.hoisted(() => ({
   markSent: vi.fn(),
   markFailed: vi.fn(),
   handleTransient: vi.fn(),
+  postponeNotification: vi.fn(),
 }));
 vi.mock('../../../src/notifications/repository.js', () => repoMocks);
 const {
@@ -94,6 +95,23 @@ describe('sendNotifications', () => {
   });
 
   afterEach(() => vi.restoreAllMocks());
+
+  it('pospone (sin cancelar ni enviar) un kind que este worker todavía no sabe enviar (spec 0029)', async () => {
+    fetchPending.mockResolvedValue([{ ...notif, kind: 'departure_cancelled_minimum' }]);
+    const before = Date.now();
+
+    await sendNotifications();
+
+    expect(adapterSend).not.toHaveBeenCalled();
+    expect(cancelNotification).not.toHaveBeenCalled();
+    expect(repoMocks.postponeNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      'notif-1',
+      expect.any(String),
+    );
+    const until = new Date(repoMocks.postponeNotification.mock.calls[0]![2] as string).getTime();
+    expect(until).toBeGreaterThan(before);
+  });
 
   it('despacha y marca sent cuando el adapter responde OK', async () => {
     adapterSend.mockResolvedValue({ providerMessageId: 'msg-123' });

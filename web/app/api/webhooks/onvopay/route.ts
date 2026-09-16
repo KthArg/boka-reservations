@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
-import { ConfirmBookingOutcome } from '@shared/constants/enums';
 import { getPaymentProvider } from '@/lib/payments';
+import { webhookOutcomeAlert, type OutcomeAlert } from '@/lib/payments/webhook-outcome-alert';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 
 /** Alerta agregada a Sentry (una issue por fingerprint), con el booking afectado. */
-function alert(message: string, fingerprint: string, bookingId: string, extra?: string): void {
+function alert(
+  message: string,
+  fingerprint: string,
+  bookingId: string,
+  extra?: string,
+  level: OutcomeAlert['level'] = 'warning',
+): void {
   Sentry.withScope((scope) => {
-    scope.setLevel('warning');
+    scope.setLevel(level);
     scope.setFingerprint([fingerprint]);
     scope.setExtra('bookingId', bookingId);
     if (extra) scope.setExtra('detail', extra);
@@ -99,25 +105,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Alertas según el outcome (spec 0028; reemplaza la re-lectura del status previa).
-  if (outcome === ConfirmBookingOutcome.OverbookedRefunded) {
+  const outcomeAlert = webhookOutcomeAlert(outcome);
+  if (outcomeAlert) {
     alert(
-      '[webhook] cupo agotado al confirmar: reserva auto-reembolsada',
-      'booking-overbooked-refunded',
+      outcomeAlert.message,
+      outcomeAlert.fingerprint,
       payment.booking_id,
-    );
-  } else if (outcome === ConfirmBookingOutcome.LatePaymentRefunded) {
-    // Pago tardío sobre una reserva cancelada (p. ej. staleness): la RPC ya encoló el
-    // refund total. Se alerta para que el operador sepa que hubo un cobro sin reserva.
-    alert(
-      '[webhook] pago tardío sobre reserva cancelada: refund total encolado',
-      'webhook-late-payment-refunded',
-      payment.booking_id,
-    );
-  } else if (outcome === ConfirmBookingOutcome.Ignored) {
-    alert(
-      '[webhook] pago recibido en estado no accionable: revisión manual',
-      'webhook-ignored-status',
-      payment.booking_id,
+      outcome ?? undefined,
+      outcomeAlert.level,
     );
   }
 

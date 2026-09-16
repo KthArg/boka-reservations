@@ -7,6 +7,25 @@ import styles from './success.module.css';
 
 type Props = { searchParams: Promise<{ booking?: string }> };
 
+// Título y cuerpo por estado de la reserva; cualquier otro estado ve el mensaje neutro.
+const SUCCESS_COPY = {
+  [BookingStatus.Confirmed]: { title: 'success-title', body: null },
+  [BookingStatus.PendingMinimum]: {
+    title: 'success-reserved-title',
+    body: 'success-reserved-body',
+  },
+  [BookingStatus.PendingPayment]: {
+    title: 'success-processing-title',
+    body: 'success-processing-body',
+  },
+} as const;
+
+const NEUTRAL_COPY = { title: 'success-neutral-title', body: 'success-neutral-body' } as const;
+
+function successCopy(status: string | undefined) {
+  return SUCCESS_COPY[status as keyof typeof SUCCESS_COPY] ?? NEUTRAL_COPY;
+}
+
 type SuccessBooking = {
   id: string;
   customer_email: string;
@@ -63,19 +82,17 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   // cualquier otro estado (cancelada, mismatch, URL vieja del historial) un mensaje
   // neutro — antes cualquier UUID renderizaba la confirmación.
   const isConfirmed = booking?.status === BookingStatus.Confirmed;
-  const isProcessing = booking?.status === BookingStatus.PendingPayment;
-  const title = isConfirmed
-    ? t('success-title')
-    : isProcessing
-      ? t('success-processing-title')
-      : t('success-neutral-title');
+  // Cobro diferido (spec 0029): la reserva queda registrada con la tarjeta guardada y sin cobro.
+  const isReserved = booking?.status === BookingStatus.PendingMinimum;
+  const copy = successCopy(booking?.status);
+  const title = t(copy.title);
+  const body = copy.body ? t(copy.body) : null;
 
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>{title}</h1>
-      {isProcessing && <p className={styles.body}>{t('success-processing-body')}</p>}
-      {!isConfirmed && !isProcessing && <p className={styles.body}>{t('success-neutral-body')}</p>}
-      {booking && isConfirmed ? (
+      {body && <p className={styles.body}>{body}</p>}
+      {booking && (isConfirmed || isReserved) ? (
         <div className={styles.card}>
           <p>
             <strong>{t('success-booking')}</strong>

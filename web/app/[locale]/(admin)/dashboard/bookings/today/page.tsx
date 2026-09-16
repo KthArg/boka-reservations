@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { listTodayInstances } from '@/lib/booking/admin-detail';
+import { listTodayInstances } from '@/lib/booking/admin-today';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import styles from '../bookings.module.css';
 
