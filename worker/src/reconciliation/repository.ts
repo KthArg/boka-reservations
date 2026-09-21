@@ -2,6 +2,25 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const PENDING_PAYMENT_STATUS = 'pending_payment';
 
+/** Outcome de la RPC confirm_booking (spec 0028). Espejo de
+ *  shared/constants/enums.ts (el worker es self-contained: no importa @shared). */
+export const ConfirmOutcome = {
+  Confirmed: 'confirmed',
+  /** Reserva diferida confirmada sin cobro iniciado (spec 0029 §5.3). */
+  ConfirmedUnclaimed: 'confirmed_unclaimed',
+  AlreadyProcessed: 'already_processed',
+  LatePaymentRefunded: 'late_payment_refunded',
+  /** Pago tardío con otro refund activo: no vuelve solo (spec 0029). */
+  LatePaymentRefundBlocked: 'late_payment_refund_blocked',
+  /** Segundo intent cobrado sobre una reserva ya resuelta (spec 0029 §5.6). */
+  DuplicatePayment: 'duplicate_payment',
+  OverbookedRefunded: 'overbooked_refunded',
+  PaymentMismatch: 'payment_mismatch',
+  Ignored: 'ignored',
+} as const;
+
+export type ConfirmOutcomeValue = (typeof ConfirmOutcome)[keyof typeof ConfirmOutcome];
+
 export type StalePendingBooking = {
   id: string;
   tour_instance_id: string;
@@ -37,6 +56,9 @@ export async function fetchStalePendingBookings(
       'id, tour_instance_id, tickets_adult, tickets_child, tickets_student, created_at, payments(external_payment_id, status, created_at, amount_cents, currency)',
     )
     .eq('status', PENDING_PAYMENT_STATUS)
+    // Un cobro diferido en vuelo es de watch-charges, no del reconciliador (spec 0029 §5.4).
+    // La función SQL también lo gatea bajo lock; esto solo evita traerlo.
+    .is('charge_started_at', null)
     .lt('created_at', olderThanIso)
     .order('created_at', { ascending: true })
     .order('created_at', { referencedTable: 'payments', ascending: false })
@@ -45,23 +67,6 @@ export async function fetchStalePendingBookings(
 
   if (error) throw new Error(`fetch stale pending bookings: ${error.message}`);
   return data ?? [];
-}
-
-/**
- * Estado actual de una reserva, para detectar el camino de sobreventa tras una recuperación
- * (spec 0025): si quedó en `overbooked_refunded`, el cupo se agotó al confirmar. Devuelve null
- * si no se puede leer (no se alerta en ese caso).
- */
-export async function fetchBookingStatus(
-  db: SupabaseClient,
-  bookingId: string,
-): Promise<string | null> {
-  const { data } = await db
-    .from('bookings')
-    .select('status')
-    .eq('id', bookingId)
-    .maybeSingle<{ status: string }>();
-  return data?.status ?? null;
 }
 
 /**
@@ -84,30 +89,31 @@ export async function cancelStaleBooking(
 
 /**
  * Recupera una reserva pagada cuyo webhook se perdió, reusando la MISMA RPC que
- * el webhook (`confirm_booking`). El llamador calcula los asientos, igual que el
- * handler del webhook. Idempotente: si ya está confirmada, no hace nada.
+ * el webhook (`confirm_booking`). Devuelve el outcome de la RPC (spec 0028) para
+ * que el job alerte según lo que realmente pasó — reemplaza la re-lectura del
+ * status. Los asientos los deriva la RPC de la propia reserva (p_total_seats
+ * quedó deprecated y ya no se envía). Idempotente por estado.
  *
  * Pasa el monto/moneda pagados al guard de payment_mismatch interno de confirm_booking
  * (spec 0026, defensa en profundidad). `recover()` ya valida el monto antes de llegar acá:
  * pasarlos es redundante pero inofensivo. Sigue llamando SIN p_event_id (la idempotencia en
- * este camino la da el guard por estado del booking, no processed_webhook_events).
+ * este camino la da el guard por estado + el índice único de refund activo).
  */
 export async function confirmRecoveredBooking(
   db: SupabaseClient,
   bookingId: string,
   externalPaymentId: string,
-  totalSeats: number,
   paidAmountCents: number,
   paidCurrency: string,
-): Promise<void> {
-  const { error } = await db.rpc('confirm_booking', {
+): Promise<ConfirmOutcomeValue | null> {
+  const { data, error } = (await db.rpc('confirm_booking', {
     p_booking_id: bookingId,
     p_external_payment_id: externalPaymentId,
-    p_total_seats: totalSeats,
     p_paid_amount_cents: paidAmountCents,
     p_paid_currency: paidCurrency,
-  });
+  })) as { data: ConfirmOutcomeValue | null; error: { message: string } | null };
   if (error) throw new Error(`confirm recovered booking: ${error.message}`);
+  return data ?? null;
 }
 
 /**

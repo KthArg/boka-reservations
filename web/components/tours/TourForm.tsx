@@ -14,6 +14,7 @@ import type {
   TourWithDetails,
 } from '@/lib/tours/types';
 import TourBasicInfoSection from './TourBasicInfoSection';
+import TourMinimumPolicyField from './TourMinimumPolicyField';
 import PricingEditor from './PricingEditor';
 import ScheduleEditor from './ScheduleEditor';
 import styles from './TourForm.module.css';
@@ -55,7 +56,13 @@ export default function TourForm({ defaultValues }: Props) {
     action,
     null,
   );
-  const errors = (state?.success === false ? state.errors : EMPTY_ERRORS) as FieldErrors;
+  const rawErrors = (state?.success === false ? state.errors : EMPTY_ERRORS) as FieldErrors;
+  // Las actions devuelven CÓDIGOS (`tour_*`, spec 0028); acá se traducen. Los mensajes
+  // de Zod (validación por campo) siguen siendo texto y se muestran tal cual.
+  const translate = (msg: string) => (msg.startsWith('tour_') ? t(`errors.${msg}`) : msg);
+  const errors = Object.fromEntries(
+    Object.entries(rawErrors).map(([field, msgs]) => [field, msgs?.map(translate)]),
+  ) as FieldErrors;
 
   const [pricing, setPricing] = useState<PricingRow[]>(
     defaultValues ? toPricingRows(defaultValues.pricing) : [],
@@ -85,6 +92,7 @@ export default function TourForm({ defaultValues }: Props) {
   }));
   const setBasicField = (name: keyof TourBasicValues, value: string) =>
     setBasic((b) => ({ ...b, [name]: value }));
+  const [autoCancel, setAutoCancel] = useState(defaultValues?.auto_cancel_below_minimum ?? false);
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -108,6 +116,7 @@ export default function TourForm({ defaultValues }: Props) {
       ))}
 
       <TourBasicInfoSection values={basic} onChange={setBasicField} errors={errors} />
+      <TourMinimumPolicyField checked={autoCancel} onChange={setAutoCancel} />
       <PricingEditor
         value={pricing}
         onChange={setPricing}

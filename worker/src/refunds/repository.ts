@@ -12,6 +12,9 @@ export type RefundRow = {
   status: 'pending' | 'processing' | 'succeeded' | 'failed';
   attempts: number;
   created_at: string;
+  // Lo refresca el trigger de updated_at en cada claim/release; base del backoff 1/5/30
+  // de los reintentos de creación (spec 0028).
+  updated_at: string;
 };
 
 /** Reembolsos activos (encolados o en proceso) que el job debe atender. */
@@ -19,7 +22,7 @@ export async function fetchActiveRefunds(db: SupabaseClient): Promise<RefundRow[
   const { data, error } = await db
     .from('refunds')
     .select(
-      'id, booking_id, payment_id, external_refund_id, amount_cents, currency, status, attempts, created_at',
+      'id, booking_id, payment_id, external_refund_id, amount_cents, currency, status, attempts, created_at, updated_at',
     )
     .in('status', ['pending', 'processing'])
     .order('created_at', { ascending: true })
@@ -60,7 +63,8 @@ export async function releaseClaim(
   id: string,
   attempts: number,
 ): Promise<void> {
-  await db.from('refunds').update({ status: 'pending', attempts }).eq('id', id);
+  const { error } = await db.from('refunds').update({ status: 'pending', attempts }).eq('id', id);
+  if (error) throw new Error(`release claim: ${error.message}`);
 }
 
 export async function loadPaymentIntentId(
@@ -75,32 +79,40 @@ export async function loadPaymentIntentId(
   return data?.external_payment_id ?? null;
 }
 
-/** Marca el refund como en proceso tras crearlo en OnvoPay. */
+/**
+ * Marca el refund como en proceso tras crearlo en OnvoPay. Lanza si el UPDATE
+ * falla (spec 0028): perder el external_refund_id en silencio es el combustible
+ * del doble reembolso; el job alerta con el id en el mensaje.
+ */
 export async function markProcessing(
   db: SupabaseClient,
   id: string,
   externalRefundId: string,
   attempts: number,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('refunds')
     .update({ status: 'processing', external_refund_id: externalRefundId, attempts })
     .eq('id', id);
+  if (error) throw new Error(`mark processing: ${error.message}`);
 }
 
+// Best-effort: un fallo del audit no debe abortar el manejo del refund (el estado ya
+// cambió); se loggea en su lugar (spec 0028: cero escrituras con error ignorado).
 async function writeAudit(
   db: SupabaseClient,
   action: string,
   bookingId: string,
   metadata: Record<string, unknown>,
 ): Promise<void> {
-  await db.from('audit_logs').insert({
+  const { error } = await db.from('audit_logs').insert({
     actor_type: 'system',
     action,
     entity_type: 'booking',
     entity_id: bookingId,
     metadata,
   });
+  if (error) console.error('[refunds] audit falló (no aborta):', error.message);
 }
 
 /**
@@ -121,9 +133,10 @@ export async function markFailed(
   failureReason: string,
   attempts: number,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('refunds')
     .update({ status: 'failed', failure_reason: failureReason, attempts })
     .eq('id', refund.id);
+  if (error) throw new Error(`mark failed: ${error.message}`);
   await writeAudit(db, 'refund.failed', refund.booking_id, { reason: failureReason });
 }

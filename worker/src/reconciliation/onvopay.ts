@@ -4,7 +4,9 @@
 // Vetting 2026-06-07: GET /v1/payment-intents/:id sobre api.onvopay.com/v1.
 // Estados (doc oficial): requires_payment_method, requires_action, processing,
 // succeeded, canceled.
-const ONVOPAY_API_BASE = 'https://api.onvopay.com/v1';
+// Default de producción; el job pasa env.ONVOPAY_API_BASE_URL (spec 0028, A6) para poder
+// apuntar al sandbox sin editar código. El cliente queda libre de imports de env (testeable).
+const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
 // Timeout defensivo: sin esto una conexión colgada de OnvoPay bloquea el ciclo
 // del job y el setInterval del worker apila ciclos solapados.
 const HTTP_TIMEOUT_MS = 15_000;
@@ -47,7 +49,10 @@ function mapOutcome(status: string): PaymentIntentOutcome {
   return STATUS_OUTCOME[status] ?? PaymentIntentOutcome.Pending;
 }
 
-export function createOnvopayPaymentIntentClient(secretKey: string) {
+export function createOnvopayPaymentIntentClient(
+  secretKey: string,
+  baseUrl = ONVOPAY_API_BASE_DEFAULT,
+) {
   const headers = {
     Authorization: `Bearer ${secretKey}`,
     'Content-Type': 'application/json',
@@ -55,7 +60,7 @@ export function createOnvopayPaymentIntentClient(secretKey: string) {
 
   return {
     async getPaymentIntent(externalPaymentId: string): Promise<PaymentIntentResult> {
-      const res = await fetch(`${ONVOPAY_API_BASE}/payment-intents/${externalPaymentId}`, {
+      const res = await fetch(`${baseUrl}/payment-intents/${externalPaymentId}`, {
         headers,
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });

@@ -52,6 +52,11 @@ export function renderForKind(
     );
   }
 
+  // Sin caída por defecto (spec 0029): solo la confirmación y el recordatorio usan esta plantilla.
+  if (kind !== 'reminder_24h') {
+    throw new Error(`renderForKind: ${kind} no tiene plantilla de reserva confirmada`);
+  }
+
   return renderReminder24h(
     {
       customerName: booking.customer_name,

@@ -41,6 +41,8 @@ export function parseTourFields(formData: FormData): Record<string, unknown> {
     includes_en: formData.get('includes_en'),
     min_participants: formData.get('min_participants'),
     max_capacity: formData.get('max_capacity'),
+    // Checkbox: el navegador solo envía el campo cuando está marcado.
+    auto_cancel_below_minimum: formData.get('auto_cancel_below_minimum') !== null,
     cover_image_url: formData.get('cover_image_url'),
     pricing: parsePricing(formData),
     schedules: parseSchedules(formData),

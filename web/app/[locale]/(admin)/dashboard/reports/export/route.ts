@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAnyRole } from '@/lib/auth/server';
 import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
-import { ReportKind } from '@shared/constants/reports';
+import { ReportKind, REPORT_UNKNOWN_ERROR } from '@shared/constants/reports';
 import { validateReportRange, type ReportRange } from '@/lib/reports/range';
 import { getRevenueReport, getOccupancyReport, getRefundsSummary } from '@/lib/reports/queries';
 import { revenueToCsv, occupancyToCsv, refundsSummaryToCsv } from '@/lib/reports/csv';
@@ -34,13 +34,15 @@ export async function GET(request: Request, { params }: RouteContext): Promise<N
   const from = sp.get('from') ?? undefined;
   const to = sp.get('to') ?? undefined;
 
-  if (validateReportRange(from, to)) {
-    return new NextResponse('Rango de fechas inválido.', { status: 400 });
+  // Los 400 devuelven el CÓDIGO estable, no un mensaje en español (spec 0028, B13).
+  const rangeError = validateReportRange(from, to);
+  if (rangeError) {
+    return new NextResponse(rangeError, { status: 400 });
   }
   const range: ReportRange = { from: from as string, to: to as string };
 
   const result = await buildCsv(sp.get('report') ?? '', range, locale);
-  if (!result) return new NextResponse('Reporte desconocido.', { status: 400 });
+  if (!result) return new NextResponse(REPORT_UNKNOWN_ERROR, { status: 400 });
 
   const [csv, name] = result;
   const filename = `${name}-${range.from}_${range.to}.csv`;

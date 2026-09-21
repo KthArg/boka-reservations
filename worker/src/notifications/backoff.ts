@@ -15,6 +15,11 @@ export function nextScheduledFor(currentAttempts: number, now: Date = new Date()
   return new Date(now.getTime() + delay);
 }
 
+/**
+ * Terminal recién DESPUÉS de agotar los 3 reintentos (1, 5 y 30 min): con
+ * `>= MAX_ATTEMPTS` el tercer reintento (el de 30 min) era inalcanzable y la
+ * tolerancia real a una caída del provider era ~6 min (fix del spec 0028).
+ */
 export function isTerminalAfter(attemptsAfterThisFailure: number): boolean {
-  return attemptsAfterThisFailure >= MAX_ATTEMPTS;
+  return attemptsAfterThisFailure > MAX_ATTEMPTS;
 }

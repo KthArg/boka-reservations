@@ -211,6 +211,7 @@ export type Database = {
           includes_es: string;
           includes_en: string;
           min_participants: number;
+          auto_cancel_below_minimum: boolean;
           max_capacity: number;
           cover_image_url: string | null;
           status: 'active' | 'archived';
@@ -231,6 +232,7 @@ export type Database = {
           includes_es: string;
           includes_en: string;
           min_participants?: number;
+          auto_cancel_below_minimum?: boolean;
           max_capacity: number;
           cover_image_url?: string | null;
           status?: 'active' | 'archived';
@@ -251,6 +253,7 @@ export type Database = {
           includes_es?: string;
           includes_en?: string;
           min_participants?: number;
+          auto_cancel_below_minimum?: boolean;
           max_capacity?: number;
           cover_image_url?: string | null;
           status?: 'active' | 'archived';
@@ -363,6 +366,18 @@ export type Database = {
           capacity_total: number;
           capacity_reserved: number;
           status: 'available' | 'full' | 'cancelled';
+          minimum_charge_triggered_at: string | null;
+          staff_decision_required_at: string | null;
+          minimum_resolved_at: string | null;
+          minimum_resolved_by: string | null;
+          minimum_resolution:
+            | 'reached'
+            | 'staff_confirmed'
+            | 'staff_cancelled'
+            | 'auto_cancelled'
+            | null;
+          min_participants_at_trigger: number | null;
+          seats_at_trigger: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -375,6 +390,18 @@ export type Database = {
           capacity_total: number;
           capacity_reserved?: number;
           status?: 'available' | 'full' | 'cancelled';
+          minimum_charge_triggered_at?: string | null;
+          staff_decision_required_at?: string | null;
+          minimum_resolved_at?: string | null;
+          minimum_resolved_by?: string | null;
+          minimum_resolution?:
+            | 'reached'
+            | 'staff_confirmed'
+            | 'staff_cancelled'
+            | 'auto_cancelled'
+            | null;
+          min_participants_at_trigger?: number | null;
+          seats_at_trigger?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -387,6 +414,18 @@ export type Database = {
           capacity_total?: number;
           capacity_reserved?: number;
           status?: 'available' | 'full' | 'cancelled';
+          minimum_charge_triggered_at?: string | null;
+          staff_decision_required_at?: string | null;
+          minimum_resolved_at?: string | null;
+          minimum_resolved_by?: string | null;
+          minimum_resolution?:
+            | 'reached'
+            | 'staff_confirmed'
+            | 'staff_cancelled'
+            | 'auto_cancelled'
+            | null;
+          min_participants_at_trigger?: number | null;
+          seats_at_trigger?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -405,6 +444,13 @@ export type Database = {
             referencedRelation: 'tour_schedules';
             referencedColumns: ['id'];
           },
+          {
+            foreignKeyName: 'tour_instances_minimum_resolved_by_fkey';
+            columns: ['minimum_resolved_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
         ];
       };
       tour_holds: {
@@ -415,6 +461,8 @@ export type Database = {
           held_seats: number;
           status: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at: string;
+          customer_external_id: string | null;
+          customer_cleaned_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -424,6 +472,8 @@ export type Database = {
           held_seats: number;
           status?: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at?: string;
+          customer_external_id?: string | null;
+          customer_cleaned_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -433,6 +483,8 @@ export type Database = {
           held_seats?: number;
           status?: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at?: string;
+          customer_external_id?: string | null;
+          customer_cleaned_at?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -458,6 +510,7 @@ export type Database = {
           total_amount_cents: number;
           currency: string;
           status:
+            | 'pending_minimum'
             | 'pending_payment'
             | 'confirmed'
             | 'cancelled'
@@ -470,6 +523,18 @@ export type Database = {
           consent_at: string | null;
           consent_version: string | null;
           anonymized_at: string | null;
+          payment_method_id: string | null;
+          customer_external_id: string | null;
+          card_brand: string | null;
+          card_last4: string | null;
+          card_exp_month: number | null;
+          card_exp_year: number | null;
+          charge_attempts: number;
+          charge_next_attempt_at: string | null;
+          charge_started_at: string | null;
+          charge_last_error: string | null;
+          awaiting_action_until: string | null;
+          recovery_deadline: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -485,6 +550,7 @@ export type Database = {
           total_amount_cents: number;
           currency?: string;
           status?:
+            | 'pending_minimum'
             | 'pending_payment'
             | 'confirmed'
             | 'cancelled'
@@ -497,6 +563,18 @@ export type Database = {
           consent_at?: string | null;
           consent_version?: string | null;
           anonymized_at?: string | null;
+          payment_method_id?: string | null;
+          customer_external_id?: string | null;
+          card_brand?: string | null;
+          card_last4?: string | null;
+          card_exp_month?: number | null;
+          card_exp_year?: number | null;
+          charge_attempts?: number;
+          charge_next_attempt_at?: string | null;
+          charge_started_at?: string | null;
+          charge_last_error?: string | null;
+          awaiting_action_until?: string | null;
+          recovery_deadline?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -512,6 +590,7 @@ export type Database = {
           total_amount_cents?: number;
           currency?: string;
           status?:
+            | 'pending_minimum'
             | 'pending_payment'
             | 'confirmed'
             | 'cancelled'
@@ -524,6 +603,18 @@ export type Database = {
           consent_at?: string | null;
           consent_version?: string | null;
           anonymized_at?: string | null;
+          payment_method_id?: string | null;
+          customer_external_id?: string | null;
+          card_brand?: string | null;
+          card_last4?: string | null;
+          card_exp_month?: number | null;
+          card_exp_year?: number | null;
+          charge_attempts?: number;
+          charge_next_attempt_at?: string | null;
+          charge_started_at?: string | null;
+          charge_last_error?: string | null;
+          awaiting_action_until?: string | null;
+          recovery_deadline?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -546,6 +637,8 @@ export type Database = {
           amount_cents: number;
           currency: string;
           status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          failed_at: string | null;
+          provider_closed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -557,6 +650,8 @@ export type Database = {
           amount_cents: number;
           currency?: string;
           status?: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          failed_at?: string | null;
+          provider_closed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -568,6 +663,8 @@ export type Database = {
           amount_cents?: number;
           currency?: string;
           status?: 'pending' | 'succeeded' | 'failed' | 'refunded';
+          failed_at?: string | null;
+          provider_closed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -599,7 +696,13 @@ export type Database = {
             | 'guide_assignment'
             | 'cancellation_confirmation'
             | 'refund_confirmation'
-            | 'overbooked_refunded';
+            | 'overbooked_refunded'
+            | 'booking_reserved'
+            | 'departure_cancelled_minimum'
+            | 'charge_failed_action_required_1'
+            | 'charge_failed_action_required_2'
+            | 'charge_failed_action_required_3'
+            | 'charge_requires_action';
           channel: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
@@ -625,7 +728,13 @@ export type Database = {
             | 'guide_assignment'
             | 'cancellation_confirmation'
             | 'refund_confirmation'
-            | 'overbooked_refunded';
+            | 'overbooked_refunded'
+            | 'booking_reserved'
+            | 'departure_cancelled_minimum'
+            | 'charge_failed_action_required_1'
+            | 'charge_failed_action_required_2'
+            | 'charge_failed_action_required_3'
+            | 'charge_requires_action';
           channel?: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
@@ -651,7 +760,13 @@ export type Database = {
             | 'guide_assignment'
             | 'cancellation_confirmation'
             | 'refund_confirmation'
-            | 'overbooked_refunded';
+            | 'overbooked_refunded'
+            | 'booking_reserved'
+            | 'departure_cancelled_minimum'
+            | 'charge_failed_action_required_1'
+            | 'charge_failed_action_required_2'
+            | 'charge_failed_action_required_3'
+            | 'charge_requires_action';
           channel?: 'email';
           recipient_email?: string;
           locale?: 'es' | 'en';
@@ -684,6 +799,35 @@ export type Database = {
           {
             foreignKeyName: 'notifications_guide_id_fkey';
             columns: ['guide_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      business_settings: {
+        Row: {
+          id: number;
+          minimum_decision_window_hours: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: number;
+          minimum_decision_window_hours?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: number;
+          minimum_decision_window_hours?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'business_settings_updated_by_fkey';
+            columns: ['updated_by'];
             isOneToOne: false;
             referencedRelation: 'users';
             referencedColumns: ['id'];
@@ -773,6 +917,8 @@ export type Database = {
           held_seats: number;
           status: 'active' | 'released' | 'expired' | 'converted' | 'paying';
           expires_at: string;
+          customer_external_id: string | null;
+          customer_cleaned_at: string | null;
           created_at: string;
         };
       };
@@ -780,12 +926,124 @@ export type Database = {
         Args: {
           p_booking_id: string;
           p_external_payment_id: string;
-          p_total_seats: number;
+          /** DEPRECATED (spec 0028): la RPC deriva los asientos de la reserva; se ignora. */
+          p_total_seats?: number | null;
           p_event_id?: string | null;
           p_paid_amount_cents?: number | null;
           p_paid_currency?: string | null;
         };
-        Returns: void;
+        Returns:
+          | 'confirmed'
+          | 'confirmed_unclaimed'
+          | 'already_processed'
+          | 'late_payment_refunded'
+          | 'late_payment_refund_blocked'
+          | 'duplicate_payment'
+          | 'overbooked_refunded'
+          | 'payment_mismatch'
+          | 'ignored';
+      };
+      create_deferred_booking: {
+        Args: {
+          p_hold_id: string;
+          p_session_token: string;
+          p_customer_name: string;
+          p_customer_email: string;
+          p_locale: string;
+          p_tickets_adult: number;
+          p_tickets_child: number;
+          p_tickets_student: number;
+          p_total_amount_cents: number;
+          p_currency: string;
+          p_consent_version: string;
+          p_payment_method_id: string;
+          p_customer_external_id: string;
+          p_card_brand: string | null;
+          p_card_last4: string;
+          p_card_exp_month: number;
+          p_card_exp_year: number;
+        };
+        Returns: string;
+      };
+      charge_booking_start: {
+        Args: {
+          p_booking_id: string;
+          p_external_payment_id: string;
+          p_payment_method_id: string;
+          p_actor_id?: string | null;
+        };
+        Returns:
+          | 'started'
+          | 'not_chargeable'
+          | 'departure_unavailable'
+          | 'recovery_expired'
+          | 'retry_too_soon'
+          | 'payment_method_changed'
+          | 'intent_mismatch';
+      };
+      charge_attempt_failed: {
+        Args: {
+          p_booking_id: string;
+          p_external_payment_id: string;
+          p_error_code: string;
+          p_intent_terminal: boolean;
+        };
+        Returns: boolean;
+      };
+      charge_requires_action: {
+        Args: { p_booking_id: string; p_external_payment_id: string };
+        Returns: boolean;
+      };
+      close_pending_payment: {
+        Args: { p_booking_id: string; p_external_payment_id: string };
+        Returns: boolean;
+      };
+      cancel_charge_in_flight: {
+        Args: {
+          p_booking_id: string;
+          p_reason: 'action_expired' | 'recovery_expired' | 'departure_started';
+        };
+        Returns: boolean;
+      };
+      cancel_unpaid_booking: {
+        Args: {
+          p_booking_id: string;
+          p_actor_id: string | null;
+          p_reason: 'customer_request' | 'staff_request' | 'recovery_expired' | 'departure_started';
+        };
+        Returns: 'cancelled' | 'charge_in_flight' | 'not_cancellable';
+      };
+      update_booking_payment_method: {
+        Args: {
+          p_booking_id: string;
+          p_customer_external_id: string;
+          p_payment_method_id: string;
+          p_card_brand: string | null;
+          p_card_last4: string;
+          p_card_exp_month: number;
+          p_card_exp_year: number;
+          p_consent_version: string;
+        };
+        Returns:
+          | 'updated'
+          | 'not_updatable'
+          | 'customer_mismatch'
+          | 'update_limit_reached'
+          | 'recovery_expired'
+          | 'card_data_invalid'
+          | 'card_expires_before_departure';
+      };
+      mark_payment_provider_closed: {
+        Args: { p_payment_id: string; p_actor_id: string };
+        Returns: boolean;
+      };
+      record_intent_closed: {
+        Args: { p_payment_id: string; p_intent_status: 'canceled' | 'failed' | 'not_found' };
+        Returns: boolean;
+      };
+      record_customer_cleaned: {
+        Args: { p_hold_id: string; p_detached_count: number };
+        Returns: boolean;
       };
       cancel_booking: {
         Args: {
@@ -804,6 +1062,14 @@ export type Database = {
           p_source: string;
         };
         Returns: boolean;
+      };
+      deactivate_internal_user: {
+        Args: { p_user_id: string };
+        Returns: boolean;
+      };
+      purge_old_webhook_events: {
+        Args: { p_cutoff: string };
+        Returns: number;
       };
       cancel_stale_pending_booking: {
         Args: { p_booking_id: string; p_reason: string };

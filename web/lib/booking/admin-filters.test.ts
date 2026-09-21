@@ -15,17 +15,38 @@ describe('parseBookingFilters', () => {
     expect(parseBookingFilters({ page: '-2' }).page).toBe(1);
   });
 
+  // spec 0028 (B8): tourId debe ser un UUID real; antes 'tour-1' pasaba crudo al builder.
+  const TOUR_UUID = '5f3c1a2b-7d4e-4f6a-9b8c-0d1e2f3a4b5c';
+
   it('conserva filtros válidos y recorta el search', () => {
     const f = parseBookingFilters({
       dateFrom: '2026-01-01',
       dateTo: '2026-02-01',
-      tourId: 'tour-1',
+      tourId: TOUR_UUID,
       search: '  ana  ',
     });
     expect(f.dateFrom).toBe('2026-01-01');
     expect(f.dateTo).toBe('2026-02-01');
-    expect(f.tourId).toBe('tour-1');
+    expect(f.tourId).toBe(TOUR_UUID);
     expect(f.search).toBe('ana');
+  });
+
+  it('ignora fechas y tourId con formato inválido en vez de romper el listado (spec 0028)', () => {
+    const f = parseBookingFilters({
+      dateFrom: 'basura',
+      dateTo: '2026-1-1',
+      tourId: 'no-es-uuid',
+    });
+    expect(f.dateFrom).toBeUndefined();
+    expect(f.dateTo).toBeUndefined();
+    expect(f.tourId).toBeUndefined();
+  });
+
+  it('ignora fechas con formato válido pero calendario inválido (review pre-PR: 500 real)', () => {
+    // '2026-13-45' pasa el regex ISO; crDayStartIso lanzaría RangeError al filtrar.
+    const f = parseBookingFilters({ dateFrom: '2026-13-45', dateTo: '2026-02-30' });
+    expect(f.dateFrom).toBeUndefined();
+    expect(f.dateTo).toBeUndefined();
   });
 
   it('ignora un status desconocido y acepta uno válido', () => {
@@ -76,6 +97,12 @@ describe('validateExportRange', () => {
     expect(
       validateExportRange({ page: 1, dateFrom: '2026-03-10', dateTo: '2026-03-10' }),
     ).toBeNull();
+  });
+
+  it('rechaza un rango invertido con su propio código (spec 0028, B8)', () => {
+    expect(validateExportRange({ page: 1, dateFrom: '2026-03-10', dateTo: '2026-03-01' })).toBe(
+      ExportRangeError.Inverted,
+    );
   });
 });
 

@@ -49,6 +49,7 @@ export const TourFormSchema = z
     includes_en: z.string().min(1),
     min_participants: z.coerce.number().int().min(1),
     max_capacity: z.coerce.number().int().positive(),
+    auto_cancel_below_minimum: z.boolean().default(false),
     cover_image_url: z.preprocess(preprocess, z.string().url().nullable().optional()),
     pricing: z.array(PricingRowSchema),
     schedules: z.array(ScheduleRowSchema),

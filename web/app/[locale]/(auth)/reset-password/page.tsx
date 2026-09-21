@@ -16,7 +16,7 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
 
       {error && (
         <p className={styles.error}>
-          {error === 'invalid-password' ? t('new-password-label') : t('link-expired')}
+          {error === 'invalid-password' ? t('password-invalid') : t('link-expired')}
         </p>
       )}
 

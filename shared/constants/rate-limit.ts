@@ -35,6 +35,14 @@ export const RATE_LIMITS = {
    * masivo sin molestar a usuarios legítimos ni a IPs compartidas (NAT/CGNAT).
    */
   publicReadPerIp: { limit: 120, windowSeconds: SECONDS_PER_MINUTE },
+  /**
+   * Validación de magic links (reserva del turista + panel del guía) por IP
+   * (spec 0028, B10): cada intento es una query a DB y expone PII/cancelación si
+   * acierta. Límite MUY holgado (los tokens tienen entropía alta: la enumeración es
+   * inviable igual; esto solo corta el vector de carga) para no molestar a IPs
+   * compartidas ni a un turista refrescando su reserva.
+   */
+  magicLinkPerIp: { limit: 300, windowSeconds: SECONDS_PER_HOUR },
 } as const satisfies Record<string, RateLimitRule>;
 
 /**
@@ -48,6 +56,7 @@ export const RATE_LIMIT_KEY_PREFIX = {
   forgotEmail: 'forgot:email',
   checkoutIp: 'checkout:ip',
   publicReadIp: 'public:ip',
+  magicLinkIp: 'magic:ip',
 } as const;
 
 /** Valor de IP cuando el header x-forwarded-for está ausente (local sin proxy). */

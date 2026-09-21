@@ -27,6 +27,7 @@ const repoMocks = vi.hoisted(() => ({
   markSent: vi.fn(),
   markFailed: vi.fn(),
   handleTransient: vi.fn(),
+  postponeNotification: vi.fn(),
 }));
 vi.mock('../../../src/notifications/repository.js', () => repoMocks);
 const {
@@ -94,6 +95,23 @@ describe('sendNotifications', () => {
   });
 
   afterEach(() => vi.restoreAllMocks());
+
+  it('pospone (sin cancelar ni enviar) un kind que este worker todavía no sabe enviar (spec 0029)', async () => {
+    fetchPending.mockResolvedValue([{ ...notif, kind: 'departure_cancelled_minimum' }]);
+    const before = Date.now();
+
+    await sendNotifications();
+
+    expect(adapterSend).not.toHaveBeenCalled();
+    expect(cancelNotification).not.toHaveBeenCalled();
+    expect(repoMocks.postponeNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      'notif-1',
+      expect.any(String),
+    );
+    const until = new Date(repoMocks.postponeNotification.mock.calls[0]![2] as string).getTime();
+    expect(until).toBeGreaterThan(before);
+  });
 
   it('despacha y marca sent cuando el adapter responde OK', async () => {
     adapterSend.mockResolvedValue({ providerMessageId: 'msg-123' });
@@ -167,5 +185,41 @@ describe('sendNotifications', () => {
     await sendNotifications();
     expect(loadBookingForNotification).not.toHaveBeenCalled();
     expect(adapterSend).not.toHaveBeenCalled();
+  });
+
+  it('poison pill (spec 0028): un throw en una notificación no bloquea el resto del lote', async () => {
+    const second = { ...notif, id: 'notif-2', booking_id: 'booking-2' };
+    fetchPending.mockResolvedValue([notif, second]);
+    // La primera revienta en prepare (error inesperado de DB); la segunda es normal.
+    loadBookingForNotification
+      .mockRejectedValueOnce(new Error('db exploded'))
+      .mockResolvedValueOnce(bookingConfirmed);
+    adapterSend.mockResolvedValue({ providerMessageId: 'msg-2' });
+
+    await sendNotifications();
+
+    // La envenenada quedó reprogramada como transitoria (attempts + backoff)…
+    expect(handleTransient).toHaveBeenCalledWith(
+      expect.anything(),
+      notif,
+      'mailpit',
+      expect.stringContaining('db exploded'),
+    );
+    // …y la segunda se procesó y despachó igual.
+    expect(adapterSend).toHaveBeenCalledTimes(1);
+    expect(markSent).toHaveBeenCalledWith(expect.anything(), 'notif-2', 'mailpit', 'msg-2');
+  });
+
+  it('markSent fallido tras enviar (spec 0028): NO reintenta el envío en el mismo ciclo', async () => {
+    adapterSend.mockResolvedValue({ providerMessageId: 'msg-123' });
+    markSent.mockRejectedValueOnce(new Error('db down'));
+
+    await sendNotifications();
+
+    // El email salió una sola vez; el fallo del registro no dispara handleTransient
+    // (reprogramar re-enviaría un email ya entregado).
+    expect(adapterSend).toHaveBeenCalledTimes(1);
+    expect(handleTransient).not.toHaveBeenCalled();
+    expect(markFailed).not.toHaveBeenCalled();
   });
 });

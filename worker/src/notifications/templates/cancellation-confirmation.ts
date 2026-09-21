@@ -9,6 +9,8 @@ export type CancellationConfirmationProps = {
   hasRefund: boolean;
   refundAmountCents: number;
   currency: string;
+  /** Reserva del cobro diferido que nunca se cobró (spec 0029 §5.8): no hay nada que reembolsar. */
+  noCharge: boolean;
   bookingUrl: string;
 };
 
@@ -22,6 +24,7 @@ const COPY = {
     refund: (amount: string) =>
       `Te reembolsaremos ${amount}. Lo vas a ver acreditado en los próximos días hábiles.`,
     noRefund: 'Según la política de cancelación, esta cancelación no tiene reembolso.',
+    noCharge: 'No se hizo ningún cobro a tu tarjeta, así que no hay nada que reembolsar.',
     cta: 'Ver mi reserva',
     farewell: 'Gracias por avisarnos.',
   },
@@ -34,10 +37,18 @@ const COPY = {
     refund: (amount: string) =>
       `We will refund ${amount}. You should see it credited within the next business days.`,
     noRefund: 'Per the cancellation policy, this cancellation has no refund.',
+    noCharge: 'Your card was never charged, so there is nothing to refund.',
     cta: 'View my booking',
     farewell: 'Thanks for letting us know.',
   },
 };
+
+function refundLineFor(props: CancellationConfirmationProps, locale: EmailLocale): string {
+  const t = COPY[locale];
+  if (props.hasRefund)
+    return t.refund(formatMoney(props.refundAmountCents, props.currency, locale));
+  return props.noCharge ? t.noCharge : t.noRefund;
+}
 
 export function renderCancellationConfirmation(
   props: CancellationConfirmationProps,
@@ -45,9 +56,7 @@ export function renderCancellationConfirmation(
 ): RenderedEmail {
   const t = COPY[locale];
   const date = formatDateTime(props.startsAt, locale);
-  const refundLine = props.hasRefund
-    ? t.refund(formatMoney(props.refundAmountCents, props.currency, locale))
-    : t.noRefund;
+  const refundLine = refundLineFor(props, locale);
 
   const html = wrapHtml(`
     <h1 style="font-size:20px;margin:0 0 16px;">${t.greeting(escapeHtml(props.customerName))}</h1>

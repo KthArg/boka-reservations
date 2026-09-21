@@ -74,3 +74,32 @@ describe('middleware — CSP con nonce por request (spec 0024)', () => {
     expect(nonceOf(res.headers.get('content-security-policy'))).toBeTruthy();
   });
 });
+
+describe('middleware — guard sin loop de redirects (spec 0028, B3)', () => {
+  beforeEach(() => {
+    h.intlRequests = [];
+    h.user = null;
+    h.session = null;
+  });
+
+  it('ruta protegida SIN locale (/dashboard): devuelve la respuesta de next-intl, no /dashboard/login', async () => {
+    // El mock de next-intl devuelve una respuesta propia; si el guard la respeta (sin
+    // redirect a login), el flujo real termina en /es/dashboard → login localizado.
+    const res = await middleware(new NextRequest('http://localhost/dashboard'));
+    expect(res.status).not.toBe(REDIRECT_STATUS);
+    expect(res.headers.get('location')).toBeNull();
+  });
+
+  it('ruta protegida CON locale y sin sesión: redirige al login localizado con redirectTo', async () => {
+    const res = await middleware(new NextRequest('http://localhost/es/dashboard'));
+    expect(res.status).toBe(REDIRECT_STATUS);
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/es/login');
+    expect(location.searchParams.get('redirectTo')).toBe('/es/dashboard');
+  });
+
+  it('locale inválido (/fr/dashboard): sin guard propio, resuelve next-intl (sin loop)', async () => {
+    const res = await middleware(new NextRequest('http://localhost/fr/dashboard'));
+    expect(res.headers.get('location')).toBeNull();
+  });
+});

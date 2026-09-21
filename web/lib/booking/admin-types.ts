@@ -55,6 +55,10 @@ export interface AdminBookingDetail {
   updatedAt: string;
   paymentStatus: string | null;
   paymentProvider: string | null;
+  /** Cobro diferido (spec 0029): intentos de cobro y tarjeta guardada, si hay. */
+  chargeAttempts: number;
+  cardLast4: string | null;
+  hasSavedCard: boolean;
   notifications: AdminBookingNotification[];
   refund: AdminBookingRefund | null;
 }

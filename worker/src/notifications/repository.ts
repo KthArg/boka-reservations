@@ -5,6 +5,10 @@ import type { EmailLocale, NotificationKind } from './types.js';
 
 const BATCH_SIZE = 20;
 
+/** Columnas de BookingRow; los emails del cobro diferido le suman las suyas. */
+export const BOOKING_NOTIFICATION_SELECT =
+  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
+
 export type NotificationRow = {
   id: string;
   booking_id: string | null;
@@ -38,9 +42,7 @@ export async function loadBookingForNotification(
 ): Promise<BookingRow | null> {
   const { data, error } = await db
     .from('bookings')
-    .select(
-      'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))',
-    )
+    .select(BOOKING_NOTIFICATION_SELECT)
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -67,16 +69,33 @@ export async function loadLatestRefund(
   return data ? { amountCents: data.amount_cents, currency: data.currency } : null;
 }
 
+// Todas las escrituras verifican `error` y lanzan (spec 0028): supabase-js no lanza,
+// solo devuelve { error } — y un fallo silencioso acá deja la cola en estados falsos.
 export async function cancelNotification(
   db: SupabaseClient,
   id: string,
   reason: string,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('notifications')
     .update({ status: 'cancelled', cancelled_reason: reason })
     .eq('id', id)
     .eq('status', 'pending');
+  if (error) throw new Error(`cancel notification: ${error.message}`);
+}
+
+/** Reprograma una notificación sin contar un intento (kind que este worker aún no envía). */
+export async function postponeNotification(
+  db: SupabaseClient,
+  id: string,
+  untilIso: string,
+): Promise<void> {
+  const { error } = await db
+    .from('notifications')
+    .update({ scheduled_for: untilIso })
+    .eq('id', id)
+    .eq('status', 'pending');
+  if (error) throw new Error(`postpone notification: ${error.message}`);
 }
 
 export async function markSent(
@@ -85,7 +104,7 @@ export async function markSent(
   provider: string,
   messageId: string,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('notifications')
     .update({
       status: 'sent',
@@ -94,6 +113,7 @@ export async function markSent(
       sent_at: new Date().toISOString(),
     })
     .eq('id', id);
+  if (error) throw new Error(`mark sent: ${error.message}`);
 }
 
 export async function markFailed(
@@ -103,10 +123,11 @@ export async function markFailed(
   attempts: number,
   lastError: string,
 ): Promise<void> {
-  await db
+  const { error } = await db
     .from('notifications')
     .update({ status: 'failed', provider, attempts, last_error: lastError })
     .eq('id', id);
+  if (error) throw new Error(`mark failed: ${error.message}`);
 }
 
 export async function handleTransient(
@@ -120,7 +141,7 @@ export async function handleTransient(
     await markFailed(db, notif.id, provider, nextAttempts, lastError);
     return;
   }
-  await db
+  const { error } = await db
     .from('notifications')
     .update({
       attempts: nextAttempts,
@@ -129,4 +150,5 @@ export async function handleTransient(
       last_error: lastError,
     })
     .eq('id', notif.id);
+  if (error) throw new Error(`handle transient: ${error.message}`);
 }

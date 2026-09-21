@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
+import { isMagicLinkThrottled } from '@/lib/security/magic-link-throttle';
 import { hashBookingToken } from './booking-token-hash';
 
 export { hashBookingToken } from './booking-token-hash';
@@ -17,6 +18,9 @@ export async function validateBookingToken(
   db: ServiceClient,
   plaintext: string,
 ): Promise<string | null> {
+  // Excedido el throttle por IP (spec 0028, B10): misma respuesta que token inválido.
+  if (await isMagicLinkThrottled()) return null;
+
   const tokenHash = hashBookingToken(plaintext);
   const { data } = await db
     .from('booking_access_tokens')

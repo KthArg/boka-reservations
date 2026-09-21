@@ -18,6 +18,8 @@ export const EXPORT_MAX_RANGE_DAYS = 366;
 /** Motivos por los que un export puede rechazarse (responde 400). */
 export enum ExportRangeError {
   Missing = 'export_range_missing',
+  /** `from > to` (spec 0028, B8): su propio código para no reportar "falta el rango". */
+  Inverted = 'export_range_inverted',
   TooLong = 'export_range_too_long',
 }
 
@@ -34,3 +36,8 @@ export const OPERATOR_UTC_OFFSET_HOURS = -6;
 
 /** Centavos por unidad de moneda (para mostrar montos en unidad mayor). */
 export const CENTS_PER_UNIT = 100;
+
+/** Cookie HttpOnly que prueba la propiedad del hold durante el checkout (spec 0023,
+ *  ACCESS-03). Deduplicada acá en el spec 0028 (vivía copiada en checkout-action y en
+ *  la página de cancelación). */
+export const HOLD_SESSION_COOKIE = 'hold_session';

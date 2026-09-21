@@ -34,13 +34,17 @@ describe('nextScheduledFor', () => {
 });
 
 describe('isTerminalAfter', () => {
-  it('false para 1 y 2 intentos', () => {
+  // spec 0028: la política es 3 reintentos REALES (1, 5 y 30 min). El assert previo
+  // (`>= MAX_ATTEMPTS` terminal) hacía inalcanzable el reintento de 30 min: con
+  // attempts=3 se marcaba failed ANTES de agendar el tercer reintento.
+  it('false mientras queden reintentos del schedule (1, 2 y 3 intentos)', () => {
     expect(isTerminalAfter(1)).toBe(false);
     expect(isTerminalAfter(2)).toBe(false);
+    expect(isTerminalAfter(MAX_ATTEMPTS)).toBe(false);
   });
 
-  it('true cuando se alcanza MAX_ATTEMPTS', () => {
-    expect(isTerminalAfter(MAX_ATTEMPTS)).toBe(true);
+  it('true recién al agotar los 3 reintentos (4to intento fallido)', () => {
     expect(isTerminalAfter(MAX_ATTEMPTS + 1)).toBe(true);
+    expect(isTerminalAfter(MAX_ATTEMPTS + 2)).toBe(true);
   });
 });

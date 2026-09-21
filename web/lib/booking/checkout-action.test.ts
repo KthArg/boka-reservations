@@ -12,6 +12,9 @@ vi.mock('next/headers', () => ({
 vi.mock('next-intl/server', () => ({ getLocale: vi.fn(async () => 'es') }));
 vi.mock('@/lib/security/rate-limit', () => ({ checkRateLimit: vi.fn(async () => ({ ok: true })) }));
 vi.mock('@/lib/security/client-ip', () => ({ getClientIp: vi.fn(() => '1.2.3.4') }));
+// Flag del cobro diferido (spec 0029): lee la env tipada, que no existe en este runtime.
+const flag = vi.hoisted(() => ({ enabled: false }));
+vi.mock('@/lib/booking/deferred-flag', () => ({ isDeferredChargeEnabled: () => flag.enabled }));
 
 const { initCheckout } = await import('@/lib/booking/create');
 const { checkoutAction } = await import('@/lib/booking/checkout-action');
@@ -55,5 +58,18 @@ describe('checkoutAction — consentimiento (spec 0021, P1-3)', () => {
     expect(initCheckout).toHaveBeenCalledOnce();
     expect(vi.mocked(initCheckout).mock.calls[0][0]).toMatchObject({ consentAccepted: true });
     expect(result).toEqual({ paymentIntentId: 'pi_test', bookingId: 'bk_test' });
+  });
+});
+
+describe('checkoutAction — cobro diferido activo (spec 0029 §11)', () => {
+  it('no crea un cobro inmediato con el widget cuando el flag está encendido', async () => {
+    vi.mocked(initCheckout).mockClear();
+    flag.enabled = true;
+
+    const result = await checkoutAction(null, buildForm({ consent: 'accepted' }));
+
+    flag.enabled = false;
+    expect(result).toEqual({ error: 'error-generic' });
+    expect(initCheckout).not.toHaveBeenCalled();
   });
 });

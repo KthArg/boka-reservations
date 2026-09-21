@@ -72,7 +72,16 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isProtectedPath(pathname)) {
-    const locale = pathname.split('/')[1] ?? routing.defaultLocale;
+    // Loop fix (spec 0028, B3): si el primer segmento NO es un locale válido (p. ej.
+    // `/dashboard` tipeado o un bookmark), next-intl ya emitió el redirect a
+    // `/{defaultLocale}{pathname}` en `response` — se devuelve tal cual y el guard corre
+    // sobre la URL localizada en el request siguiente. Antes: locale='dashboard' →
+    // redirect a `/dashboard/login` (también protegida) → ERR_TOO_MANY_REDIRECTS.
+    const firstSegment = pathname.split('/')[1] ?? '';
+    const hasLocale = (routing.locales as readonly string[]).includes(firstSegment);
+    if (!hasLocale) return response;
+
+    const locale = firstSegment;
     const redirectToLogin = (): NextResponse => {
       const loginUrl = new URL(`/${locale}/login`, request.url);
       loginUrl.searchParams.set('redirectTo', pathname);

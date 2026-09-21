@@ -32,8 +32,21 @@ export enum InstanceStatus {
   Cancelled = 'cancelled',
 }
 
+/** Resolución terminal de una salida frente al mínimo de participantes de su tour (spec 0029). */
+export enum MinimumResolution {
+  /** Se alcanzó el mínimo: el cobro se dispara solo. */
+  Reached = 'reached',
+  /** El staff confirmó la salida bajo el mínimo: se cobra igual. */
+  StaffConfirmed = 'staff_confirmed',
+  StaffCancelled = 'staff_cancelled',
+  /** Tour con cancelación automática: cancelada al llegar la ventana de decisión. */
+  AutoCancelled = 'auto_cancelled',
+}
+
 export enum BookingStatus {
   PendingPayment = 'pending_payment',
+  /** Tarjeta guardada y cupo ocupado, sin cobro: espera el mínimo de la salida (spec 0029). */
+  PendingMinimum = 'pending_minimum',
   Confirmed = 'confirmed',
   Cancelled = 'cancelled',
   Refunded = 'refunded',
@@ -43,6 +56,37 @@ export enum BookingStatus {
   /** El pago se concretó pero el cupo ya estaba agotado (spec 0025). Terminal: no
    *  confirma ni incrementa cupo; se reembolsa el total automáticamente. */
   OverbookedRefunded = 'overbooked_refunded',
+}
+
+/** Outcome devuelto por la RPC `confirm_booking` (spec 0028). El worker es
+ *  self-contained y espeja estos valores en `reconciliation/repository.ts`. */
+export enum ConfirmBookingOutcome {
+  Confirmed = 'confirmed',
+  /** Reserva diferida confirmada sin cobro iniciado (spec 0029 §5.3): los callers alertan. */
+  ConfirmedUnclaimed = 'confirmed_unclaimed',
+  /** Evento ya procesado o reserva ya resuelta: no-op idempotente. */
+  AlreadyProcessed = 'already_processed',
+  /** Pago llegó para una reserva `cancelled`: refund total encolado (spec 0028). */
+  LatePaymentRefunded = 'late_payment_refunded',
+  /** Pago tardío que no se pudo reembolsar solo: ya había un refund activo (spec 0029). */
+  LatePaymentRefundBlocked = 'late_payment_refund_blocked',
+  /** Un segundo intent liquidó sobre una reserva ya resuelta: doble cobro (spec 0029 §5.6). */
+  DuplicatePayment = 'duplicate_payment',
+  OverbookedRefunded = 'overbooked_refunded',
+  PaymentMismatch = 'payment_mismatch',
+  /** Estado no accionable (mismatch previo, pago inexistente): revisión manual. */
+  Ignored = 'ignored',
+}
+
+/** Estado de un hold de cupo en `tour_holds` (specs 0005, 0025). Antes solo existía
+ *  como unión en types/database.ts y el código usaba string literals (spec 0028). */
+export enum HoldStatus {
+  Active = 'active',
+  Released = 'released',
+  Expired = 'expired',
+  Converted = 'converted',
+  /** Payment intent creado: el cupo queda retenido durante el ciclo de pago (spec 0025). */
+  Paying = 'paying',
 }
 
 export enum PaymentStatus {

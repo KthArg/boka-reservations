@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAnyRole } from '@/lib/auth/server';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import { ADMIN_PANEL_ROLES, ExportRangeError } from '@shared/constants/bookings';
+import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
 import { actorTypeForRole } from '@shared/constants/audit';
 import { parseBookingFilters, validateExportRange } from '@/lib/booking/admin-filters';
 import { listBookingsForExport } from '@/lib/booking/export-repository';
 import { bookingsToCsv } from '@/lib/booking/csv';
-
-const RANGE_ERROR_MESSAGE: Record<ExportRangeError, string> = {
-  [ExportRangeError.Missing]: 'Definí un rango de fechas (desde y hasta) para exportar.',
-  [ExportRangeError.TooLong]: 'El rango de exportación no puede superar un año.',
-};
 
 export async function GET(request: Request): Promise<NextResponse> {
   const user = await requireAnyRole(ADMIN_PANEL_ROLES).catch(() => null);
@@ -19,8 +14,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   const params = Object.fromEntries(new URL(request.url).searchParams);
   const filters = parseBookingFilters(params);
 
+  // El 400 devuelve el CÓDIGO estable, no un mensaje en español (spec 0028, B13):
+  // la UI que dispara el export ya valida y traduce; el body es para debugging.
   const rangeError = validateExportRange(filters);
-  if (rangeError) return new NextResponse(RANGE_ERROR_MESSAGE[rangeError], { status: 400 });
+  if (rangeError) return new NextResponse(rangeError, { status: 400 });
 
   const rows = await listBookingsForExport(filters);
 

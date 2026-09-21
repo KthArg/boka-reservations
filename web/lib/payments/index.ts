@@ -1,13 +1,16 @@
 import 'server-only';
+import { env } from '@/lib/env';
 import { createOnvopayAdapter } from './adapters/onvopay';
 import type { PaymentProvider } from './types';
 
+// Consume la env TIPADA (spec 0028, B11): la presencia de las llaves se validó al boot
+// (instrumentation.ts), no en runtime a mitad de un checkout.
 export function getPaymentProvider(): PaymentProvider {
-  const key = process.env.ONVOPAY_SECRET_KEY;
-  const secret = process.env.ONVOPAY_WEBHOOK_SECRET;
-  if (!key || !secret)
-    throw new Error('ONVOPAY_SECRET_KEY y ONVOPAY_WEBHOOK_SECRET son requeridos');
-  return createOnvopayAdapter(key, secret);
+  return createOnvopayAdapter(
+    env.ONVOPAY_SECRET_KEY,
+    env.ONVOPAY_WEBHOOK_SECRET,
+    env.ONVOPAY_API_BASE_URL,
+  );
 }
 
 export type { PaymentProvider, CreatePaymentParams, PaymentSession, WebhookPayload } from './types';

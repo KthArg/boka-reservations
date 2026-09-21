@@ -197,8 +197,43 @@ que el primer admin se siembra a mano. El hook `custom_access_token_hook` inyect
 - [ ] Incrementar `PRIVACY_NOTICE_VERSION` en `shared/constants/legal.ts` al publicar el texto.
 - [ ] Registro de la base ante PRODHAB y acuerdos de encargado de tratamiento (Resend/Supabase/OnvoPay).
 
+## Fase 6b — Prueba de cobro diferido con tarjeta real (spec 0029)
+
+> **Empezar al menos 30 días antes del go-live.** Aplica si el lanzamiento incluye el cobro diferido (`DEFERRED_CHARGE_ENABLED`). Deuda de pre-lanzamiento decidida el 2026-09-15.
+
+**Por qué.** El sandbox de OnvoPay no interactúa con redes bancarias reales, así que no puede mostrar cómo responde un banco cuando se cobra una tarjeta guardada sin el cliente presente, días o semanas después de guardarla. Todo lo que depende de la API ya se verificó en sandbox (spec 0029 §5.1); esta prueba mide lo que depende del banco.
+
+**Antes de empezar**
+
+- [ ] La cuenta de OnvoPay tiene el modo live habilitado.
+- [ ] Está claro de quién es la cuenta que recibe los cobros; si es del cliente, avisarle.
+- [ ] Tarjeta virtual real creada solo para la prueba. Anotar su tipo (crédito, débito o prepago) y el banco: el resultado vale para ese tipo de tarjeta, no para todas. Las prepago y las de un solo uso suelen rechazar más este tipo de cobro.
+
+**Reglas de seguridad**
+
+- El número de tarjeta **nunca** pasa por scripts ni por Claude. Se ingresa en una página local que la tokeniza en el navegador con la publishable key live, igual que el checkout del spec; los scripts solo usan el `paymentMethodId`.
+- Las llaves `onvo_live_*` van en un archivo local **fuera del repo**. El script las lee sin imprimirlas y aborta si no son live.
+- Máximo **3 cobros** (6 si se suma la prueba opcional). Cobrar y reembolsar muchas veces con una tarjeta propia puede disparar alertas de fraude en la cuenta justo antes del lanzamiento.
+- Montos de $1, reembolsados en el acto. Cada cobro puede costar unos centavos de comisión: no está confirmado si OnvoPay la devuelve en un reembolso.
+
+**Pasos**
+
+- [ ] **Día 0**: guardar la tarjeta, cobrar $1 desde el servidor y reembolsar. Anotar el `status` (`succeeded`, `requires_action` o rechazo) y el código de rechazo, si lo hay.
+- [ ] **Día 7**: cobrar $1 con la misma tarjeta guardada y reembolsar. Anotar lo mismo.
+- [ ] **Día 30**: repetir.
+- [ ] Registrar fechas, montos y respuestas en `docs/onvopay-consulta-cobro-diferido.md`.
+
+**Opcional — retención.** Solo si se reconsidera la autorización con captura posterior, descartada en el spec 0029 §5.1. El día 0 se crean tres autorizaciones de $1 con `captureMethod: "manual"` y se intenta capturar una a los 8 días, otra a los 15 y otra a los 29. Mirar en la app del banco cuándo desaparece cada retención del saldo.
+
+**Cómo leer el resultado**
+
+- Los tres cobros en `succeeded`, sin 3DS: se puede activar el flag con el tour canario.
+- Algún `requires_action` o rechazo: antes de activar, revisar los flujos de reintento y 3DS y la meta de ≥95% de cobros sin intervención (spec 0029 §12).
+- Funciona el día 7 pero falla el día 30: replantear con el cliente el tiempo máximo entre reserva y cobro (spec 0029, Q3).
+
 ## Fase 7 — Smoke test y go-live controlado
 
+- [ ] **Prueba de cobro diferido con tarjeta real** (Fase 6b) terminada con resultado aceptable, si el lanzamiento incluye el cobro diferido.
 - [ ] **Reserva real de monto mínimo**: checkout con tarjeta real → webhook real de OnvoPay →
       reserva `confirmed` → email de confirmación **llega al inbox (no spam)**.
 - [ ] Probar **cancelación + refund** real (si la política lo permite en la ventana) → emails de
