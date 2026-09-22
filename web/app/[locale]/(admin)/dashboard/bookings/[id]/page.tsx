@@ -1,6 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { getBookingDetailForAdmin } from '@/lib/booking/admin-detail';
+import { getSession } from '@/lib/auth/server';
+import { UserRole } from '@shared/constants/enums';
 import { BookingDetailView } from './BookingDetailView';
 import styles from '../bookings.module.css';
 
@@ -22,5 +24,7 @@ export default async function BookingDetailPage({ params }: Props) {
     );
   }
 
-  return <BookingDetailView booking={booking} />;
+  // Spec 0032: solo un admin reembolsa el total de una salida que ya empezó.
+  const isAdmin = (await getSession())?.userRole === UserRole.Admin;
+  return <BookingDetailView booking={booking} isAdmin={isAdmin} />;
 }

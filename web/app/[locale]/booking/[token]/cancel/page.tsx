@@ -61,7 +61,19 @@ export default async function BookingCancelPage({ params }: Props) {
         <p className={unpaid || view.refund.eligible ? styles.refundYes : styles.refundNo}>
           {refundLabel(view, unpaid, t, locale)}
         </p>
-        <CancelConfirm token={token} currency={view.currency} unpaid={unpaid} />
+        {view.refund.eligible && view.refund.feeCents > 0 ? (
+          <p className={styles.muted}>
+            {t('refund-fee', {
+              fee: formatMoneyCents(view.refund.feeCents, view.currency, locale),
+            })}
+          </p>
+        ) : null}
+        <CancelConfirm
+          token={token}
+          currency={view.currency}
+          unpaid={unpaid}
+          expected={{ status: view.status, refundAmountCents: view.refund.amountCents }}
+        />
         <Link href={backHref} className={styles.link}>
           {t('back')}
         </Link>

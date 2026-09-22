@@ -27,6 +27,7 @@
   /* Semánticos — re-derivados terrosos para armonizar con la paleta. */
   --color-error: oklch(0.51 0.17 27);
   --color-error-light: oklch(0.96 0.025 27);
+  --color-backdrop: oklch(0.2 0.01 150 / 0.4);
   --color-success: oklch(0.52 0.12 150);
   --color-success-light: oklch(0.96 0.035 150);
   --color-warning: oklch(0.5 0.1 68);

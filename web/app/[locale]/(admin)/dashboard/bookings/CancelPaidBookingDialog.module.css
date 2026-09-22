@@ -1,0 +1,93 @@
+.dialog {
+  width: min(28rem, calc(100vw - 2 * var(--space-md)));
+  padding: var(--space-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.title {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-lg);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.legend {
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.option {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+/* Solo el radio y el título se atenúan: la leyenda explica por qué y tiene que leerse. */
+.option:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.option:has(input:disabled) input,
+.option:has(input:disabled) .optionLabel {
+  opacity: 0.5;
+}
+
+.optionLabel {
+  display: block;
+  font-weight: 500;
+}
+
+.optionDetail {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: var(--space-md) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+/* Confirmar cancela la reserva: estilo destructivo. */
+.confirmBtn {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-error);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
