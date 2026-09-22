@@ -108,6 +108,24 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     },
   );
 
+  // Spec 0032: STATE_MUTATING se indexa por nombre y no admite las dos sobrecargas de
+  // cancel_booking. Sin p_reason la llamada resolvería a la de 4 parámetros y el test no
+  // probaría la nueva.
+  it('la sobrecarga de 6 parámetros de cancel_booking solo la ejecuta service_role', async () => {
+    const args = {
+      p_booking_id: ZERO_UUID,
+      p_actor_type: 'tourist',
+      p_refund_amount_cents: 1,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
+    };
+    expect((await anon.rpc('cancel_booking', args)).error?.code).toBe(PERMISSION_DENIED);
+    expect((await staff.rpc('cancel_booking', args)).error?.code).toBe(PERMISSION_DENIED);
+    const fromService = await service.rpc('cancel_booking', args);
+    expect(fromService.error?.code).not.toBe(PERMISSION_DENIED);
+    expect(fromService.error?.message).toContain('BOOKING_NOT_FOUND');
+  });
+
   it('la firma de 17 parámetros de create_deferred_booking ya no existe (spec 0031)', async () => {
     const legacyArgs = Object.fromEntries(
       Object.entries(DEFERRED_BOOKING_ARGS).filter(([key]) => key !== 'p_terms_version'),
