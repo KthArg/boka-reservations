@@ -31,6 +31,11 @@ describe('computeRetentionCutoffs', () => {
     expect(computeRetentionCutoffs(now).webhookEventCutoff).toBe(expected);
   });
 
+  it('hold cutoff = 7 días antes de now (spec 0031, §5.2)', () => {
+    const expected = new Date(now.getTime() - 7 * DAY_MS).toISOString();
+    expect(computeRetentionCutoffs(now).holdCutoff).toBe(expected);
+  });
+
   it('todos los cutoffs quedan en el pasado respecto de now', () => {
     const cutoffs = computeRetentionCutoffs(now);
     const values = [
@@ -39,6 +44,7 @@ describe('computeRetentionCutoffs', () => {
       cutoffs.tokenCutoff,
       cutoffs.notificationCutoff,
       cutoffs.webhookEventCutoff,
+      cutoffs.holdCutoff,
     ];
     for (const value of values) {
       expect(new Date(value).getTime()).toBeLessThan(now.getTime());

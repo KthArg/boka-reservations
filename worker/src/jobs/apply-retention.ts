@@ -3,9 +3,9 @@ import { env } from '../env.js';
 import { computeRetentionCutoffs } from './retention-windows.js';
 
 // Aplica la política de retención (spec 0022, PRIV-03): anonimiza PII vieja, purga reservas
-// no pagadas, tokens vencidos y notificaciones antiguas. Cada paso es independiente: si uno
-// falla, se registra y se sigue; al final se lanza un error agregado para que index.ts lo
-// reporte a Sentry. Kill-switch RETENTION_ENABLED (default true).
+// no pagadas, reservas temporales de cupo, tokens vencidos y notificaciones antiguas. Cada
+// paso es independiente: si uno falla, se registra y se sigue; al final se lanza un error
+// agregado para que index.ts lo reporte a Sentry. Kill-switch RETENTION_ENABLED (default true).
 export async function applyRetention(): Promise<void> {
   if (!env.RETENTION_ENABLED) {
     console.log('[apply-retention] disabled (RETENTION_ENABLED=false) — skip');
@@ -18,6 +18,9 @@ export async function applyRetention(): Promise<void> {
   const steps: Array<{ fn: string; args: Record<string, unknown> }> = [
     { fn: 'anonymize_bookings_past_retention', args: { p_cutoff: cutoffs.piiCutoff } },
     { fn: 'purge_unpaid_bookings', args: { p_cutoff: cutoffs.unpaidCutoff } },
+    // spec 0031 (§5.2): DESPUÉS de purge_unpaid_bookings, para que los holds que esa purga deja
+    // sin reserva en la misma corrida puedan borrarse.
+    { fn: 'purge_stale_holds', args: { p_cutoff: cutoffs.holdCutoff } },
     { fn: 'purge_expired_access_tokens', args: { p_cutoff: cutoffs.tokenCutoff } },
     { fn: 'purge_old_notifications', args: { p_cutoff: cutoffs.notificationCutoff } },
     // spec 0028 (C1): único store operativo que crecía sin retención.
