@@ -96,6 +96,9 @@ describe('create_deferred_booking', () => {
       charge_attempts: 0,
     });
     expect(booking.consent_at).not.toBeNull();
+    // Spec 0031: la aceptación de los términos se guarda aparte, con la misma hora.
+    expect(booking.terms_version).toBe('test-v1');
+    expect(booking.terms_accepted_at).toBe(booking.consent_at);
     expect(await readHoldStatus(db, hold.holdId)).toBe('paying');
     expect(await notificationKinds(db, bookingId)).toEqual(['booking_reserved']);
   });
@@ -110,6 +113,7 @@ describe('create_deferred_booking', () => {
     ],
     ['CARD_DATA_INVALID', { p_card_exp_month: 13 }],
     ['CONSENT_REQUIRED', { p_consent_version: null }],
+    ['TERMS_REQUIRED', { p_terms_version: null }],
   ])('rejects %s without creating a booking or taking the hold', async (code, overrides) => {
     // Arrange
     const hold = await createActiveHold(db, roomyInstanceId);

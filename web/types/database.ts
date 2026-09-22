@@ -522,6 +522,8 @@ export type Database = {
           checked_in_by: string | null;
           consent_at: string | null;
           consent_version: string | null;
+          terms_accepted_at: string | null;
+          terms_version: string | null;
           anonymized_at: string | null;
           payment_method_id: string | null;
           customer_external_id: string | null;
@@ -562,6 +564,8 @@ export type Database = {
           checked_in_by?: string | null;
           consent_at?: string | null;
           consent_version?: string | null;
+          terms_accepted_at?: string | null;
+          terms_version?: string | null;
           anonymized_at?: string | null;
           payment_method_id?: string | null;
           customer_external_id?: string | null;
@@ -602,6 +606,8 @@ export type Database = {
           checked_in_by?: string | null;
           consent_at?: string | null;
           consent_version?: string | null;
+          terms_accepted_at?: string | null;
+          terms_version?: string | null;
           anonymized_at?: string | null;
           payment_method_id?: string | null;
           customer_external_id?: string | null;
@@ -956,6 +962,7 @@ export type Database = {
           p_total_amount_cents: number;
           p_currency: string;
           p_consent_version: string;
+          p_terms_version: string;
           p_payment_method_id: string;
           p_customer_external_id: string;
           p_card_brand: string | null;
@@ -1084,6 +1091,10 @@ export type Database = {
         Returns: number;
       };
       purge_unpaid_bookings: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_stale_holds: {
         Args: { p_cutoff: string };
         Returns: number;
       };
