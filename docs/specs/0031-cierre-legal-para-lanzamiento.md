@@ -132,7 +132,7 @@ Así se conserva un recordatorio programado para el futuro, y no quedan para sie
   4. `REVOKE ... FROM PUBLIC, anon, authenticated` y `GRANT EXECUTE ... TO service_role` con la firma nueva.
 - **Función** `purge_stale_holds`: nueva (§5.2).
 - **Función** `purge_old_notifications`: `CREATE OR REPLACE` con la misma firma (§5.4).
-- **Tipos**: regenerar `web/types/database.ts`.
+- **Tipos**: actualizar a mano `web/types/database.ts` (el archivo se mantiene a mano; no se regenera).
 
 - **Migración**: `supabase/migrations/20260921000045_cierre_legal_lanzamiento.sql`. Su encabezado documenta que revertir `…044` después de aplicar `…045` exige eliminar también la firma de 18 parámetros de `create_deferred_booking`.
 
