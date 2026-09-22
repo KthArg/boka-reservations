@@ -1,4 +1,4 @@
-import { UserRole } from './enums';
+import { Currency, UserRole } from './enums';
 
 /** Acción del toggle de check-in sobre una reserva (spec 0008). */
 export enum CheckInAction {
@@ -48,3 +48,6 @@ export const HOLD_SESSION_COOKIE = 'hold_session';
  * la página muestra el mensaje genérico: el comprobante permanente es el correo.
  */
 export const SUCCESS_PAGE_WINDOW_HOURS = 24;
+
+/** Moneda de los dos checkouts (widget y cobro diferido): hoy siempre USD (spec 0032 §5.3). */
+export const CHECKOUT_CURRENCY = Currency.USD;
