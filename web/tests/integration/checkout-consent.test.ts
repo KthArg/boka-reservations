@@ -1,12 +1,13 @@
-// Persistencia del consentimiento (spec 0021, P1-3). Verifica que initCheckout registra
-// consent_at + consent_version cuando el turista consintió, y los deja en NULL cuando no.
+// Persistencia de las aceptaciones legales (specs 0021 y 0031). Verifica que initCheckout
+// registra consent_* (datos) y terms_* (términos) cuando el llamador validó las dos casillas,
+// y los deja en NULL cuando no.
 // Mockea el provider de pago; usa el service client real contra la DB. Requiere: supabase start.
 // Ejecutar: pnpm test:integration
 
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/types/database';
-import { PRIVACY_NOTICE_VERSION } from '@shared/constants/legal';
+import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@shared/constants/legal';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -89,8 +90,8 @@ afterAll(async () => {
   await admin.from('tours').delete().eq('id', tourId);
 });
 
-describe('checkout — consentimiento (spec 0021, P1-3)', () => {
-  it('registra consent_at y consent_version cuando el turista consintió', async () => {
+describe('checkout — aceptaciones legales (specs 0021 y 0031)', () => {
+  it('registra las dos aceptaciones con sus versiones vigentes', async () => {
     const before = Date.now();
     const result = await initCheckout({
       instanceId,
@@ -99,21 +100,23 @@ describe('checkout — consentimiento (spec 0021, P1-3)', () => {
       customerEmail: `cy-${crypto.randomUUID().slice(0, 8)}@example.com`,
       quantities: { adult: 1, child: 0, student: 0 },
       locale: 'es',
-      consentAccepted: true,
+      legalAccepted: true,
     });
 
     const { data: booking } = await admin
       .from('bookings')
-      .select('consent_at, consent_version')
+      .select('consent_at, consent_version, terms_accepted_at, terms_version')
       .eq('id', result.bookingId)
       .single();
 
     expect(booking!.consent_at).not.toBeNull();
     expect(new Date(booking!.consent_at!).getTime()).toBeGreaterThanOrEqual(before - 1000);
     expect(booking!.consent_version).toBe(PRIVACY_NOTICE_VERSION);
+    expect(booking!.terms_accepted_at).toBe(booking!.consent_at);
+    expect(booking!.terms_version).toBe(TERMS_VERSION);
   });
 
-  it('deja consent_at y consent_version en NULL cuando no hubo consentimiento', async () => {
+  it('deja las cuatro columnas en NULL sin aceptaciones', async () => {
     const result = await initCheckout({
       instanceId,
       sessionToken: crypto.randomUUID(),
@@ -121,16 +124,20 @@ describe('checkout — consentimiento (spec 0021, P1-3)', () => {
       customerEmail: `cn-${crypto.randomUUID().slice(0, 8)}@example.com`,
       quantities: { adult: 1, child: 0, student: 0 },
       locale: 'es',
-      consentAccepted: false,
+      legalAccepted: false,
     });
 
     const { data: booking } = await admin
       .from('bookings')
-      .select('consent_at, consent_version')
+      .select('consent_at, consent_version, terms_accepted_at, terms_version')
       .eq('id', result.bookingId)
       .single();
 
-    expect(booking!.consent_at).toBeNull();
-    expect(booking!.consent_version).toBeNull();
+    expect(booking).toEqual({
+      consent_at: null,
+      consent_version: null,
+      terms_accepted_at: null,
+      terms_version: null,
+    });
   });
 });

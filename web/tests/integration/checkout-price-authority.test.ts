@@ -99,7 +99,7 @@ describe('checkout — precio autoritativo (spec 0015)', () => {
       customerEmail: `pt-${crypto.randomUUID().slice(0, 8)}@example.com`,
       quantities: { adult: 2, child: 0, student: 0 },
       locale: 'es',
-      consentAccepted: true,
+      legalAccepted: true,
     });
 
     const { data: booking } = await admin
@@ -128,7 +128,7 @@ describe('checkout — precio autoritativo (spec 0015)', () => {
         customerEmail: email,
         quantities: { adult: 0, child: 0, student: 1 },
         locale: 'es',
-        consentAccepted: true,
+        legalAccepted: true,
       }),
     ).rejects.toThrow();
 
@@ -147,7 +147,7 @@ describe('checkout — precio autoritativo (spec 0015)', () => {
         customerEmail: email,
         quantities: { adult: 1, child: 0, student: 0 },
         locale: 'es',
-        consentAccepted: true,
+        legalAccepted: true,
       }),
     ).rejects.toThrow();
 

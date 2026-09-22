@@ -41,7 +41,7 @@ export async function checkoutAction(
       ...input,
       sessionToken,
       locale: await checkoutLocale(),
-      consentAccepted: true,
+      legalAccepted: true,
     });
     // ACCESS-03: liga el hold a esta sesión de browser (cookie HttpOnly), para que solo quien
     // hizo el checkout pueda liberar el hold desde /checkout/cancel (no cualquiera con el UUID).

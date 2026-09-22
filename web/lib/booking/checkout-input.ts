@@ -8,6 +8,7 @@ import { checkRateLimit } from '@/lib/security/rate-limit';
 import { getClientIp } from '@/lib/security/client-ip';
 import { rateLimitKey } from '@/lib/security/rate-limit-key';
 import { RATE_LIMITS, RATE_LIMIT_KEY_PREFIX } from '@shared/constants/rate-limit';
+import { CHECKOUT_ACCEPTED_VALUE, CheckoutLegalField } from '@shared/constants/legal';
 
 // Validación y protecciones compartidas por los dos checkouts (widget y diferido, spec 0029).
 // Extraído de checkout-action.ts para no duplicar las reglas de 0015, 0016, 0017, 0021 y 0023.
@@ -29,9 +30,9 @@ export type CheckoutInput = {
 type FieldGetter = (key: string) => FormDataEntryValue | null;
 
 /**
- * Valida los datos del formulario del checkout. Consentimiento obligatorio server-side
- * (spec 0021, P1-3); email con formato (0016, B-3); cantidades enteras con tope (0015).
- * Devuelve null ante cualquier dato inválido.
+ * Valida los datos del formulario del checkout. Aceptación de términos y consentimiento de
+ * datos obligatorios server-side, cada uno por separado (specs 0021 y 0031); email con formato
+ * (0016, B-3); cantidades enteras con tope (0015). Devuelve null ante cualquier dato inválido.
  */
 export function parseCheckoutInput(get: FieldGetter): CheckoutInput | null {
   const instanceId = String(get('instance_id') ?? '');
@@ -39,10 +40,12 @@ export function parseCheckoutInput(get: FieldGetter): CheckoutInput | null {
   const customerEmail = String(get('email') ?? '')
     .trim()
     .toLowerCase();
-  const consentAccepted = get('consent') != null;
+  const termsAccepted = get(CheckoutLegalField.Terms) === CHECKOUT_ACCEPTED_VALUE;
+  const privacyAccepted = get(CheckoutLegalField.PrivacyConsent) === CHECKOUT_ACCEPTED_VALUE;
 
   if (
-    !consentAccepted ||
+    !termsAccepted ||
+    !privacyAccepted ||
     !instanceId ||
     !NameSchema.safeParse(customerName).success ||
     !EmailSchema.safeParse(customerEmail).success

@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { Database } from '@/types/database';
 import type { PaymentMethodDetails } from '@/lib/payments/types';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
+import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@shared/constants/legal';
 import { deleteToursDeep } from './cleanup';
 import {
   createDeparture,
@@ -82,7 +83,8 @@ function checkoutForm(overrides: Record<string, string | null> = {}): FormData {
     instance_id: instanceId,
     name: 'Turista Diferido',
     email: `checkout-${uid()}@example.com`,
-    consent: 'accepted',
+    terms: 'accepted',
+    privacy_consent: 'accepted',
     adult: String(SEATS),
     child: '0',
     student: '0',
@@ -189,14 +191,17 @@ describe('startDeferredCheckoutAction', () => {
     expect(provider.createCustomer).not.toHaveBeenCalled();
   });
 
-  it('rejects a form without consent before creating a customer', async () => {
-    // Act
-    const result = await startDeferredCheckoutAction(null, checkoutForm({ consent: null }));
+  it.each(['terms', 'privacy_consent'])(
+    'rejects a form without %s before creating a customer',
+    async (field) => {
+      // Act
+      const result = await startDeferredCheckoutAction(null, checkoutForm({ [field]: null }));
 
-    // Assert
-    expect(result).toEqual({ error: 'error-generic' });
-    expect(provider.createCustomer).not.toHaveBeenCalled();
-  });
+      // Assert
+      expect(result).toEqual({ error: 'error-generic' });
+      expect(provider.createCustomer).not.toHaveBeenCalled();
+    },
+  );
 
   it('releases the hold when OnvoPay fails to create the customer', async () => {
     // Arrange
@@ -237,6 +242,9 @@ describe('completeDeferredCheckoutAction — reserva creada', () => {
       payment_method_id: card.id,
       customer_external_id: started.customerId,
       card_last4: '4242',
+      // Spec 0031: el paso 2 estampa las dos versiones vigentes sin volver a pedir las casillas.
+      consent_version: PRIVACY_NOTICE_VERSION,
+      terms_version: TERMS_VERSION,
     });
     expect(await readHoldStatus(db, started.holdId)).toBe('paying');
   });
