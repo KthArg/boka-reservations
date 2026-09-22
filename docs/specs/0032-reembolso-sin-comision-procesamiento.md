@@ -38,27 +38,27 @@ Depende del spec 0031, que agrega `bookings.terms_version` y el estampado de la 
 - No se cambia el `reason` que se envía a OnvoPay al crear el reembolso (hoy siempre el default `requested_by_customer`) ni la columna `refunds.reason`. El motivo queda en el audit log.
 - No se redacta el texto de los términos: lo aportan el operador y su abogada. Este spec define qué debe decir y cómo se activa.
 - No se borra la versión vieja de `cancel_booking`: queda para una migración de limpieza posterior (§11).
-- No se cambian los reportes: ya leen el monto real de cada fila de `refunds`.
+- Reportes: solo se corrige el bruto de `report_revenue` (§5.7); lo demás no cambia.
 - El panel no muestra la comisión descontada: queda en `refunds.processing_fee_cents` y en el audit log de la cancelación.
-- No se cambia `cancel_departure` (el operador cancela la salida): ya reembolsa el 100 % sin pasar por `computeRefund`, y la columna nueva queda en 0 por default.
+- No se implementa la cancelación de una salida completa por el operador (`cancel_departure`, workstream C del spec 0029, todavía sin implementar). Cuando se implemente debe reembolsar el total con `processing_fee_cents = 0`; si reutiliza `cancel_booking`, con la firma de 6 parámetros y `operator_decision`.
 
 ## 4. Historias de usuario
 
 > Como turista que va a reservar, quiero saber antes de pagar qué pasa si cancelo, para decidir con la información completa.
 
-- [ ] Con la política activa, el checkout muestra junto a la casilla de términos: "Si cancelás con 24 horas o más de antelación, te devolvemos lo pagado menos la comisión de procesamiento del pago (3,9 % + US$0,35). Con menos de 24 horas no hay reembolso."
+- [ ] Con la política activa, el checkout muestra junto a la casilla de términos (los montos con el formato del locale: "3,9%" y "USD 0,35" en ES, "3.9%" y "$0.35" en EN): "Si cancelás con 24 horas o más de antelación, te devolvemos lo pagado menos la comisión de procesamiento del pago (3,9 % + US$0,35). Con menos de 24 horas no hay reembolso."
 - [ ] Con la política inactiva, ese texto no aparece.
 
 > Como turista que decide cancelar con 24 horas o más de antelación, quiero ver cuánto me van a devolver, para saber que se descuenta la comisión.
 
 - [ ] La página de cancelación muestra el monto a reembolsar y, aparte, la comisión descontada. Por ejemplo: "Te reembolsamos US$57,31. Se descuenta la comisión de procesamiento del pago: US$2,69".
-- [ ] El monto se recalcula al confirmar. La pantalla de resultado muestra el monto efectivamente aplicado y, si lo hubo, el descuento.
+- [ ] El monto se recalcula al confirmar. Si el estado de la reserva o el monto no coinciden con lo que mostró la página (por ejemplo, el cobro diferido se completó o se cruzó el borde de 24 h), no se cancela y la página pide recargar. Si coinciden, el resultado muestra el monto aplicado y, si lo hubo, el descuento.
 - [ ] El email de confirmación de cancelación y el de reembolso acreditado indican el monto y la comisión descontada.
 - [ ] Con menos de 24 horas, la página sigue indicando que no hay reembolso.
 
 > Como staff que cancela una reserva cobrada desde el panel, quiero indicar si la cancelo a pedido del cliente o por decisión del operador, para que el reembolso sea el correcto.
 
-- [ ] Al cancelar una reserva `confirmed`, el panel pide elegir "A pedido del cliente" o "Por decisión del operador", sin opción preseleccionada, y muestra el monto de cada una.
+- [ ] Al cancelar una reserva `confirmed`, el panel pide elegir "A pedido del cliente" o "Por decisión del operador", sin opción preseleccionada, y muestra el monto de cada una. Si al confirmar el monto de la opción elegida ya no es ese, no se cancela y el diálogo pide recargar.
 - [ ] "A pedido del cliente" aplica la misma regla que la cancelación del turista.
 - [ ] "Por decisión del operador" reembolsa el 100 % sin importar la antelación, con una restricción: si la salida ya empezó, solo un `admin` puede elegirla.
 - [ ] El motivo y la comisión quedan en el audit log de la cancelación.
@@ -116,14 +116,16 @@ La comparación de versiones es de strings (`termsVersion >= REFUND_FEE_FROM_TER
 
 - **`getBookingView`** (`web/lib/booking/cancel.ts`): `VIEW_SELECT` agrega `terms_version`. `toView` la usan la vista de la reserva, la página de cancelación y `cancelBooking`, para cualquier estado: calcula el reembolso con `customer_request` **solo si la reserva está `confirmed`**; en otro estado usa `{ eligible: false, amountCents: 0, feeCents: 0 }`. Si `computeRefund` lanza, `toView` lo atrapa, reporta a Sentry y usa ese mismo valor sin reembolso, para no tirar la página.
 - **`cancelUnpaidBooking`** (`cancel-unpaid.ts`): su resultado sin reembolso (`NO_CHARGE_REFUND`) agrega `feeCents: 0`.
-- **`cancelByToken`**: pasa `customer_request`.
-- **`cancelByStaff(bookingId, reason?)`**: pasa a `cancelBooking` el motivo recibido y si el usuario es admin (`user.userRole === UserRole.Admin`). No valida el motivo por sí misma.
+- **`cancelByToken(token, expected)`**: pasa `customer_request` y lo que mostró la página (`expected = { status, refundAmountCents }`), validado con Zod.
+- **`cancelByStaff(bookingId, reason?, expectedRefundCents?)`**: valida con Zod el motivo y el monto que mostró el diálogo para ese motivo, y pasa a `cancelBooking` si el usuario es admin (`user.userRole === UserRole.Admin`).
+- **Lo que vio quien cancela** (`expected`): si el estado de la reserva o el monto recalculado no coinciden, `cancelBooking` responde `CancellationError.StateChanged` (nuevo) sin cancelar. Evita cancelar un cobro que la pantalla mostraba como "sin cobrar", o un reembolso distinto del mostrado.
 - **`cancelBooking`**: si la reserva está `pending_minimum` o `pending_payment`, sigue el camino de hoy (`cancelUnpaidBooking`) e ignora el motivo. Si está `confirmed`:
   1. Sin motivo válido, rechaza con `CancellationError.ReasonRequired` (nuevo).
   2. Con `operator_decision`, si `starts_at <= now` y el rol no es `admin`, rechaza con `CancellationError.OperatorRefundAdminOnly` (nuevo).
   3. Calcula con `computeRefund`. Si lanza, devuelve `WriteFailed` y reporta a Sentry.
-  4. Llama a la nueva `cancel_booking` con `p_reason` y `p_fee_cents`. Si devuelve `'already_cancelled'`, responde `NotCancellable` sin monto.
-- **`BookingDetailActions`**: calcula dos vistas previas, una por motivo. `AdminBookingDetail` ya trae `currency` y pasa a traer `terms_version`; el componente recibe además si el usuario es admin. `CancelBookingButton` deja el `window.confirm` y pasa a un diálogo con las dos opciones, sus montos y el botón de confirmar deshabilitado hasta elegir. Si la salida ya empezó y el usuario no es admin, "Por decisión del operador" aparece deshabilitada con la leyenda "Solo un admin puede reembolsar el total de una salida que ya empezó". Si el cálculo de la vista previa lanza, se reporta a Sentry y el diálogo muestra el error genérico.
+  4. Si hay `expected` y el monto no coincide, `StateChanged`.
+  5. Llama a la nueva `cancel_booking` con `p_reason` y `p_fee_cents`. Si devuelve `'already_cancelled'` (`CancelBookingOutcome`), responde `NotCancellable` sin monto.
+- **`BookingDetailActions`**: calcula dos vistas previas, una por motivo y por separado (si falla la del cliente, la del operador sigue disponible). `AdminBookingDetail` ya trae `currency` y pasa a traer `terms_version`. La página del detalle resuelve una vez si el usuario es admin y lo pasa hacia abajo. `CancelBookingButton` deja el `window.confirm` y pasa a un diálogo con las dos opciones, sus montos y el botón de confirmar deshabilitado hasta elegir. Si la salida ya empezó y el usuario no es admin, "Por decisión del operador" aparece deshabilitada con la leyenda "Solo un admin puede reembolsar el total de una salida que ya empezó". Si el cálculo de la vista previa lanza, se reporta a Sentry y el diálogo muestra el error genérico.
 - **`CancelConfirm`**: el mensaje posterior a cancelar muestra la comisión descontada, si la hubo.
 - **Checkout**: con `REFUND_FEE_FROM_TERMS_VERSION` distinto de `null`, `ConsentField` muestra un `<p>` debajo de la casilla `CheckoutLegalField.Terms`, fuera de su `<label>` y enlazado con `aria-describedby`. No es una tercera casilla. Usa la clave nueva `checkout.refund-fee-notice` con placeholders `{percent}` y `{fixed}`, formateados por locale desde `PROCESSING_FEE_PERCENT_BPS` y `PROCESSING_FEE_FIXED_CENTS` ("3,9 %" en ES, "3.9%" en EN). Como `ConsentField` está en `CheckoutDetailsFields`, el aviso sale en los dos checkouts.
 
@@ -143,9 +145,11 @@ cancel_booking(
 ```
 
 - Mismo encabezado que la de la 042: `SECURITY DEFINER`, `SET search_path = ''` y guard `is_public_request()` (`FORBIDDEN_PUBLIC_ROLE`).
-- Valida `p_reason IN ('customer_request','operator_decision')` (si no, `RAISE EXCEPTION 'INVALID_REASON'`), `p_fee_cents >= 0` (si no, `'INVALID_FEE'`) y que `operator_decision` venga con `p_fee_cents = 0` (si no, `'INVALID_FEE'`): el reembolso total del operador queda garantizado por construcción.
+- Valida `p_reason IN ('customer_request','operator_decision')` (si no, `RAISE EXCEPTION 'INVALID_REASON'`), `p_fee_cents >= 0` (si no, `'INVALID_FEE'`) y que `operator_decision` venga con `p_fee_cents = 0` (si no, `'INVALID_FEE'`).
+- Con la reserva cargada y confirmada: `operator_decision` exige `p_refund_amount_cents = total`, y siempre `p_refund_amount_cents + p_fee_cents <= total` (si no, `'INVALID_REFUND_AMOUNT'`). Así el reembolso total del operador queda garantizado en la base.
+- Si el tope por lo cobrado (`LEAST` de la 042) recorta el monto, la comisión guardada se recorta también, para que reembolso + comisión nunca superen lo cobrado.
 - Tiene el mismo cuerpo que la de la 042, más:
-  - `reason` y `fee_cents` en el `metadata` del audit `booking.cancelled`;
+  - `reason` y `fee_cents` en el `metadata` del audit `booking.cancelled`, y `fee_cents` en el de `refund.requested`;
   - `processing_fee_cents = p_fee_cents` en la fila de `refunds` que encola.
 - Devuelve `'cancelled'`, o `'already_cancelled'` si la reserva ya no estaba `confirmed` (hoy hace `RETURN` sin avisar). `cancelBooking` traduce `'already_cancelled'` a `CancellationError.NotCancellable`, así el segundo de dos cancelaciones concurrentes no ve un monto que no se aplicó.
 - Permisos: `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated` y `GRANT EXECUTE ... TO service_role` explícitos sobre la firma nueva (patrón de 0031 §6.4 y de la migración 039). Crear una función le da `EXECUTE` a `PUBLIC` por defecto; sin el `REVOKE`, `anon` podría reembolsar montos arbitrarios, lo que cerró el spec 0018.
@@ -159,11 +163,17 @@ PostgREST distingue las dos sobrecargas por los nombres de los parámetros: una 
 - `cancellation-confirmation` (solo cuando `hasRefund`) y `refund-confirmation` agregan, si `feeCents > 0`, la línea de la comisión descontada en ES y EN.
 - El worker no calcula nada y no importa `@shared`: todo sale de la base.
 
+### 5.7 Reportes: el bruto de `report_revenue`
+
+`settle_refund` pasa el pago a `refunded` al acreditar el reembolso, aunque sea parcial, y `report_revenue` calculaba el bruto solo con pagos `succeeded`. Cada reembolso acreditado se restaba dos veces: con uno total, el neto de esa reserva daba −total en vez de 0. Con los parciales de este spec, el error crecía. La 046 reemplaza `report_revenue` con el mismo cuerpo, salvo que el bruto cuenta `status IN ('succeeded', 'refunded')`. Era un bug previo, detectado por la auditoría de pagos de este spec.
+
 ## 6. Modelo de datos
 
 - **Tabla**: `refunds`. **Acción**: alter.
   - `processing_fee_cents integer NOT NULL DEFAULT 0 CHECK (processing_fee_cents >= 0)`. El default cubre las filas existentes y los reembolsos del sistema, que no descuentan comisión.
 - **Función**: `public.cancel_booking`, sobrecarga nueva de seis parámetros (§5.5). La de cuatro parámetros no se toca.
+- **Función**: `public.report_revenue`, `CREATE OR REPLACE` con el bruto corregido (§5.7). Conserva sus permisos.
+- **Constraint**: `refunds_processing_fee_cents_check` (con nombre, para poder revertirla).
 - **Migración**: `supabase/migrations/20260922000046_refund_processing_fee.sql`. Va después de la 045 del spec 0031.
 - **Tipos**: actualizar a mano `web/types/database.ts` (el archivo se mantiene a mano; no se regenera).
 
@@ -192,7 +202,7 @@ Sin cambios a las máquinas de estado. Una cancelación con reembolso parcial si
 - **Legal**: la abogada valida la cláusula y el aviso del checkout frente a la Ley 7472 antes de activar. Registrado en `docs/lanzamiento-checklist.md`.
 - **Decisiones**: registrada en `.claude/memory/decisions.md` (2026-09-21), que reemplaza la política del 2026-05-19 y actualiza la tarifa de OnvoPay con su fuente y fecha.
 - **Pagos**: el `amount` que se envía en `POST /v1/refunds` pasa a ser parcial en estos casos. `worker/src/refunds/onvopay.ts` ya lo envía. El OpenAPI (`PaymentIntent.amountReceived`) menciona reembolsos parciales; se prueba en sandbox (§10).
-- **Reportes**: sin cambios.
+- **Reportes**: `report_revenue` corrige el bruto (§5.7); el neto de un período con reembolsos pasa a ser correcto.
 
 ## 10. Plan de tests
 
@@ -228,7 +238,8 @@ Sin cambios a las máquinas de estado. Una cancelación con reembolso parcial si
   - Volver el flag a `null` restaura el reembolso total para cancelaciones futuras.
   - Revertir el código no rompe nada: la función vieja sigue existiendo y la columna tiene default.
   - Los reembolsos parciales ya hechos no se completan solos; si hiciera falta, el staff los resuelve a mano en OnvoPay.
-- **Limpieza**: una migración posterior borra `cancel_booking(uuid, text, integer, uuid)` cuando ningún código la llame. Queda anotada en el checklist.
+- **Limpieza**: una migración posterior borra `cancel_booking(uuid, text, integer, uuid)` (con la firma explícita: sin ella el DROP falla por ambigüedad) y mueve a la firma nueva los tests que todavía usan la vieja (`cierres-menores-0028.test.ts`, `late-payment-refund.test.ts`). Queda anotada en el checklist.
+- **Dependencia**: el código lee `bookings.terms_version`, que agrega la 045 del spec 0031. Esta rama se mergea después de la del 0031, y en producción se aplican la 045 y la 046 antes de desplegar el código.
 
 ## 12. Métricas de éxito
 
@@ -242,5 +253,7 @@ Ninguna bloquea la implementación. Todas bloquean la **activación** del flag.
 - [ ] **Pregunta**: ¿OnvoPay retiene la comisión al reembolsar? En un reembolso parcial, ¿la prorratea? ¿Reembolsar tiene un cargo propio? Se envía la consulta de `docs/onvopay-consulta-reembolsos.md`, preguntas 1 a 3. **Dueño**: Kenneth. **Antes de**: 2026-09-26.
 - [ ] **Pregunta**: ¿La comisión real es exactamente 3,9 % + US$0,35, o se le suma IVA u otro cargo? Se confirma con el estado de cuenta de un cobro real. **Dueño**: Kenneth / operador. **Antes de**: 2026-09-26.
 - [ ] **Pregunta**: ¿La cláusula y el aviso del checkout cumplen la Ley 7472? ¿Alcanza con eso o hace falta el aviso también en la ficha del tour? **Dueño**: Dra. Xinia Guerrero. **Antes de**: 2026-09-30.
+
+Anotado para decidir: hoy un staff puede cancelar "por decisión del operador" (reembolso total) dentro de las 24 h previas a la salida, donde a pedido del cliente no correspondería reembolso. Queda auditado con el motivo. La auditoría de pagos sugirió exigir admin también ahí; el usuario decidió restringirlo solo después del inicio de la salida.
 
 Resueltas con el usuario el 2026-09-22: el aviso va en el checkout; "por decisión del operador" sobre una salida ya empezada es solo para admin; se descuenta el costo total de OnvoPay, IVA incluido si lo hay; se acepta el riesgo del checkout abierto durante el deploy de activación (§8). Tours en colones: no hay; los dos checkouts cobran en USD.
