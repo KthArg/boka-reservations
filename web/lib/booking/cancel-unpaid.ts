@@ -7,7 +7,7 @@ import {
   UnpaidCancelOutcome,
   UnpaidCancelReason,
 } from '@shared/constants/cancellations';
-import type { RefundEligibility } from '@shared/constants/policies';
+import { NO_REFUND, type RefundEligibility } from '@shared/constants/policies';
 
 // Cancelación de una reserva sin cobrar del flujo diferido (spec 0029 §5.8), vía la función
 // atómica cancel_unpaid_booking: libera el hold, cierra el pago pendiente y encola el aviso.
@@ -16,7 +16,7 @@ import type { RefundEligibility } from '@shared/constants/policies';
 type ServiceClient = SupabaseClient<Database>;
 
 /** Sin cobro no hay nada que reembolsar. */
-export const NO_CHARGE_REFUND: RefundEligibility = { eligible: false, amountCents: 0 };
+export const NO_CHARGE_REFUND: RefundEligibility = NO_REFUND;
 
 export type UnpaidCancelResult =
   | { ok: true; refund: RefundEligibility }

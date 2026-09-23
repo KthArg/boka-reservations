@@ -94,6 +94,14 @@
   text-decoration: underline;
 }
 
+/* Aviso de la política de reembolso bajo la casilla de términos (spec 0032). */
+.consentNotice {
+  margin: 0 0 0 1.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
 .error {
   color: var(--color-error);
   font-size: 0.875rem;

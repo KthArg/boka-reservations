@@ -49,6 +49,8 @@ export interface AdminBookingDetail {
   ticketsStudent: number;
   totalAmountCents: number;
   currency: string;
+  /** Versión de términos aceptada: decide si el reembolso descuenta la comisión (spec 0032). */
+  termsVersion: string | null;
   status: string;
   checkedInAt: string | null;
   createdAt: string;

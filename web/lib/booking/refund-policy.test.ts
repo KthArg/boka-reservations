@@ -1,39 +1,126 @@
+// Política de reembolso (specs 0011 y 0032): ventana de 24 h, motivo de la cancelación y
+// descuento de la comisión de procesamiento según la versión de términos aceptada.
 import { describe, it, expect } from 'vitest';
-import { computeRefund, CANCELLATION_WINDOW_MS } from '@shared/constants/policies';
+import {
+  CANCELLATION_WINDOW_MS,
+  ProcessingFeeNotConfiguredError,
+  REFUND_FEE_FROM_TERMS_VERSION,
+  computeProcessingFee,
+  computeRefund,
+} from '@shared/constants/policies';
+import { CancellationReason } from '@shared/constants/cancellations';
+import { TERMS_VERSION } from '@shared/constants/legal';
 
 const now = new Date('2026-06-02T12:00:00.000Z');
-const TOTAL = 8000;
+const HOUR_MS = 60 * 60 * 1000;
+const TOTAL = 6000;
+const FEE = 269;
+const CUTOFF = '2026-10-01';
 
-describe('computeRefund', () => {
-  it('grants a full refund when cancelling well before the window', () => {
-    const startsAt = new Date(now.getTime() + CANCELLATION_WINDOW_MS + 60 * 60 * 1000);
+type Overrides = Partial<Parameters<typeof computeRefund>[0]>;
 
-    const result = computeRefund({ startsAt, totalAmountCents: TOTAL, now });
+function refund(overrides: Overrides = {}) {
+  return computeRefund({
+    startsAt: new Date(now.getTime() + CANCELLATION_WINDOW_MS + HOUR_MS),
+    totalAmountCents: TOTAL,
+    currency: 'USD',
+    termsVersion: CUTOFF,
+    reason: CancellationReason.CustomerRequest,
+    now,
+    feeFromTermsVersion: CUTOFF,
+    ...overrides,
+  });
+}
 
-    expect(result).toEqual({ eligible: true, amountCents: TOTAL });
+describe('computeProcessingFee', () => {
+  it.each([
+    [6000, 269],
+    [1000, 74],
+    [500, 55],
+  ])('%i centavos → %i de comisión (3,9 % redondeado + US$0,35)', (total, fee) => {
+    expect(computeProcessingFee(total, 'USD')).toBe(fee);
   });
 
-  it('grants a full refund exactly at the 24h boundary', () => {
+  it('lanza con una moneda sin comisión configurada', () => {
+    expect(() => computeProcessingFee(TOTAL, 'CRC')).toThrow(ProcessingFeeNotConfiguredError);
+  });
+});
+
+describe('computeRefund — a pedido del cliente', () => {
+  it('descuenta la comisión con la cláusula aceptada y 24 h o más de antelación', () => {
+    expect(refund()).toEqual({ eligible: true, amountCents: TOTAL - FEE, feeCents: FEE });
+  });
+
+  it('descuenta la comisión exactamente en el borde de 24 h', () => {
     const startsAt = new Date(now.getTime() + CANCELLATION_WINDOW_MS);
-
-    const result = computeRefund({ startsAt, totalAmountCents: TOTAL, now });
-
-    expect(result).toEqual({ eligible: true, amountCents: TOTAL });
+    expect(refund({ startsAt })).toEqual({
+      eligible: true,
+      amountCents: TOTAL - FEE,
+      feeCents: FEE,
+    });
   });
 
-  it('denies refund one millisecond inside the window', () => {
+  it('no reembolsa un milisegundo dentro de la ventana', () => {
     const startsAt = new Date(now.getTime() + CANCELLATION_WINDOW_MS - 1);
-
-    const result = computeRefund({ startsAt, totalAmountCents: TOTAL, now });
-
-    expect(result).toEqual({ eligible: false, amountCents: 0 });
+    expect(refund({ startsAt })).toEqual({ eligible: false, amountCents: 0, feeCents: 0 });
   });
 
-  it('denies refund when the tour already started', () => {
-    const startsAt = new Date(now.getTime() - 60 * 60 * 1000);
+  it('no reembolsa si el tour ya empezó', () => {
+    const startsAt = new Date(now.getTime() - HOUR_MS);
+    expect(refund({ startsAt })).toEqual({ eligible: false, amountCents: 0, feeCents: 0 });
+  });
 
-    const result = computeRefund({ startsAt, totalAmountCents: TOTAL, now });
+  it.each([
+    ['sin versión de términos (reserva anterior al 0031)', { termsVersion: null }],
+    ['con términos anteriores al corte', { termsVersion: '2026-09-30' }],
+    ['con la política inactiva', { feeFromTermsVersion: null }],
+  ])('reembolsa el total %s', (_case, overrides) => {
+    expect(refund(overrides)).toEqual({ eligible: true, amountCents: TOTAL, feeCents: 0 });
+  });
 
-    expect(result).toEqual({ eligible: false, amountCents: 0 });
+  it('descuenta la comisión con términos posteriores al corte', () => {
+    expect(refund({ termsVersion: '2026-11-15' }).feeCents).toBe(FEE);
+  });
+
+  it('no reembolsa nada si la comisión cubre el total', () => {
+    expect(refund({ totalAmountCents: 30 })).toEqual({
+      eligible: false,
+      amountCents: 0,
+      feeCents: 30,
+    });
+  });
+
+  it('lanza con una moneda sin comisión solo cuando corresponde descontar', () => {
+    expect(() => refund({ currency: 'CRC' })).toThrow(ProcessingFeeNotConfiguredError);
+    expect(refund({ currency: 'CRC', termsVersion: null }).amountCents).toBe(TOTAL);
+  });
+});
+
+describe('computeRefund — por decisión del operador', () => {
+  it.each([
+    ['con antelación y cláusula aceptada', {}],
+    ['dentro de las 24 h', { startsAt: new Date(now.getTime() + HOUR_MS) }],
+    ['con la salida ya empezada', { startsAt: new Date(now.getTime() - HOUR_MS) }],
+    ['con una moneda sin comisión configurada', { currency: 'CRC' }],
+  ])('reembolsa el total %s', (_case, overrides) => {
+    expect(refund({ reason: CancellationReason.OperatorDecision, ...overrides })).toEqual({
+      eligible: true,
+      amountCents: TOTAL,
+      feeCents: 0,
+    });
+  });
+});
+
+describe('versiones de términos', () => {
+  const DATE_VERSION = /^\d{4}-\d{2}-\d{2}$/;
+
+  it('TERMS_VERSION tiene formato YYYY-MM-DD, sin sufijos', () => {
+    expect(TERMS_VERSION).toMatch(DATE_VERSION);
+  });
+
+  it('el corte, si está activo, tiene formato YYYY-MM-DD y lo alcanza la versión vigente', () => {
+    if (REFUND_FEE_FROM_TERMS_VERSION === null) return;
+    expect(REFUND_FEE_FROM_TERMS_VERSION).toMatch(DATE_VERSION);
+    expect(TERMS_VERSION >= REFUND_FEE_FROM_TERMS_VERSION).toBe(true);
   });
 });

@@ -6,7 +6,7 @@ import type { AdminBookingDetail } from './admin-types';
 const DETAIL_SELECT = `
   id, customer_name, customer_email,
   tickets_adult, tickets_child, tickets_student,
-  total_amount_cents, currency, status, checked_in_at, created_at, updated_at,
+  total_amount_cents, currency, terms_version, status, checked_in_at, created_at, updated_at,
   charge_attempts, card_last4, payment_method_id,
   tour_instances!inner ( starts_at, ends_at, tours!inner ( name_es ) ),
   payments ( status, external_provider ),
@@ -34,6 +34,7 @@ interface RawDetail {
   tickets_student: number;
   total_amount_cents: number;
   currency: string;
+  terms_version: string | null;
   status: string;
   checked_in_at: string | null;
   created_at: string;
@@ -70,6 +71,7 @@ function toDetail(r: RawDetail): AdminBookingDetail {
     ticketsStudent: r.tickets_student,
     totalAmountCents: r.total_amount_cents,
     currency: r.currency,
+    termsVersion: r.terms_version,
     status: r.status,
     checkedInAt: r.checked_in_at,
     createdAt: r.created_at,

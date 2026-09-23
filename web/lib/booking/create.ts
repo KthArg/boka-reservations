@@ -5,6 +5,7 @@ import { getPaymentProvider } from '@/lib/payments';
 import type { TicketQuantities } from '@/lib/booking/quantities';
 import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@shared/constants/legal';
 import { HoldStatus } from '@shared/constants/enums';
+import { CHECKOUT_CURRENCY } from '@shared/constants/bookings';
 
 export type BookingLocale = 'es' | 'en';
 
@@ -26,8 +27,6 @@ export type InitCheckoutResult = {
   externalPaymentId: string;
   bookingId: string;
 };
-
-const CHECKOUT_CURRENCY = 'USD';
 
 export async function initCheckout(params: InitCheckoutParams): Promise<InitCheckoutResult> {
   const {

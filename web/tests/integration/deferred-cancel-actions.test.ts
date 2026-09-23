@@ -36,7 +36,7 @@ const db: Db = createClient<Database>(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const NO_REFUND = { eligible: false, amountCents: 0 };
+const NO_REFUND = { eligible: false, amountCents: 0, feeCents: 0 };
 const tourIds: string[] = [];
 let instanceId: string;
 let staffId: string;
@@ -99,7 +99,7 @@ describe('cancelByToken — reserva sin cobrar', () => {
     const token = await accessTokenFor(bookingId);
 
     // Act
-    const result = await cancelByToken(token);
+    const result = await cancelByToken(token, { status: 'pending_minimum', refundAmountCents: 0 });
 
     // Assert
     expect(result).toEqual({ ok: true, refund: NO_REFUND });
@@ -119,7 +119,7 @@ describe('cancelByToken — reserva sin cobrar', () => {
     const token = await accessTokenFor(bookingId);
 
     // Act
-    const result = await cancelByToken(token);
+    const result = await cancelByToken(token, { status: 'pending_payment', refundAmountCents: 0 });
 
     // Assert
     expect(result).toEqual({ ok: false, error: CancellationError.ChargeInFlight });

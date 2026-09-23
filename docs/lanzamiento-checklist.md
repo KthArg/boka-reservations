@@ -24,19 +24,24 @@ Los borradores legales para la abogada y el operador están fuera del repo, en `
 
 ## Orden de despliegue
 
-1. **Código.** Mergear los PRs de los specs 0031 y 0032 a `dev`. Promover `dev → main` con **merge commit** (nunca squash).
-2. **Base de datos.** Desde `main`, `npx supabase db push` contra el proyecto linkeado (`zkuoegsjxjgvzkwkqpdr`). Aplica `…040`–`…046` en orden. Verificar después con `npx supabase migration list --linked` que no quede ninguna pendiente. Antes del push, confirmar que el proyecto ya está en Pro o, como mínimo, descargar un respaldo manual.
-3. **Variables.** Además de las tablas del runbook:
+1. **Código en `dev`.** Mergear el PR del spec 0031 y después el del 0032 (la rama del 0032 está apilada sobre la del 0031).
+2. **Base de datos, antes de promover.** Desde `dev`, `npx supabase db push` contra el proyecto linkeado (`zkuoegsjxjgvzkwkqpdr`): aplica la `…045` y la `…046`. Tienen que estar antes del código, porque el merge a `main` despliega solo la web (Vercel) y el worker (Railway), y ese código llama a la firma nueva de `cancel_booking` y lee columnas nuevas. Verificar con `npx supabase migration list --linked`. Antes del push, respaldo manual (`supabase db dump`, con Docker corriendo) si el proyecto todavía no está en Pro.
+3. **Promover** `dev → main` con **merge commit** (nunca squash).
+4. **Variables.** Además de las tablas del runbook:
    - Web: `DEFERRED_CHARGE_ENABLED=false` (explícito, aunque es el default).
    - Web y worker: no setear `ONVOPAY_API_BASE_URL` ni `NEXT_PUBLIC_ONVOPAY_API_BASE_URL`; el default es la API de producción.
    - Web: `RESEND_API_KEY` **ya no se exige** (se quitó del schema en el spec 0028). El runbook todavía dice lo contrario.
    - Worker: `NOTIFICATIONS_ENABLED=true` solo cuando Resend y el dominio estén verificados; mientras tanto `false`.
    - Worker: `RETENTION_ENABLED=true`. Es lo que hace cumplir los plazos del registro de datos.
-4. **Worker.** Levantarlo y confirmar en los logs una corrida de `generate-tour-instances` y una de `apply-retention`. Si se usa Railway: plan Hobby y **App Sleeping apagado**.
-5. **Datos iniciales.** Primer admin (Fase 4b del runbook) y carga de tours reales desde el panel.
-6. **Texto legal.** Cuando llegue de la abogada: reemplazar `privacy-body` y `terms-body` en `web/locales/es.json` y `en.json`, subir `PRIVACY_NOTICE_VERSION` y `TERMS_VERSION` en `shared/constants/legal.ts` a la fecha de publicación, y desplegar. En el mismo deploy, poner `REFUND_FEE_FROM_TERMS_VERSION` (en `shared/constants/policies.ts`) en esa misma fecha para activar el descuento de la comisión (spec 0032). Si los términos no incluyen la cláusula, dejarlo en `null`.
-7. **Prueba completa en producción** (Fase 7 del runbook): reserva real de monto mínimo, correo en la bandeja de entrada, cancelación del turista con reembolso parcial (monto = total − comisión, verificado en el dashboard de OnvoPay), cancelación del staff por decisión del operador con reembolso total, cuadre de reportes.
-8. **Tag** `v0.1.0` y recién entonces difundir la URL.
+5. **Worker.** Levantarlo y confirmar en los logs una corrida de `generate-tour-instances` y una de `apply-retention`. Si se usa Railway: plan Hobby y **App Sleeping apagado**.
+6. **Datos iniciales.** Primer admin (Fase 4b del runbook) y carga de tours reales desde el panel.
+7. **Texto legal.** Cuando llegue de la abogada: reemplazar `privacy-body` y `terms-body` en `web/locales/es.json` y `en.json`, subir `PRIVACY_NOTICE_VERSION` y `TERMS_VERSION` en `shared/constants/legal.ts` a la fecha de publicación, y desplegar. En el mismo deploy, poner `REFUND_FEE_FROM_TERMS_VERSION` (en `shared/constants/policies.ts`) en esa misma fecha para activar el descuento de la comisión (spec 0032). Si los términos no incluyen la cláusula, dejarlo en `null`.
+8. **Prueba completa en producción** (Fase 7 del runbook): reserva real de monto mínimo, correo en la bandeja de entrada, cancelación del turista con reembolso parcial (monto = total − comisión, verificado en el dashboard de OnvoPay), cancelación del staff por decisión del operador con reembolso total, cuadre de reportes.
+9. **Tag** `v0.1.0` y recién entonces difundir la URL.
+
+## Después del lanzamiento
+
+- Migración de limpieza del spec 0032: `DROP FUNCTION public.cancel_booking(uuid, text, integer, uuid)` con la firma explícita (sin ella falla por ambigüedad), y pasar a la firma nueva los tests que todavía usan la vieja (`cierres-menores-0028.test.ts`, `late-payment-refund.test.ts`).
 
 ## Correcciones al runbook
 

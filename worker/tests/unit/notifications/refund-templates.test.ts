@@ -8,6 +8,7 @@ const cancelBase = {
   tourName: 'Cerro Chompipe',
   startsAt: '2026-06-15T13:00:00.000Z',
   refundAmountCents: 9000,
+  feeCents: 0,
   currency: 'USD',
   noCharge: false,
   bookingUrl: 'http://localhost:3000/es/booking/tok',
@@ -30,6 +31,22 @@ describe('renderCancellationConfirmation', () => {
     expect(email.text).toContain('no refund');
     expect(email.text).not.toContain('$0.00');
   });
+
+  it('explica la comisión descontada cuando la hubo (spec 0032)', () => {
+    const email = renderCancellationConfirmation(
+      { ...cancelBase, hasRefund: true, refundAmountCents: 5731, feeCents: 269 },
+      'es',
+    );
+    expect(email.text).toContain('57,31');
+    expect(email.text).toContain('comisión de procesamiento');
+    expect(email.text).toContain('2,69');
+    expect(email.html).toContain('comisión de procesamiento');
+  });
+
+  it('no menciona la comisión sin descuento', () => {
+    const email = renderCancellationConfirmation({ ...cancelBase, hasRefund: true }, 'en');
+    expect(email.text).not.toContain('processing fee');
+  });
 });
 
 describe('renderRefundConfirmation', () => {
@@ -39,12 +56,29 @@ describe('renderRefundConfirmation', () => {
         customerName: 'María',
         tourName: 'Cerro Chompipe',
         refundAmountCents: 9000,
+        feeCents: 0,
         currency: 'USD',
       },
       'es',
     );
     expect(email.subject).toContain('reembolso');
     expect(email.text).toContain('90,00');
+    expect(email.text).not.toContain('comisión');
+  });
+
+  it('explica la comisión descontada cuando la hubo (spec 0032)', () => {
+    const email = renderRefundConfirmation(
+      {
+        customerName: 'María',
+        tourName: 'Cerro Chompipe',
+        refundAmountCents: 5731,
+        feeCents: 269,
+        currency: 'USD',
+      },
+      'en',
+    );
+    expect(email.text).toContain('57.31');
+    expect(email.text).toContain('processing fee ($2.69)');
   });
 });
 
