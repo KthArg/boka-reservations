@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { CancellationError } from '@shared/constants/cancellations';
+import { CancellationError, CancellationReason } from '@shared/constants/cancellations';
 import { NotificationKind, NotificationStatus } from '@shared/constants/notifications';
 import { RefundStatus } from '@shared/constants/refunds';
 import { BookingStatus } from '@shared/constants/enums';
 import { AuditAction } from '@shared/constants/audit';
-import { hashBookingToken } from '@/lib/booking/booking-token-hash';
+import { bookingStatus, cleanupSeeds, reservedSeats, seed } from './cancellation-fixtures';
 
 // server-only no resuelve en vitest; las Server Actions lo importan vía cancel.ts.
 vi.mock('server-only', () => ({}));
@@ -17,132 +17,9 @@ const { cancelByStaff, cancelByToken } = await import('@/lib/booking/cancel-acti
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const HOUR_MS = 60 * 60 * 1000;
 
 let admin: SupabaseClient;
 let staffUserId: string;
-const createdTourIds: string[] = [];
-
-type SeedOpts = {
-  status?: string;
-  hoursAhead?: number;
-  withPayment?: boolean;
-  reserved?: number;
-  paymentAmountCents?: number;
-};
-
-async function seed(opts: SeedOpts = {}) {
-  const {
-    status = BookingStatus.Confirmed,
-    hoursAhead = 48,
-    withPayment = true,
-    reserved = 3,
-    paymentAmountCents = 9000,
-  } = opts;
-  const { data: tour } = await admin
-    .from('tours')
-    .insert({
-      slug: `cxl-${crypto.randomUUID()}`,
-      name_es: 'Tour ES',
-      name_en: 'Tour EN',
-      description_es: 'd',
-      description_en: 'd',
-      difficulty: 'easy',
-      duration_minutes: 60,
-      meeting_point_es: 'm',
-      meeting_point_en: 'm',
-      includes_es: 'i',
-      includes_en: 'i',
-      min_participants: 1,
-      max_capacity: 10,
-    })
-    .select('id')
-    .single();
-  createdTourIds.push(tour!.id);
-
-  const { data: schedule } = await admin
-    .from('tour_schedules')
-    .insert({
-      tour_id: tour!.id,
-      day_of_week: 1,
-      start_time: '09:00:00',
-      capacity: 10,
-      valid_from: '2026-01-01',
-    })
-    .select('id')
-    .single();
-
-  const startsAt = new Date(Date.now() + hoursAhead * HOUR_MS);
-  const { data: instance } = await admin
-    .from('tour_instances')
-    .insert({
-      tour_id: tour!.id,
-      schedule_id: schedule!.id,
-      starts_at: startsAt.toISOString(),
-      ends_at: new Date(startsAt.getTime() + HOUR_MS).toISOString(),
-      capacity_total: 10,
-      capacity_reserved: reserved,
-    })
-    .select('id')
-    .single();
-
-  const { data: booking } = await admin
-    .from('bookings')
-    .insert({
-      tour_instance_id: instance!.id,
-      customer_name: 'Cliente',
-      customer_email: 'c@example.com',
-      tickets_adult: 2,
-      tickets_child: 1,
-      total_amount_cents: 9000,
-      currency: 'USD',
-      status,
-      locale: 'es',
-    })
-    .select('id')
-    .single();
-
-  if (withPayment) {
-    await admin.from('payments').insert({
-      booking_id: booking!.id,
-      external_provider: 'onvopay',
-      external_payment_id: `pi_${crypto.randomUUID()}`,
-      amount_cents: paymentAmountCents,
-      status: 'succeeded',
-    });
-  }
-
-  // Recordatorio pendiente (debe cancelarse al cancelar la reserva).
-  await admin.from('notifications').insert({
-    booking_id: booking!.id,
-    kind: NotificationKind.Reminder24h,
-    recipient_email: 'c@example.com',
-    locale: 'es',
-    scheduled_for: startsAt.toISOString(),
-  });
-
-  const token = crypto.randomUUID();
-  await admin.from('booking_access_tokens').insert({
-    booking_id: booking!.id,
-    token_hash: hashBookingToken(token),
-    expires_at: startsAt.toISOString(),
-  });
-
-  return { bookingId: booking!.id, instanceId: instance!.id, token };
-}
-
-async function bookingStatus(id: string) {
-  const { data } = await admin.from('bookings').select('status').eq('id', id).single();
-  return data!.status;
-}
-async function reservedSeats(instanceId: string) {
-  const { data } = await admin
-    .from('tour_instances')
-    .select('capacity_reserved')
-    .eq('id', instanceId)
-    .single();
-  return data!.capacity_reserved;
-}
 
 describe('cancellation flow (server actions, integration)', () => {
   beforeAll(async () => {
@@ -155,41 +32,21 @@ describe('cancellation flow (server actions, integration)', () => {
 
   afterEach(async () => {
     requireAnyRoleMock.mockReset();
-    while (createdTourIds.length) {
-      const tourId = createdTourIds.pop()!;
-      const { data: instances } = await admin
-        .from('tour_instances')
-        .select('id')
-        .eq('tour_id', tourId);
-      for (const inst of instances ?? []) {
-        const { data: bks } = await admin
-          .from('bookings')
-          .select('id')
-          .eq('tour_instance_id', inst.id);
-        for (const b of bks ?? []) {
-          // audit_logs es append-only (trigger de inmutabilidad): no se borra.
-          await admin.from('refunds').delete().eq('booking_id', b.id);
-          await admin.from('booking_access_tokens').delete().eq('booking_id', b.id);
-          await admin.from('notifications').delete().eq('booking_id', b.id);
-          await admin.from('payments').delete().eq('booking_id', b.id);
-        }
-        await admin.from('bookings').delete().eq('tour_instance_id', inst.id);
-      }
-      await admin.from('tour_instances').delete().eq('tour_id', tourId);
-      await admin.from('tour_schedules').delete().eq('tour_id', tourId);
-      await admin.from('tours').delete().eq('id', tourId);
-    }
+    await cleanupSeeds(admin);
   });
 
   it('cancela con reembolso (>24h): libera cupo, cancela recordatorio, encola email y refund', async () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
-    const { bookingId, instanceId } = await seed({ hoursAhead: 48, reserved: 3 });
+    const { bookingId, instanceId } = await seed(admin, { hoursAhead: 48, reserved: 3 });
 
-    const result = await cancelByStaff(bookingId);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
 
-    expect(result).toEqual({ ok: true, refund: { eligible: true, amountCents: 9000 } });
-    expect(await bookingStatus(bookingId)).toBe(BookingStatus.Cancelled);
-    expect(await reservedSeats(instanceId)).toBe(0); // 3 reservados - 3 tickets
+    expect(result).toEqual({
+      ok: true,
+      refund: { eligible: true, amountCents: 9000, feeCents: 0 },
+    });
+    expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Cancelled);
+    expect(await reservedSeats(admin, instanceId)).toBe(0); // 3 reservados - 3 tickets
 
     const { data: reminder } = await admin
       .from('notifications')
@@ -226,9 +83,9 @@ describe('cancellation flow (server actions, integration)', () => {
   it('refunda el monto efectivamente pagado, no el total de la reserva', async () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
     // Total 9000 pero solo se cobraron 8000: el refund debe ser por lo pagado.
-    const { bookingId } = await seed({ hoursAhead: 48, paymentAmountCents: 8000 });
+    const { bookingId } = await seed(admin, { hoursAhead: 48, paymentAmountCents: 8000 });
 
-    await cancelByStaff(bookingId);
+    await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
 
     const { data: refund } = await admin
       .from('refunds')
@@ -240,8 +97,8 @@ describe('cancellation flow (server actions, integration)', () => {
 
   it('audit_logs es append-only: rechaza UPDATE y DELETE', async () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
-    const { bookingId } = await seed({ hoursAhead: 48 });
-    await cancelByStaff(bookingId);
+    const { bookingId } = await seed(admin, { hoursAhead: 48 });
+    await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
 
     const { data: row } = await admin
       .from('audit_logs')
@@ -260,12 +117,12 @@ describe('cancellation flow (server actions, integration)', () => {
 
   it('cancela sin reembolso (<24h): no crea refund pero sí encola el email', async () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
-    const { bookingId } = await seed({ hoursAhead: 12 });
+    const { bookingId } = await seed(admin, { hoursAhead: 12 });
 
-    const result = await cancelByStaff(bookingId);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
 
-    expect(result).toEqual({ ok: true, refund: { eligible: false, amountCents: 0 } });
-    expect(await bookingStatus(bookingId)).toBe(BookingStatus.Cancelled);
+    expect(result).toEqual({ ok: true, refund: { eligible: false, amountCents: 0, feeCents: 0 } });
+    expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Cancelled);
     const { data: refunds } = await admin.from('refunds').select('id').eq('booking_id', bookingId);
     expect(refunds).toEqual([]);
     const { count } = await admin
@@ -278,10 +135,10 @@ describe('cancellation flow (server actions, integration)', () => {
 
   it('es idempotente: la segunda cancelación no duplica refund', async () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
-    const { bookingId } = await seed({ hoursAhead: 48 });
+    const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
-    await cancelByStaff(bookingId);
-    const second = await cancelByStaff(bookingId);
+    await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
+    const second = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
 
     expect(second).toEqual({ ok: false, error: CancellationError.NotCancellable });
     const { count } = await admin
@@ -292,38 +149,44 @@ describe('cancellation flow (server actions, integration)', () => {
   });
 
   it('cancela por token válido del turista', async () => {
-    const { bookingId, token } = await seed({ hoursAhead: 48 });
+    const { bookingId, token } = await seed(admin, { hoursAhead: 48 });
 
-    const result = await cancelByToken(token);
+    const result = await cancelByToken(token, {
+      status: BookingStatus.Confirmed,
+      refundAmountCents: 9000,
+    });
 
     expect(result.ok).toBe(true);
-    expect(await bookingStatus(bookingId)).toBe(BookingStatus.Cancelled);
+    expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Cancelled);
   });
 
   it('rechaza un token inválido sin tocar la reserva', async () => {
-    const { bookingId } = await seed({ hoursAhead: 48 });
+    const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
     const result = await cancelByToken(crypto.randomUUID());
 
     expect(result).toEqual({ ok: false, error: CancellationError.InvalidToken });
-    expect(await bookingStatus(bookingId)).toBe(BookingStatus.Confirmed);
+    expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Confirmed);
   });
 
   it('rechaza al staff sin rol', async () => {
     requireAnyRoleMock.mockRejectedValue(new Error('UNAUTHORIZED'));
-    const { bookingId } = await seed({ hoursAhead: 48 });
+    const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
-    const result = await cancelByStaff(bookingId);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
 
     expect(result).toEqual({ ok: false, error: CancellationError.Unauthorized });
-    expect(await bookingStatus(bookingId)).toBe(BookingStatus.Confirmed);
+    expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Confirmed);
   });
 
   it('rechaza cancelar una reserva no confirmada', async () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
-    const { bookingId } = await seed({ status: BookingStatus.PendingPayment, withPayment: false });
+    const { bookingId } = await seed(admin, {
+      status: BookingStatus.PendingPayment,
+      withPayment: false,
+    });
 
-    const result = await cancelByStaff(bookingId);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
 
     expect(result).toEqual({ ok: false, error: CancellationError.NotCancellable });
   });

@@ -5,7 +5,7 @@ import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import { getPaymentProvider } from '@/lib/payments';
 import type { PaymentMethodDetails } from '@/lib/payments/types';
-import { PRIVACY_NOTICE_VERSION } from '@shared/constants/legal';
+import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@shared/constants/legal';
 import { BookingStatus, HoldStatus } from '@shared/constants/enums';
 import { DeferredCheckoutCode } from './deferred-checkout-errors';
 import { alertCardCustomerMismatch } from './deferred-checkout-alerts';
@@ -112,6 +112,7 @@ export async function completeDeferredCheckout(
     p_total_amount_cents: totalAmountCents,
     p_currency: DEFERRED_CURRENCY,
     p_consent_version: PRIVACY_NOTICE_VERSION,
+    p_terms_version: TERMS_VERSION,
     p_payment_method_id: card.id,
     p_customer_external_id: hold.customer_external_id,
     p_card_brand: card.brand,

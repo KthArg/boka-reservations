@@ -119,6 +119,7 @@ export async function createDeferredBooking(instanceId: string): Promise<Deferre
       p_total_amount_cents: MANDATE_CENTS,
       p_currency: MANDATE_CURRENCY,
       p_consent_version: 'test-v1',
+      p_terms_version: 'test-v1',
       p_payment_method_id: `pm_${uid()}`,
       p_customer_external_id: customerId,
       p_card_brand: 'visa',

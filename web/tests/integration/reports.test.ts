@@ -44,14 +44,18 @@ async function seedBooking(
   return data!.id;
 }
 
-async function seedPayment(bookingId: string, cents: number): Promise<string> {
+async function seedPayment(
+  bookingId: string,
+  cents: number,
+  status: 'succeeded' | 'refunded' = 'succeeded',
+): Promise<string> {
   const { data } = await admin
     .from('payments')
     .insert({
       booking_id: bookingId,
       external_payment_id: `pi_${crypto.randomUUID()}`,
       amount_cents: cents,
-      status: 'succeeded',
+      status,
       created_at: IN_WINDOW,
     })
     .select('id')
@@ -108,9 +112,10 @@ beforeAll(async () => {
   // B2 confirmed, 3 tickets, sin check-in (no-show, salida pasada). Pago 15000.
   const b2 = await seedBooking('confirmed', 3, false);
   await seedPayment(b2, 15000);
-  // B3 cancelled, 1 ticket. Pago 5000 + refund 5000.
+  // B3 cancelled, 1 ticket. Pago 5000 + refund 5000 acreditado: settle_refund deja el pago en
+  // 'refunded', y el bruto igual lo cuenta (spec 0032; antes el reembolso restaba dos veces).
   const b3 = await seedBooking('cancelled', 1, false);
-  const p3 = await seedPayment(b3, 5000);
+  const p3 = await seedPayment(b3, 5000, 'refunded');
   await admin.from('refunds').insert({
     booking_id: b3,
     payment_id: p3,

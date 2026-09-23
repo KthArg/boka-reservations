@@ -1,4 +1,4 @@
-// Consentimiento obligatorio en el checkout (spec 0021, P1-3). La server action depende de
+// Aceptaciones obligatorias en el checkout: términos y datos, por separado (specs 0021 y 0031). La server action depende de
 // next/headers, next-intl/server y los módulos de rate-limit, que no existen en el runtime de
 // vitest: se mockean esas fronteras. initCheckout también se mockea para verificar que NO se
 // invoca cuando falta el consentimiento (la validación debe cortar antes de crear inventario).
@@ -19,6 +19,9 @@ vi.mock('@/lib/booking/deferred-flag', () => ({ isDeferredChargeEnabled: () => f
 const { initCheckout } = await import('@/lib/booking/create');
 const { checkoutAction } = await import('@/lib/booking/checkout-action');
 
+// Las dos casillas del checkout (spec 0031). Sin ellas, cualquier formulario se rechaza.
+const ACCEPTED = { terms: 'accepted', privacy_consent: 'accepted' };
+
 function buildForm(overrides: Record<string, string> = {}): FormData {
   const fd = new FormData();
   fd.set('instance_id', crypto.randomUUID());
@@ -29,34 +32,36 @@ function buildForm(overrides: Record<string, string> = {}): FormData {
   return fd;
 }
 
-describe('checkoutAction — consentimiento (spec 0021, P1-3)', () => {
-  it('rechaza la reserva si falta el consentimiento, sin invocar initCheckout', async () => {
-    const result = await checkoutAction(null, buildForm());
+describe('checkoutAction — aceptaciones legales (specs 0021 y 0031)', () => {
+  it.each([
+    ['sin ninguna casilla', {}],
+    ['sin la casilla de términos', { privacy_consent: 'accepted' }],
+    ['sin la casilla de datos', { terms: 'accepted' }],
+    ['con el campo `consent` de la versión anterior del formulario', { consent: 'accepted' }],
+  ])('rechaza la reserva %s, sin invocar initCheckout', async (_case, fields) => {
+    const result = await checkoutAction(null, buildForm(fields));
 
     expect(result).toEqual({ error: 'error-generic' });
     expect(initCheckout).not.toHaveBeenCalled();
   });
 
   it('rechaza un nombre demasiado largo (APPSEC-02), sin invocar initCheckout', async () => {
-    const result = await checkoutAction(
-      null,
-      buildForm({ name: 'a'.repeat(121), consent: 'accepted' }),
-    );
+    const result = await checkoutAction(null, buildForm({ name: 'a'.repeat(121), ...ACCEPTED }));
 
     expect(result).toEqual({ error: 'error-generic' });
     expect(initCheckout).not.toHaveBeenCalled();
   });
 
-  it('con consentimiento y datos válidos, invoca initCheckout y devuelve el payment intent', async () => {
+  it('con las dos casillas y datos válidos, invoca initCheckout y devuelve el payment intent', async () => {
     vi.mocked(initCheckout).mockResolvedValue({
       externalPaymentId: 'pi_test',
       bookingId: 'bk_test',
     });
 
-    const result = await checkoutAction(null, buildForm({ consent: 'accepted' }));
+    const result = await checkoutAction(null, buildForm(ACCEPTED));
 
     expect(initCheckout).toHaveBeenCalledOnce();
-    expect(vi.mocked(initCheckout).mock.calls[0][0]).toMatchObject({ consentAccepted: true });
+    expect(vi.mocked(initCheckout).mock.calls[0][0]).toMatchObject({ legalAccepted: true });
     expect(result).toEqual({ paymentIntentId: 'pi_test', bookingId: 'bk_test' });
   });
 });
@@ -66,7 +71,7 @@ describe('checkoutAction — cobro diferido activo (spec 0029 §11)', () => {
     vi.mocked(initCheckout).mockClear();
     flag.enabled = true;
 
-    const result = await checkoutAction(null, buildForm({ consent: 'accepted' }));
+    const result = await checkoutAction(null, buildForm(ACCEPTED));
 
     flag.enabled = false;
     expect(result).toEqual({ error: 'error-generic' });

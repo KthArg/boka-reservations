@@ -17,7 +17,9 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export async function BookingDetailView({ booking }: { booking: AdminBookingDetail }) {
+type Props = { booking: AdminBookingDetail; isAdmin: boolean };
+
+export async function BookingDetailView({ booking, isAdmin }: Props) {
   const [t, locale] = await Promise.all([getTranslations('bookings'), getLocale()]);
   const start = formatOperatorDateTime(booking.startsAt);
   const checkIn = formatOperatorDateTime(booking.checkedInAt ?? '');
@@ -31,7 +33,7 @@ export async function BookingDetailView({ booking }: { booking: AdminBookingDeta
       </Link>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('detail-title')}</h1>
-        <BookingDetailActions booking={booking} locale={locale} />
+        <BookingDetailActions booking={booking} locale={locale} isAdmin={isAdmin} />
       </div>
 
       <div className={styles.detailGrid}>

@@ -12,6 +12,9 @@ const EXPIRED_TOKEN_GRACE_DAYS = 7;
 // spec 0028 (C1): un evento de webhook solo protege la idempotencia mientras OnvoPay
 // pueda reintentarlo; a 90 días es puro crecimiento sin función.
 const WEBHOOK_EVENT_RETENTION_DAYS = 90;
+// spec 0031 (§5.2): una reserva temporal de cupo terminal y sin reserva asociada sirve solo para
+// investigar un checkout abandonado o un reclamo inmediato de cobro.
+const HOLD_RETENTION_DAYS = 7;
 // FINANCIAL_RECORD_RETENTION_YEARS = 5 queda definida en el spec pero sin job: la purga del
 // registro anonimizado a 5 años está diferida (al lanzar no hay datos cercanos a esa edad).
 
@@ -23,6 +26,7 @@ export interface RetentionCutoffs {
   tokenCutoff: string;
   notificationCutoff: string;
   webhookEventCutoff: string;
+  holdCutoff: string;
 }
 
 // Calcula los cutoffs (ISO) desde las ventanas. Recibe `now` para poder testearlo.
@@ -39,5 +43,6 @@ export function computeRetentionCutoffs(now: Date = new Date()): RetentionCutoff
     webhookEventCutoff: new Date(
       now.getTime() - WEBHOOK_EVENT_RETENTION_DAYS * DAY_MS,
     ).toISOString(),
+    holdCutoff: new Date(now.getTime() - HOLD_RETENTION_DAYS * DAY_MS).toISOString(),
   };
 }

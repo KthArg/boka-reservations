@@ -50,7 +50,8 @@ export async function loadBookingForNotification(
   return (data as unknown as BookingRow | null) ?? null;
 }
 
-export type LatestRefund = { amountCents: number; currency: string };
+/** `feeCents`: comisión de procesamiento descontada del reembolso (spec 0032), 0 si no hubo. */
+export type LatestRefund = { amountCents: number; currency: string; feeCents: number };
 
 /** Último reembolso de una reserva (cualquier estado). null si no hay. */
 export async function loadLatestRefund(
@@ -59,14 +60,20 @@ export async function loadLatestRefund(
 ): Promise<LatestRefund | null> {
   const { data, error } = await db
     .from('refunds')
-    .select('amount_cents, currency')
+    .select('amount_cents, currency, processing_fee_cents')
     .eq('booking_id', bookingId)
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle<{ amount_cents: number; currency: string }>();
+    .maybeSingle<{ amount_cents: number; currency: string; processing_fee_cents: number }>();
 
   if (error) throw new Error(`load refund: ${error.message}`);
-  return data ? { amountCents: data.amount_cents, currency: data.currency } : null;
+  return data
+    ? {
+        amountCents: data.amount_cents,
+        currency: data.currency,
+        feeCents: data.processing_fee_cents,
+      }
+    : null;
 }
 
 // Todas las escrituras verifican `error` y lanzan (spec 0028): supabase-js no lanza,

@@ -35,6 +35,7 @@ export type Database = {
           status: 'pending' | 'processing' | 'succeeded' | 'failed';
           reason: string | null;
           failure_reason: string | null;
+          processing_fee_cents: number;
           attempts: number;
           created_at: string;
           updated_at: string;
@@ -49,6 +50,7 @@ export type Database = {
           status?: 'pending' | 'processing' | 'succeeded' | 'failed';
           reason?: string | null;
           failure_reason?: string | null;
+          processing_fee_cents?: number;
           attempts?: number;
           created_at?: string;
           updated_at?: string;
@@ -63,6 +65,7 @@ export type Database = {
           status?: 'pending' | 'processing' | 'succeeded' | 'failed';
           reason?: string | null;
           failure_reason?: string | null;
+          processing_fee_cents?: number;
           attempts?: number;
           created_at?: string;
           updated_at?: string;
@@ -522,6 +525,8 @@ export type Database = {
           checked_in_by: string | null;
           consent_at: string | null;
           consent_version: string | null;
+          terms_accepted_at: string | null;
+          terms_version: string | null;
           anonymized_at: string | null;
           payment_method_id: string | null;
           customer_external_id: string | null;
@@ -562,6 +567,8 @@ export type Database = {
           checked_in_by?: string | null;
           consent_at?: string | null;
           consent_version?: string | null;
+          terms_accepted_at?: string | null;
+          terms_version?: string | null;
           anonymized_at?: string | null;
           payment_method_id?: string | null;
           customer_external_id?: string | null;
@@ -602,6 +609,8 @@ export type Database = {
           checked_in_by?: string | null;
           consent_at?: string | null;
           consent_version?: string | null;
+          terms_accepted_at?: string | null;
+          terms_version?: string | null;
           anonymized_at?: string | null;
           payment_method_id?: string | null;
           customer_external_id?: string | null;
@@ -956,6 +965,7 @@ export type Database = {
           p_total_amount_cents: number;
           p_currency: string;
           p_consent_version: string;
+          p_terms_version: string;
           p_payment_method_id: string;
           p_customer_external_id: string;
           p_card_brand: string | null;
@@ -1045,15 +1055,29 @@ export type Database = {
         Args: { p_hold_id: string; p_detached_count: number };
         Returns: boolean;
       };
-      cancel_booking: {
-        Args: {
-          p_booking_id: string;
-          p_actor_type: string;
-          p_refund_amount_cents: number;
-          p_actor_id?: string;
-        };
-        Returns: void;
-      };
+      // Dos sobrecargas: la de 4 parámetros (…042) queda para el código viejo; la de 6 (spec 0032)
+      // recibe motivo y comisión y devuelve si canceló.
+      cancel_booking:
+        | {
+            Args: {
+              p_booking_id: string;
+              p_actor_type: string;
+              p_refund_amount_cents: number;
+              p_actor_id?: string;
+            };
+            Returns: void;
+          }
+        | {
+            Args: {
+              p_booking_id: string;
+              p_actor_type: string;
+              p_refund_amount_cents: number;
+              p_reason: 'customer_request' | 'operator_decision';
+              p_fee_cents: number;
+              p_actor_id?: string;
+            };
+            Returns: 'cancelled' | 'already_cancelled';
+          };
       flag_payment_mismatch: {
         Args: {
           p_booking_id: string;
@@ -1084,6 +1108,10 @@ export type Database = {
         Returns: number;
       };
       purge_unpaid_bookings: {
+        Args: { p_cutoff: string };
+        Returns: number;
+      };
+      purge_stale_holds: {
         Args: { p_cutoff: string };
         Returns: number;
       };

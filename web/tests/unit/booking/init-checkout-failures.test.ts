@@ -71,7 +71,7 @@ const params = {
   customerEmail: 'ana@example.com',
   quantities: { adult: 1, child: 0, student: 0 },
   locale: 'es' as const,
-  consentAccepted: true,
+  legalAccepted: true,
 };
 
 describe('initCheckout — fallos parciales (spec 0028)', () => {

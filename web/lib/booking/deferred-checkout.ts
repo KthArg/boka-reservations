@@ -5,9 +5,10 @@ import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import type { BookingLocale } from '@/lib/booking/create';
 import type { CheckoutInput } from '@/lib/booking/checkout-input';
 import { getPaymentProvider } from '@/lib/payments';
-import { Currency, HoldStatus } from '@shared/constants/enums';
+import { HoldStatus } from '@shared/constants/enums';
 import { DeferredCheckoutCode } from './deferred-checkout-errors';
 import { alertCustomerCreateFailed, alertOrphanedCustomer } from './deferred-checkout-alerts';
+import { CHECKOUT_CURRENCY } from '@shared/constants/bookings';
 
 // Checkout diferido (spec 0029 §5.2): el turista guarda la tarjeta y no se le cobra. Dos pasos,
 // porque el navegador tokeniza con el customer que el servidor creó para este hold:
@@ -16,7 +17,7 @@ import { alertCustomerCreateFailed, alertOrphanedCustomer } from './deferred-che
 //      que sea de ese customer y crea la reserva de forma atómica.
 // PAN, CVV y vencimiento nunca pasan por el servidor.
 
-export const DEFERRED_CURRENCY = Currency.USD;
+export const DEFERRED_CURRENCY = CHECKOUT_CURRENCY;
 
 export type DeferredCheckoutParams = CheckoutInput & {
   sessionToken: string;

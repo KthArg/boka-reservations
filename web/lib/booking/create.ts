@@ -3,8 +3,9 @@ import { createHold, releaseHold } from '@/lib/booking/availability';
 import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import { getPaymentProvider } from '@/lib/payments';
 import type { TicketQuantities } from '@/lib/booking/quantities';
-import { PRIVACY_NOTICE_VERSION } from '@shared/constants/legal';
+import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@shared/constants/legal';
 import { HoldStatus } from '@shared/constants/enums';
+import { CHECKOUT_CURRENCY } from '@shared/constants/bookings';
 
 export type BookingLocale = 'es' | 'en';
 
@@ -15,16 +16,17 @@ export type InitCheckoutParams = {
   customerEmail: string;
   quantities: TicketQuantities;
   locale: BookingLocale;
-  /** El turista aceptó el aviso de privacidad y los términos (spec 0021, P1-3). */
-  consentAccepted: boolean;
+  /**
+   * El llamador validó las dos aceptaciones del checkout: términos y consentimiento de datos
+   * (specs 0021 y 0031). Con `true` se estampan las dos versiones; con `false`, ninguna.
+   */
+  legalAccepted: boolean;
 };
 
 export type InitCheckoutResult = {
   externalPaymentId: string;
   bookingId: string;
 };
-
-const CHECKOUT_CURRENCY = 'USD';
 
 export async function initCheckout(params: InitCheckoutParams): Promise<InitCheckoutResult> {
   const {
@@ -34,7 +36,7 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
     customerEmail,
     quantities,
     locale,
-    consentAccepted,
+    legalAccepted,
   } = params;
 
   const totalSeats = quantities.adult + quantities.child + quantities.student;
@@ -54,6 +56,7 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
   const { holdId } = await createHold(instanceId, totalSeats, sessionToken);
 
   try {
+    const acceptedAt = legalAccepted ? new Date().toISOString() : null;
     const { data: booking, error: bookingErr } = await db
       .from('bookings')
       .insert({
@@ -66,10 +69,12 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
         tickets_student: quantities.student,
         total_amount_cents: totalAmountCents,
         locale,
-        // Evidencia de consentimiento (spec 0021, P1-3). El llamador ya lo exigió; la versión
-        // del aviso la estampa el server (PRIVACY_NOTICE_VERSION), no el cliente.
-        consent_at: consentAccepted ? new Date().toISOString() : null,
-        consent_version: consentAccepted ? PRIVACY_NOTICE_VERSION : null,
+        // Evidencia de las aceptaciones (specs 0021 y 0031). El llamador ya las exigió; las
+        // versiones las estampa el server, no el cliente.
+        consent_at: acceptedAt,
+        consent_version: legalAccepted ? PRIVACY_NOTICE_VERSION : null,
+        terms_accepted_at: acceptedAt,
+        terms_version: legalAccepted ? TERMS_VERSION : null,
       })
       .select('id')
       .single();

@@ -17,6 +17,27 @@ const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 const PERMISSION_DENIED = '42501';
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
 
+const DEFERRED_BOOKING_ARGS = {
+  p_hold_id: ZERO_UUID,
+  p_session_token: 'x',
+  p_customer_name: 'x',
+  p_customer_email: 'x@example.com',
+  p_locale: 'es',
+  p_tickets_adult: 1,
+  p_tickets_child: 0,
+  p_tickets_student: 0,
+  p_total_amount_cents: 1,
+  p_currency: 'USD',
+  p_consent_version: 'x',
+  p_terms_version: 'x',
+  p_payment_method_id: 'x',
+  p_customer_external_id: 'x',
+  p_card_brand: 'visa',
+  p_card_last4: '4242',
+  p_card_exp_month: 12,
+  p_card_exp_year: 2099,
+};
+
 // Funciones SECURITY DEFINER que mutan estado: deben quedar fuera del alcance de
 // anon Y authenticated (la app las invoca con service_role).
 const STATE_MUTATING: Record<string, Record<string, unknown>> = {
@@ -32,6 +53,11 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
   },
   cancel_stale_pending_booking: { p_booking_id: ZERO_UUID, p_reason: 'x' },
   check_rate_limit: { p_key: 'test-grants', p_limit: 1, p_window_seconds: 60 },
+  // Spec 0031: firma de 18 parámetros de create_deferred_booking y las purgas nuevas o
+  // reescritas. El cutoff en el pasado lejano hace que service_role no borre nada.
+  create_deferred_booking: DEFERRED_BOOKING_ARGS,
+  purge_stale_holds: { p_cutoff: '2000-01-01T00:00:00Z' },
+  purge_old_notifications: { p_cutoff: '2000-01-01T00:00:00Z' },
 };
 
 // Reportes: SECURITY INVOKER, los llama el panel con sesión authenticated. anon no.
@@ -81,6 +107,33 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
       await service.from('rate_limits').delete().eq('key', 'test-grants');
     },
   );
+
+  // Spec 0032: STATE_MUTATING se indexa por nombre y no admite las dos sobrecargas de
+  // cancel_booking. Sin p_reason la llamada resolvería a la de 4 parámetros y el test no
+  // probaría la nueva.
+  it('la sobrecarga de 6 parámetros de cancel_booking solo la ejecuta service_role', async () => {
+    const args = {
+      p_booking_id: ZERO_UUID,
+      p_actor_type: 'tourist',
+      p_refund_amount_cents: 1,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
+    };
+    expect((await anon.rpc('cancel_booking', args)).error?.code).toBe(PERMISSION_DENIED);
+    expect((await staff.rpc('cancel_booking', args)).error?.code).toBe(PERMISSION_DENIED);
+    const fromService = await service.rpc('cancel_booking', args);
+    expect(fromService.error?.code).not.toBe(PERMISSION_DENIED);
+    expect(fromService.error?.message).toContain('BOOKING_NOT_FOUND');
+  });
+
+  it('la firma de 17 parámetros de create_deferred_booking ya no existe (spec 0031)', async () => {
+    const legacyArgs = Object.fromEntries(
+      Object.entries(DEFERRED_BOOKING_ARGS).filter(([key]) => key !== 'p_terms_version'),
+    );
+    const { error } = await service.rpc('create_deferred_booking', legacyArgs);
+    // PostgREST no encuentra ninguna función con esos parámetros.
+    expect(error?.code).toBe('PGRST202');
+  });
 
   it.each(REPORTS)('anon NO puede ejecutar el reporte %s', async (fn) => {
     const { error } = await anon.rpc(fn, REPORT_ARGS);

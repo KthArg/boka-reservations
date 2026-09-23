@@ -12,6 +12,15 @@ export enum CancellationError {
   WriteFailed = 'cancellation_write_failed',
   /** Reserva sin cobrar con el cobro en curso (spec 0029): reintentar en unos minutos. */
   ChargeInFlight = 'cancellation_charge_in_flight',
+  /** El staff no eligió el motivo al cancelar una reserva cobrada (spec 0032). */
+  ReasonRequired = 'cancellation_reason_required',
+  /** Solo un admin reembolsa el total de una salida que ya empezó (spec 0032). */
+  OperatorRefundAdminOnly = 'cancellation_operator_refund_admin_only',
+  /**
+   * El estado o el reembolso cambió desde que se mostró la pantalla (spec 0032): p. ej. el cobro
+   * diferido se completó o se cruzó el borde de 24 h. No se cancela; la UI recarga.
+   */
+  StateChanged = 'cancellation_state_changed',
 }
 
 /** Motivo de cancel_unpaid_booking que queda auditado (spec 0029 §5.8). */
@@ -39,3 +48,21 @@ export enum RefundRetryError {
    *  reintentar (spec 0028). */
   RequiresManualCheck = 'refund_retry_requires_manual_check',
 }
+
+/**
+ * Motivo de la cancelación de una reserva cobrada (spec 0032). Decide si el reembolso descuenta
+ * la comisión de procesamiento: solo cuando cancelar es decisión del cliente. `customer_request`
+ * coincide con el de `UnpaidCancelReason`.
+ */
+export const CancellationReason = {
+  CustomerRequest: 'customer_request',
+  OperatorDecision: 'operator_decision',
+} as const;
+
+export type CancellationReasonValue = (typeof CancellationReason)[keyof typeof CancellationReason];
+
+/** Resultado de la función SQL cancel_booking de 6 parámetros (spec 0032). */
+export const CancelBookingOutcome = {
+  Cancelled: 'cancelled',
+  AlreadyCancelled: 'already_cancelled',
+} as const;

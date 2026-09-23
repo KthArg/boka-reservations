@@ -8,6 +8,8 @@ export type CancellationConfirmationProps = {
   startsAt: string;
   hasRefund: boolean;
   refundAmountCents: number;
+  /** Comisión de procesamiento descontada del reembolso (spec 0032); 0 si no hubo. */
+  feeCents: number;
   currency: string;
   /** Reserva del cobro diferido que nunca se cobró (spec 0029 §5.8): no hay nada que reembolsar. */
   noCharge: boolean;
@@ -23,6 +25,7 @@ const COPY = {
     dateLabel: 'Fecha y hora',
     refund: (amount: string) =>
       `Te reembolsaremos ${amount}. Lo vas a ver acreditado en los próximos días hábiles.`,
+    fee: (fee: string) => `Se descontó la comisión de procesamiento del pago (${fee}).`,
     noRefund: 'Según la política de cancelación, esta cancelación no tiene reembolso.',
     noCharge: 'No se hizo ningún cobro a tu tarjeta, así que no hay nada que reembolsar.',
     cta: 'Ver mi reserva',
@@ -36,6 +39,7 @@ const COPY = {
     dateLabel: 'Date and time',
     refund: (amount: string) =>
       `We will refund ${amount}. You should see it credited within the next business days.`,
+    fee: (fee: string) => `The payment processing fee (${fee}) was deducted.`,
     noRefund: 'Per the cancellation policy, this cancellation has no refund.',
     noCharge: 'Your card was never charged, so there is nothing to refund.',
     cta: 'View my booking',
@@ -45,9 +49,10 @@ const COPY = {
 
 function refundLineFor(props: CancellationConfirmationProps, locale: EmailLocale): string {
   const t = COPY[locale];
-  if (props.hasRefund)
-    return t.refund(formatMoney(props.refundAmountCents, props.currency, locale));
-  return props.noCharge ? t.noCharge : t.noRefund;
+  if (!props.hasRefund) return props.noCharge ? t.noCharge : t.noRefund;
+  const refund = t.refund(formatMoney(props.refundAmountCents, props.currency, locale));
+  if (props.feeCents <= 0) return refund;
+  return `${refund} ${t.fee(formatMoney(props.feeCents, props.currency, locale))}`;
 }
 
 export function renderCancellationConfirmation(
