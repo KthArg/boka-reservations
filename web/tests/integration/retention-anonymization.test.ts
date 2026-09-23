@@ -402,7 +402,9 @@ describe('retención automática (PRIV-03)', () => {
         kind: 'booking_confirmation',
         recipient_email: uniqueEmail('notif'),
         locale: 'es',
-        scheduled_for: new Date().toISOString(),
+        // Terminal: la purga respeta los envíos pendientes futuros (spec 0031, §5.4).
+        status: 'sent',
+        scheduled_for: new Date(Date.now() - 400 * DAY_MS).toISOString(),
         created_at: new Date(Date.now() - 400 * DAY_MS).toISOString(),
       })
       .select('id')

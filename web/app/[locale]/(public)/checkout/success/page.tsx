@@ -2,6 +2,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { maskEmail } from '@/lib/format/mask-email';
+import { isWithinSuccessWindow } from '@/lib/booking/success-window';
 import { BookingStatus } from '@shared/constants/enums';
 import styles from './success.module.css';
 
@@ -31,6 +32,8 @@ type SuccessBooking = {
   customer_email: string;
   tour_instance_id: string;
   status: string;
+  created_at: string;
+  charge_started_at: string | null;
 };
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
@@ -47,11 +50,21 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
     // `customer_email` se lee solo para enmascararlo server-side; el valor crudo no llega al HTML.
     const { data } = await db
       .from('bookings')
-      .select('id, customer_email, tour_instance_id, status')
+      .select('id, customer_email, tour_instance_id, status, created_at, charge_started_at')
       .eq('id', bookingId)
       .maybeSingle();
 
-    if (data) {
+    // Spec 0031 §5.3: fuera de la ventana, la página se comporta como si la reserva no existiera
+    // (la dirección queda en el historial del navegador y en los logs de la plataforma).
+    const visible =
+      data !== null &&
+      isWithinSuccessWindow({
+        createdAt: data.created_at,
+        chargeStartedAt: data.charge_started_at,
+        now: new Date(),
+      });
+
+    if (data && visible) {
       booking = data;
       const { data: instance } = await db
         .from('tour_instances')

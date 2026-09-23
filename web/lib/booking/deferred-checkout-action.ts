@@ -14,6 +14,7 @@ import { completeDeferredCheckout } from '@/lib/booking/deferred-checkout-comple
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { PAYMENT_METHOD_ID_PATTERN } from '@/lib/payments/payment-method-id';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
+import { CHECKOUT_ACCEPTED_VALUE, CheckoutLegalField } from '@shared/constants/legal';
 import {
   checkoutErrorKey,
   CheckoutErrorKey,
@@ -71,8 +72,10 @@ function fieldGetter(fields: DeferredCheckoutFields) {
     instance_id: fields.instanceId,
     name: fields.name,
     email: fields.email,
-    // El consentimiento ya se exigió en el paso 1 y se estampa con la versión vigente al crear.
-    consent: 'accepted',
+    // Las dos aceptaciones ya se exigieron en el paso 1 y se estampan con las versiones
+    // vigentes al crear (spec 0031).
+    [CheckoutLegalField.Terms]: CHECKOUT_ACCEPTED_VALUE,
+    [CheckoutLegalField.PrivacyConsent]: CHECKOUT_ACCEPTED_VALUE,
     adult: String(fields.adult),
     child: String(fields.child),
     student: String(fields.student),
