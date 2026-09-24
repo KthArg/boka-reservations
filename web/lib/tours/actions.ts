@@ -16,7 +16,7 @@ import {
 } from './validation';
 import { slugExists } from './repository';
 import { parseTourFields } from './parse';
-import { mapPricing, mapSchedules } from './map';
+import { mapPricing, mapSchedules, mapTourColumns } from './map';
 import { reconcileRows, writeErrorCode } from './reconcile';
 
 async function guardAdmin(): Promise<ActionResult | null> {
@@ -61,7 +61,7 @@ export async function createTour(
   const supabase = await createSupabaseServerClient();
   const { data: tour, error: tourError } = await supabase
     .from('tours')
-    .insert({ ...tourFields, cover_image_url: tourFields.cover_image_url ?? null })
+    .insert(mapTourColumns(tourFields))
     .select('id')
     .single();
 
@@ -127,7 +127,7 @@ export async function updateTour(
   const supabase = await createSupabaseServerClient();
   const { error: tourError } = await supabase
     .from('tours')
-    .update({ ...tourFields, cover_image_url: tourFields.cover_image_url ?? null })
+    .update(mapTourColumns(tourFields))
     .eq('id', id);
 
   if (tourError) return { success: false, errors: { _form: [TourActionError.UpdateFailed] } };

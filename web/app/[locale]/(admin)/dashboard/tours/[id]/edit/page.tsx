@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTourWithDetails } from '@/lib/tours/repository';
+import { getBusinessSettings } from '@/lib/settings/repository';
 import { TourStatus } from '@shared/constants/enums';
 import TourForm from '@/components/tours/TourForm';
 import { ArchiveTourButton } from '@/components/tours/ArchiveTourButton';
@@ -10,7 +11,11 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function EditTourPage({ params }: Props) {
   const { id } = await params;
-  const [tour, t] = await Promise.all([getTourWithDetails(id), getTranslations('tours')]);
+  const [tour, t, settings] = await Promise.all([
+    getTourWithDetails(id),
+    getTranslations('tours'),
+    getBusinessSettings(),
+  ]);
   if (!tour) notFound();
 
   const isActive = tour.status === TourStatus.Active;
@@ -27,7 +32,7 @@ export default async function EditTourPage({ params }: Props) {
           className={isActive ? styles.archiveBtn : styles.reactivateBtn}
         />
       </div>
-      <TourForm defaultValues={tour} />
+      <TourForm defaultValues={tour} defaultChargeLeadHours={settings.default_charge_lead_hours} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { reconcilePendingPayments } from './jobs/reconcile-pending-payments.js';
 import { cleanupRateLimits } from './jobs/cleanup-rate-limits.js';
 import { applyRetention } from './jobs/apply-retention.js';
 import { watchCharges } from './jobs/watch-charges.js';
+import { chargeDepartures } from './jobs/charge-departures.js';
 import { closePaymentIntents } from './jobs/close-payment-intents.js';
 
 if (env.SENTRY_DSN) {
@@ -84,5 +85,7 @@ schedule('cleanup-rate-limits', cleanupRateLimits, ONE_HOUR_MS);
 schedule('apply-retention', applyRetention, ONE_DAY_MS);
 // watch-charges: al inicio y luego cada minuto (watchdog del cobro diferido, spec 0029)
 schedule('watch-charges', watchCharges, ONE_MINUTE_MS);
+// charge-departures: al inicio y luego cada minuto (motor del cobro del mínimo, spec 0033)
+schedule('charge-departures', chargeDepartures, ONE_MINUTE_MS);
 // close-payment-intents: al inicio y luego cada 5 minutos (barrido de intents y customers, spec 0029)
 schedule('close-payment-intents', closePaymentIntents, FIVE_MINUTES_MS);

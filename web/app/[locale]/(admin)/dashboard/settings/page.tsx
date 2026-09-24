@@ -23,7 +23,10 @@ export default async function SettingsPage({ params }: Props) {
       <h1 className={styles.title}>{t('page-title')}</h1>
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('section-minimum')}</h2>
-        <SettingsForm decisionWindowHours={settings.minimum_decision_window_hours} />
+        <SettingsForm
+          decisionWindowHours={settings.minimum_decision_window_hours}
+          chargeLeadHours={settings.default_charge_lead_hours}
+        />
       </section>
     </div>
   );

@@ -353,3 +353,22 @@ Ninguna bloquea la implementación; todas bloquean **encender el flujo diferido*
 - [ ] **Pregunta**: ¿los montos fijos de la tarifa se cobran por autorización o solo por captura? En sandbox una autorización soltada no dejó transacción de balance. **Dueño**: Kenneth. **Antes de**: 2026-10-31.
 - [ ] **Pregunta**: ¿cuánto tarda el banco del turista en soltar una autorización cancelada? Define el texto del email. **Dueño**: Kenneth (prueba con tarjeta real). **Antes de**: 2026-10-31.
 - [ ] **Pregunta**: ¿el texto de la retención en los términos cumple con lo que espera la abogada? **Dueño**: Dra. Xinia Guerrero. **Antes de**: 2026-10-31.
+
+## 14. Notas de implementación (2026-09-23)
+
+Lo que la implementación resolvió distinto de lo escrito arriba, después de la ronda de revisión:
+
+- **El plazo se espera completo aunque ninguna reserva tenga reintentos por delante**: hasta que
+  venza pueden entrar reservas nuevas, que es para lo que existe la ventana.
+- **Después del plazo no se autoriza nada más.** Sin ese corte, una salida esperando decisión del
+  staff volvía a autorizar y soltar cada minuto, reteniéndole plata al turista una y otra vez.
+- **§5.7 (3DS en vuelo) se resuelve dentro del soltado**: `releaseAll` cancela en la pasarela
+  cualquier intent que no haya cobrado, incluido el de `requires_action`, y
+  `release_departure_authorization` lo asienta. No se usa `cancel_charge_in_flight` con
+  `action_expired`, que exige el plazo del 3DS ya vencido.
+- **Los plazos de 72 h y 3 h están espejados en el worker** además de en la SQL, porque las
+  decisiones de capturar, soltar y cancelar se toman ahí. Es una desviación consciente de §5.1.
+- **`resolve_departure_minimum` suma el outcome `capture_in_progress`**: no resuelve mientras el
+  worker esté capturando una reserva de la salida.
+- **`charge_attempt_failed` y `cancel_charge_in_flight` de la …044 se reemplazan** para limpiar
+  las marcas de la autorización al salir de `pending_payment`.

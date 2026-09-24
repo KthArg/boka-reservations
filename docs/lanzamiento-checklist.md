@@ -29,13 +29,14 @@ Los borradores legales para la abogada y el operador están fuera del repo, en `
 3. **Promover** `dev → main` con **merge commit** (nunca squash).
 4. **Variables.** Además de las tablas del runbook:
    - Web: `DEFERRED_CHARGE_ENABLED=false` (explícito, aunque es el default).
+   - Worker: `DEFERRED_CHARGE_ENABLED=false` y `RELEASE_AUTHORIZATIONS_ONLY=false` (spec 0033). Los dos flags del cobro diferido, el de la web y el del worker, se prenden y se apagan juntos: la web encendida con el worker apagado deja reservas que nunca se cobran.
    - Web y worker: no setear `ONVOPAY_API_BASE_URL` ni `NEXT_PUBLIC_ONVOPAY_API_BASE_URL`; el default es la API de producción.
    - Web: `RESEND_API_KEY` **ya no se exige** (se quitó del schema en el spec 0028). El runbook todavía dice lo contrario.
    - Worker: `NOTIFICATIONS_ENABLED=true` solo cuando Resend y el dominio estén verificados; mientras tanto `false`.
    - Worker: `RETENTION_ENABLED=true`. Es lo que hace cumplir los plazos del registro de datos.
 5. **Worker.** Levantarlo y confirmar en los logs una corrida de `generate-tour-instances` y una de `apply-retention`. Si se usa Railway: plan Hobby y **App Sleeping apagado**.
 6. **Datos iniciales.** Primer admin (Fase 4b del runbook) y carga de tours reales desde el panel.
-7. **Texto legal.** Cuando llegue de la abogada: reemplazar `privacy-body` y `terms-body` en `web/locales/es.json` y `en.json`, subir `PRIVACY_NOTICE_VERSION` y `TERMS_VERSION` en `shared/constants/legal.ts` a la fecha de publicación, y desplegar. En el mismo deploy, poner `REFUND_FEE_FROM_TERMS_VERSION` (en `shared/constants/policies.ts`) en esa misma fecha para activar el descuento de la comisión (spec 0032). Si los términos no incluyen la cláusula, dejarlo en `null`.
+7. **Texto legal.** Cuando llegue de la abogada: reemplazar `privacy-body` y `terms-body` en `web/locales/es.json` y `en.json`, subir `PRIVACY_NOTICE_VERSION` y `TERMS_VERSION` en `shared/constants/legal.ts` a la fecha de publicación, y desplegar. En el mismo deploy, poner `REFUND_FEE_FROM_TERMS_VERSION` (en `shared/constants/policies.ts`) en esa misma fecha para activar el descuento de la comisión (spec 0032). Si los términos no incluyen la cláusula, dejarlo en `null`. **Los dos cambios están desacoplados** (spec 0033): `TERMS_VERSION` ya se subió a `2026-09-23` por la cláusula de retención del cobro automático, y `REFUND_FEE_FROM_TERMS_VERSION` sigue en `null` a la espera de la abogada. Subir la versión de los términos NO activa el descuento de la comisión.
 8. **Prueba completa en producción** (Fase 7 del runbook): reserva real de monto mínimo, correo en la bandeja de entrada, cancelación del turista con reembolso parcial (monto = total − comisión, verificado en el dashboard de OnvoPay), cancelación del staff por decisión del operador con reembolso total, cuadre de reportes.
 9. **Tag** `v0.1.0` y recién entonces difundir la URL.
 

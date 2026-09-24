@@ -1,4 +1,4 @@
-// updateBusinessSettings (spec 0029): guard de admin, validación del rango y escritura con la
+// updateBusinessSettings (specs 0029 y 0033): guard de admin, validación de los rangos y escritura con la
 // sesión real del usuario, para que la RLS de …043 corra de verdad. Se mockean solo las
 // fronteras de Next que no existen en vitest: requireRole (next/headers), el cliente de sesión
 // (cookies) —que devuelve un cliente Supabase autenticado real— y next/cache.
@@ -23,7 +23,11 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SERVICE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing — load .env.local');
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-type Settings = { minimum_decision_window_hours: number; updated_by: string | null };
+type Settings = {
+  minimum_decision_window_hours: number;
+  default_charge_lead_hours: number;
+  updated_by: string | null;
+};
 
 const service = createClient<Database>(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -53,16 +57,17 @@ async function userId(email: string): Promise<string> {
 async function currentSettings(): Promise<Settings> {
   const { data, error } = await service
     .from('business_settings')
-    .select('minimum_decision_window_hours, updated_by')
+    .select('minimum_decision_window_hours, default_charge_lead_hours, updated_by')
     .eq('id', BUSINESS_SETTINGS_ID)
     .single();
   if (error) throw new Error(`currentSettings: ${error.message}`);
   return data;
 }
 
-function formWith(hours: string): FormData {
+function formWith(hours: string, leadHours = '48'): FormData {
   const form = new FormData();
   form.append('minimum_decision_window_hours', hours);
+  form.append('default_charge_lead_hours', leadHours);
   return form;
 }
 
@@ -97,20 +102,34 @@ afterAll(async () => {
 });
 
 describe('updateBusinessSettings', () => {
-  it('saves the decision window with the admin as its author', async () => {
+  it('saves the decision window and the charge lead time with the admin as their author', async () => {
     // Arrange
     session.client = adminSession;
     requireRoleMock.mockResolvedValue({ id: adminId });
 
     // Act
-    const result = await updateBusinessSettings(null, formWith('48'));
+    const result = await updateBusinessSettings(null, formWith('48', '24'));
 
     // Assert
     expect(result).toEqual({ success: true });
     expect(await currentSettings()).toEqual({
       minimum_decision_window_hours: 48,
+      default_charge_lead_hours: 24,
       updated_by: adminId,
     });
+  });
+
+  it.each(['0', '721', 'abc'])('rejects %j as a charge lead time, without writing', async (raw) => {
+    // Arrange
+    session.client = adminSession;
+    requireRoleMock.mockResolvedValue({ id: adminId });
+
+    // Act
+    const result = await updateBusinessSettings(null, formWith('48', raw));
+
+    // Assert
+    expect(result).toEqual({ success: false, error: SettingsActionError.LeadHoursOutOfRange });
+    expect(await currentSettings()).toEqual(original);
   });
 
   it('rejects a user who is not an admin, without writing', async () => {

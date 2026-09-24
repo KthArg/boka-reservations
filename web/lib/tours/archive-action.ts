@@ -23,6 +23,9 @@ export async function archiveTour(id: string): Promise<ArchiveResult> {
   if (await hasActiveFutureBookings(db, id, nowIso)) {
     return { ok: false, error: TourActionError.ArchiveHasBookings };
   }
+  if (await hasChargingDeparture(db, id, nowIso)) {
+    return { ok: false, error: TourActionError.ArchiveChargeInProgress };
+  }
 
   const { data: cancelled, error: instErr } = await db
     .from('tour_instances')
@@ -59,6 +62,31 @@ export async function reactivateTour(id: string): Promise<ArchiveResult> {
   if (error) return { ok: false, error: TourActionError.ArchiveFailed };
   revalidatePath('/', 'layout');
   return { ok: true };
+}
+
+/**
+ * Salida con el ciclo del mínimo abierto (spec 0033). Archivar la cancelaría, y el motor no toca
+ * salidas canceladas: el ciclo quedaría abierto y las retenciones vivas, sin nadie que las suelte.
+ * El caso normal ya lo bloquea `hasActiveFutureBookings`; esto cubre el ciclo que quedó abierto
+ * después de que todas sus reservas se cancelaran.
+ */
+async function hasChargingDeparture(
+  db: ReturnType<typeof createSupabaseServiceClient>,
+  tourId: string,
+  nowIso: string,
+): Promise<boolean> {
+  const { data, error } = await db
+    .from('tour_instances')
+    .select('id')
+    .eq('tour_id', tourId)
+    .gte('starts_at', nowIso)
+    .not('minimum_charge_triggered_at', 'is', null)
+    .is('minimum_resolved_at', null)
+    .is('minimum_charge_closed_at', null)
+    .limit(1);
+  // Mismo criterio que la otra lectura: ante un error se falla cerrado.
+  if (error) return true;
+  return (data?.length ?? 0) > 0;
 }
 
 async function hasActiveFutureBookings(

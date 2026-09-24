@@ -7,7 +7,14 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/types/database';
 import { TourActionError } from '@shared/constants/tours';
 import { deleteToursDeep } from './cleanup';
-import { createDeferredBooking, createDeparture, DAY_MS, must, type Db } from './deferred-fixtures';
+import {
+  createDeferredBooking,
+  createDeparture,
+  DAY_MS,
+  must,
+  ok,
+  type Db,
+} from './deferred-fixtures';
 
 // archiveTour exige rol admin y revalida rutas; fuera de un request de Next se mockean.
 vi.mock('@/lib/auth/server', () => ({
@@ -43,6 +50,38 @@ describe('archiveTour — reservas sin cobrar', () => {
 
     // Assert
     expect(result).toEqual({ ok: false, error: TourActionError.ArchiveHasBookings });
+    const instance = must(
+      await db.from('tour_instances').select('status').eq('id', departure.instanceId).single(),
+      'instance',
+    );
+    expect(instance.status).toBe('available');
+  });
+
+  // Archivar cancela la salida, y el motor del mínimo no toca salidas canceladas: el ciclo
+  // quedaría abierto para siempre (spec 0033 §5.9). El caso llega acá cuando todas las reservas
+  // de la salida ya se cancelaron y el ciclo sigue abierto.
+  it('blocks archiving a tour whose departure is in the middle of its charge cycle', async () => {
+    // Arrange
+    const departure = await createDeparture(db, 10 * DAY_MS);
+    tourIds.push(departure.tourId);
+    ok(
+      await db
+        .from('tours')
+        .update({ charge_timing: 'before_departure', charge_lead_hours: 720 })
+        .eq('id', departure.tourId),
+      'charge timing',
+    );
+    const opened = must(
+      await db.rpc('open_departure_charge', { p_instance_id: departure.instanceId }),
+      'open_departure_charge',
+    );
+    expect(opened).toBe('opened');
+
+    // Act
+    const result = await archiveTour(departure.tourId);
+
+    // Assert
+    expect(result).toEqual({ ok: false, error: TourActionError.ArchiveChargeInProgress });
     const instance = must(
       await db.from('tour_instances').select('status').eq('id', departure.instanceId).single(),
       'instance',

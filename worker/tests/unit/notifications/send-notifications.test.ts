@@ -97,7 +97,9 @@ describe('sendNotifications', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('pospone (sin cancelar ni enviar) un kind que este worker todavía no sabe enviar (spec 0029)', async () => {
-    fetchPending.mockResolvedValue([{ ...notif, kind: 'departure_cancelled_minimum' }]);
+    // Un kind que la DB ya encola y este worker todavía no mapea (el worker corre detrás de la
+    // migración). Ninguno de los kinds actuales sirve: todos tienen preparador.
+    fetchPending.mockResolvedValue([{ ...notif, kind: 'kind_de_una_migracion_mas_nueva' }]);
     const before = Date.now();
 
     await sendNotifications();

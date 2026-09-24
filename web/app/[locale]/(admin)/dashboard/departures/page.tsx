@@ -2,10 +2,13 @@ import { getTranslations } from 'next-intl/server';
 import { listGuides, listUpcomingDepartures } from '@/lib/guides/repository';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { GuideAssigner } from './GuideAssigner';
+import { ChargeStatus } from './ChargeStatus';
+import { DecisionTray } from './DecisionTray';
 import styles from './departures.module.css';
 
 export default async function SalidasPage() {
   const t = await getTranslations('guides');
+  const tCharge = await getTranslations('departures');
   const [departures, guides] = await Promise.all([listUpcomingDepartures(), listGuides()]);
 
   return (
@@ -13,6 +16,8 @@ export default async function SalidasPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>{t('departures-title')}</h1>
       </div>
+
+      <DecisionTray departures={departures} />
 
       {departures.length === 0 ? (
         <p className={styles.empty}>{t('departures-empty')}</p>
@@ -23,6 +28,7 @@ export default async function SalidasPage() {
               <th className={styles.th}>{t('col-date')}</th>
               <th className={styles.th}>{t('col-tour')}</th>
               <th className={styles.th}>{t('col-passengers')}</th>
+              <th className={styles.th}>{tCharge('col-charge')}</th>
               <th className={styles.th}>{t('col-guide')}</th>
             </tr>
           </thead>
@@ -37,6 +43,9 @@ export default async function SalidasPage() {
                   <td className={styles.td}>{dep.tourName}</td>
                   <td className={styles.td}>
                     {dep.confirmedTickets} / {dep.capacityTotal}
+                  </td>
+                  <td className={styles.td}>
+                    <ChargeStatus charge={dep.charge} />
                   </td>
                   <td className={styles.td}>
                     <GuideAssigner

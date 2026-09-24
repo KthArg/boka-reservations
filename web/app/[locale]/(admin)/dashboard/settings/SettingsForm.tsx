@@ -4,17 +4,22 @@ import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { updateBusinessSettings } from '@/lib/settings/actions';
 import {
+  DEFAULT_CHARGE_LEAD_HOURS_MAX,
+  DEFAULT_CHARGE_LEAD_HOURS_MIN,
   MINIMUM_DECISION_WINDOW_HOURS_MAX,
   MINIMUM_DECISION_WINDOW_HOURS_MIN,
+  SettingsActionError,
 } from '@shared/constants/settings';
 import type { SettingsFormResult } from '@/lib/settings/types';
+import { SettingsHoursField } from './SettingsHoursField';
 import styles from './settings.module.css';
 
-type Props = { decisionWindowHours: number };
+type Props = { decisionWindowHours: number; chargeLeadHours: number };
 
-const RANGE = { min: MINIMUM_DECISION_WINDOW_HOURS_MIN, max: MINIMUM_DECISION_WINDOW_HOURS_MAX };
+const WINDOW = { min: MINIMUM_DECISION_WINDOW_HOURS_MIN, max: MINIMUM_DECISION_WINDOW_HOURS_MAX };
+const LEAD = { min: DEFAULT_CHARGE_LEAD_HOURS_MIN, max: DEFAULT_CHARGE_LEAD_HOURS_MAX };
 
-export function SettingsForm({ decisionWindowHours }: Props) {
+export function SettingsForm({ decisionWindowHours, chargeLeadHours }: Props) {
   const t = useTranslations('settings');
   const [state, formAction, pending] = useActionState<SettingsFormResult | null, FormData>(
     updateBusinessSettings,
@@ -22,28 +27,33 @@ export function SettingsForm({ decisionWindowHours }: Props) {
   );
   // Controlado: React 19 hace form.reset() tras la action y borraría lo tipeado si falla.
   const [hours, setHours] = useState(String(decisionWindowHours));
+  const [leadHours, setLeadHours] = useState(String(chargeLeadHours));
+
+  const failed = state?.success === false ? state.error : null;
+  const errorRange = failed === SettingsActionError.LeadHoursOutOfRange ? LEAD : WINDOW;
 
   return (
     <form action={formAction} className={styles.form}>
-      <label className={styles.label}>
-        {t('field-decision-window')}
-        <input
-          type="number"
-          name="minimum_decision_window_hours"
-          required
-          step={1}
-          min={RANGE.min}
-          max={RANGE.max}
-          value={hours}
-          onChange={(e) => setHours(e.target.value)}
-          className={styles.input}
-        />
-      </label>
-      <p className={styles.hint}>{t('hint-decision-window', RANGE)}</p>
+      <SettingsHoursField
+        name="minimum_decision_window_hours"
+        label={t('field-decision-window')}
+        hint={t('hint-decision-window', WINDOW)}
+        {...WINDOW}
+        value={hours}
+        onChange={setHours}
+      />
+      <SettingsHoursField
+        name="default_charge_lead_hours"
+        label={t('field-charge-lead-hours')}
+        hint={t('hint-charge-lead-hours', LEAD)}
+        {...LEAD}
+        value={leadHours}
+        onChange={setLeadHours}
+      />
 
-      {state?.success === false && (
+      {failed && (
         <p className={styles.formError} role="alert">
-          {t(`errors.${state.error}`, RANGE)}
+          {t(`errors.${failed}`, errorRange)}
         </p>
       )}
       {state?.success && (

@@ -1,4 +1,5 @@
-import type { PricingRow, ScheduleRow } from './types';
+import type { PricingRow, ScheduleRow, TourFormData } from './types';
+import type { TablesInsert } from '@/types/database';
 
 // Mapeo de filas del formulario a payloads de insert/upsert. Vive aparte de `actions.ts`
 // (que es `'use server'` y solo puede exportar funciones async) para poder unit-testearlo.
@@ -7,6 +8,17 @@ import type { PricingRow, ScheduleRow } from './types';
 // pasa `id: undefined`, supabase-js lo manda como `id: null` (toma Object.keys, que incluye la
 // clave aunque el valor sea undefined) y viola el NOT NULL del PK (la columna tiene DEFAULT
 // gen_random_uuid()). Solo se incluye `id` para filas existentes (upsert en updateTour).
+
+/**
+ * Columnas de `tours` que salen del formulario. `cover_image_url` es lo único que llega como
+ * `undefined` cuando se vacía, y supabase-js omite las claves undefined del update: el campo se
+ * quedaría con el valor viejo. `charge_lead_hours` ya sale como null del schema (.default(null)).
+ */
+export function mapTourColumns(
+  fields: Omit<TourFormData, 'pricing' | 'schedules'>,
+): TablesInsert<'tours'> {
+  return { ...fields, cover_image_url: fields.cover_image_url ?? null };
+}
 
 export function mapPricing(pricing: PricingRow[], tourId: string) {
   return pricing.map((p) => ({
