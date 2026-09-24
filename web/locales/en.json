@@ -76,6 +76,14 @@
     "minimum-policy-section": "Departures below the minimum",
     "field-auto-cancel-below-minimum": "Cancel automatically, without notifying staff",
     "hint-auto-cancel-below-minimum": "If a departure hasn't reached the minimum participants when the decision window arrives, it is cancelled automatically and tourists are notified. When off, staff see the departure in the panel and decide whether to confirm or cancel it.",
+    "charge-timing-section": "When to charge",
+    "field-charge-timing": "Charge moment",
+    "charge-timing-on-minimum": "When the minimum is met",
+    "charge-timing-before-departure": "Before departure",
+    "hint-charge-timing": "\"When the minimum is met\" charges as soon as enough people book. \"Before departure\" charges the number of hours you set, whether the minimum was met or not.",
+    "field-charge-lead-hours": "Hours before departure",
+    "hint-charge-lead-hours": "Leave it empty to use the global value ({default} hours). Between {min} and {max} hours.",
+    "warn-charge-lead-hours": "With fewer than {hours} hours, a declined card leaves no time to retry the charge: the departure is resolved on a single attempt.",
     "field-cover-image": "Cover image URL (optional)",
     "field-slug": "Slug (URL-friendly identifier)",
     "difficulty-easy": "Easy",
@@ -119,6 +127,7 @@
       "tour_base_price_duplicate": "There is more than one active base price for the same ticket type.",
       "tour_schedule_in_use": "A schedule with generated departures cannot be deleted; deactivate it instead.",
       "tour_archive_has_bookings": "Cannot archive: there are active bookings on future departures.",
+      "tour_archive_charge_in_progress": "Cannot archive: a departure is in the middle of its charge cycle. Wait until it resolves.",
       "tour_archive_failed": "The operation could not be completed. Try again."
     },
     "tour-not-found": "Tour not found.",
@@ -182,7 +191,7 @@
     "privacy-title": "Privacy notice",
     "privacy-body": "[PENDING — the operator must replace this text with its privacy notice in line with Costa Rica's Law 8968: what personal data is collected, for what purpose, how long it is retained, with whom it is shared, and how to exercise the rights of access, rectification and deletion before the data controller.]",
     "terms-title": "Terms and conditions",
-    "terms-body": "[PENDING — the operator must replace this text with its terms and conditions: cancellation and refund policy, responsibilities of the parties, and conditions of service.]",
+    "terms-body": "[PENDING — the operator must replace this text with its terms and conditions: cancellation and refund policy, responsibilities of the parties, and conditions of service.] Charge and hold: if the departure requires a minimum number of participants, the booking amount is held on the card without being charged. If the departure reaches the minimum, the hold becomes the charge; if it does not, the hold is released and nothing is charged, although it may take a few days to disappear from the statement depending on the bank.",
     "back": "Back to home"
   },
   "public": {
@@ -374,6 +383,28 @@
     "view-invalid-title": "Invalid link",
     "view-invalid-body": "This link is no longer valid. Ask the operator for a new one."
   },
+  "departures": {
+    "col-charge": "Charge",
+    "state-idle": "Not charged",
+    "state-charging": "Charging",
+    "state-awaiting": "Awaiting decision",
+    "state-resolved": "Resolved",
+    "resolution-reached": "Minimum reached",
+    "resolution-auto-cancelled": "Cancelled for the minimum",
+    "resolution-staff-confirmed": "Confirmed by staff",
+    "resolution-staff-cancelled": "Cancelled by staff",
+    "seats": "{authorized} of {minimum} seats",
+    "deadline": "Until {date} {time}",
+    "tray-title": "Departures awaiting a decision",
+    "tray-intro": "These departures did not reach the minimum before the deadline. No money is held: the authorizations were already released. Confirming charges again; cancelling cancels the departure and refunds what was charged.",
+    "confirm": "Confirm departure",
+    "cancel": "Cancel departure",
+    "confirm-ask": "Confirm the departure even though it did not reach the minimum? Tourists will be charged within minutes.",
+    "cancel-ask": "Cancel the departure? Tourists will be notified and anyone who already paid gets a 100% refund.",
+    "decision-error": "The decision could not be applied. Reload the page and try again.",
+    "decision-already-resolved": "Somebody else already resolved this departure. Reload the page.",
+    "decision-capture-in-progress": "A charge is in progress on this departure. Try again in a few minutes."
+  },
   "users": {
     "nav-label": "Users",
     "page-title": "Internal users",
@@ -508,14 +539,17 @@
   "settings": {
     "nav-label": "Settings",
     "page-title": "Settings",
-    "section-minimum": "Minimum participants",
+    "section-minimum": "Minimum participants and charging",
     "field-decision-window": "Decision window (hours before departure)",
     "hint-decision-window": "If a departure hasn't reached its tour's minimum participants, it is resolved this many hours before it starts: staff decide whether to confirm or cancel it, or it is cancelled automatically if the tour is set up that way. Between {min} and {max} hours.",
+    "field-charge-lead-hours": "Default charge lead time (hours before departure)",
+    "hint-charge-lead-hours": "How many hours before departure tourists are charged, for tours that charge \"before departure\" and set no lead time of their own. Between {min} and {max} hours.",
     "submit": "Save",
     "saved": "Settings saved.",
     "errors": {
       "settings_unauthorized": "Only an administrator can change settings.",
       "settings_window_out_of_range": "Enter a whole number of hours between {min} and {max}.",
+      "settings_lead_hours_out_of_range": "Enter a whole number of hours between {min} and {max} for the charge lead time.",
       "settings_update_failed": "Settings couldn't be saved. Please try again."
     }
   }

@@ -6,6 +6,8 @@ import { BOOKING_NOTIFICATION_SELECT } from './repository.js';
 // plazos que muestran los avisos, y si una reserva diferida llegó a cobrarse.
 
 const CHARGED_PAYMENT_STATUSES = new Set(['succeeded', 'refunded']);
+const BOOKING_ENTITY_TYPE = 'booking';
+const AUTHORIZED_AUDIT_ACTION = 'charge.authorized';
 
 export type DeferredBookingRow = BookingRow & {
   card_last4: string | null;
@@ -45,4 +47,23 @@ export async function loadChargeSummary(
     deferred: data?.payment_method_id != null,
     charged: (data?.payments ?? []).some((payment) => CHARGED_PAYMENT_STATUSES.has(payment.status)),
   };
+}
+
+/**
+ * Si la reserva llegó a tener una autorización (retención temporal) sobre la tarjeta. Se lee del
+ * audit log y no de `bookings.authorized_at` porque soltar la autorización limpia esa marca
+ * (spec 0033 §5.12): cuando el email sale, la reserva ya no la tiene.
+ */
+export async function wasAuthorized(db: SupabaseClient, bookingId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('audit_logs')
+    .select('id')
+    .eq('entity_type', BOOKING_ENTITY_TYPE)
+    .eq('entity_id', bookingId)
+    .eq('action', AUTHORIZED_AUDIT_ACTION)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  if (error) throw new Error(`load authorization audit: ${error.message}`);
+  return data !== null;
 }

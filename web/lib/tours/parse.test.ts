@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ChargeTiming } from '@shared/constants/tours';
 import { parseTourFields } from './parse';
 import { TourFormSchema } from './types';
 
@@ -68,5 +69,69 @@ describe('TourFormSchema — auto_cancel_below_minimum', () => {
 
     // Assert
     expect(result.auto_cancel_below_minimum).toBe(false);
+  });
+});
+
+describe('TourFormSchema — charge_timing y charge_lead_hours', () => {
+  it('keeps the timing and the lead time the form sends', () => {
+    // Arrange
+    const form = formWith({
+      ...VALID_FIELDS,
+      charge_timing: ChargeTiming.BeforeDeparture,
+      charge_lead_hours: '12',
+    });
+
+    // Act
+    const result = TourFormSchema.parse(parseTourFields(form));
+
+    // Assert
+    expect(result.charge_timing).toBe(ChargeTiming.BeforeDeparture);
+    expect(result.charge_lead_hours).toBe(12);
+  });
+
+  it('reads an empty lead time as null, which means the global value', () => {
+    // Arrange
+    const form = formWith({
+      ...VALID_FIELDS,
+      charge_timing: ChargeTiming.BeforeDeparture,
+      charge_lead_hours: '',
+    });
+
+    // Act
+    const result = TourFormSchema.parse(parseTourFields(form));
+
+    // Assert
+    expect(result.charge_lead_hours).toBeNull();
+  });
+
+  it('reads an absent lead time as null, which is what "on the minimum" sends', () => {
+    // Arrange
+    const form = formWith({ ...VALID_FIELDS, charge_timing: ChargeTiming.OnMinimum });
+
+    // Act
+    const result = TourFormSchema.parse(parseTourFields(form));
+
+    // Assert
+    expect(result.charge_timing).toBe(ChargeTiming.OnMinimum);
+    expect(result.charge_lead_hours).toBeNull();
+  });
+
+  it('defaults to charging before departure when the field is absent', () => {
+    // Act
+    const result = TourFormSchema.parse(parseTourFields(formWith(VALID_FIELDS)));
+
+    // Assert
+    expect(result.charge_timing).toBe(ChargeTiming.BeforeDeparture);
+  });
+
+  it.each(['0', '721', '12.5', 'abc'])('rejects %j as a lead time', (raw) => {
+    // Arrange
+    const form = formWith({ ...VALID_FIELDS, charge_lead_hours: raw });
+
+    // Act
+    const result = TourFormSchema.safeParse(parseTourFields(form));
+
+    // Assert
+    expect(result.success).toBe(false);
   });
 });

@@ -7,8 +7,7 @@ import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
 import { UserRole } from '@shared/constants/enums';
 import { GuideAssignmentError } from '@shared/constants/guides';
 import { NotificationKind } from '@shared/constants/notifications';
-
-const DEPARTURES_PATH = '/dashboard/departures';
+import { DEPARTURES_PATH } from '@shared/constants/departures';
 
 export type AssignResult = { ok: true } | { ok: false; error: GuideAssignmentError };
 

@@ -1,12 +1,14 @@
-// Cliente de cobros de OnvoPay para los jobs del cobro diferido (spec 0029, workstream B). El
-// worker es self-contained: no comparte el adapter de web. En B solo resuelve cobros ya iniciados
-// y cierra intents; crear y confirmar llega con charge-bookings (workstream C).
+// Cliente de cobros de OnvoPay para los jobs del cobro diferido (specs 0029 y 0033). El worker es
+// self-contained: no comparte el adapter de web.
 // Verificado en sandbox (2026-09-14): cancel funciona en requires_action y requires_payment_method;
 // detach deja el método `detached` y DELETE del customer devuelve 200.
+// Verificado en sandbox (2026-09-23): con captureMethod 'manual', confirmar deja la intención en
+// requires_capture; capture la cobra; cancel la suelta sin dejar transacción de balance.
 const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
 // Timeout defensivo, igual que refunds y reconciliación: una conexión colgada no apila ciclos.
 const HTTP_TIMEOUT_MS = 15_000;
 const NOT_FOUND = 404;
+const HTTP_BAD_REQUEST = 400;
 
 export type IntentSnapshot = {
   /** Estado crudo de OnvoPay; la decisión la toma charges/decide.ts. */
@@ -26,10 +28,11 @@ export function createOnvopayChargeClient(secretKey: string, baseUrl = ONVOPAY_A
     'Content-Type': 'application/json',
   };
 
-  async function request(method: string, path: string): Promise<Response> {
+  async function request(method: string, path: string, body?: unknown): Promise<Response> {
     return fetch(`${baseUrl}${path}`, {
       method,
       headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     });
   }
@@ -47,6 +50,55 @@ export function createOnvopayChargeClient(secretKey: string, baseUrl = ONVOPAY_A
       const res = await request('GET', `/payment-intents/${externalPaymentId}`);
       if (res.status === NOT_FOUND) return null;
       if (!res.ok) return fail('getIntent', res);
+      const body = (await res.json()) as IntentBody;
+      return { status: body.status, amountCents: body.amount, currency: body.currency };
+    },
+
+    /**
+     * Intent con captura manual (spec 0033): confirmarlo reserva la plata sin cobrarla. Si no se
+     * captura en 30 días, OnvoPay la libera sola.
+     */
+    async createManualCaptureIntent(input: {
+      amountCents: number;
+      currency: string;
+      description: string;
+    }): Promise<string> {
+      const res = await request('POST', '/payment-intents', {
+        amount: input.amountCents,
+        currency: input.currency,
+        description: input.description,
+        captureMethod: 'manual',
+      });
+      if (!res.ok) return fail('createManualCaptureIntent', res);
+      const body = (await res.json()) as IntentBody;
+      return body.id;
+    },
+
+    /**
+     * Un 400 NO es un rechazo de la tarjeta: puede ser un intent ya confirmado. Se relee con GET
+     * antes de decidir, igual que hace el adapter de la web.
+     */
+    async confirmIntent(
+      externalPaymentId: string,
+      input: { paymentMethodId: string; returnUrl: string },
+    ): Promise<IntentSnapshot> {
+      const res = await request('POST', `/payment-intents/${externalPaymentId}/confirm`, {
+        paymentMethodId: input.paymentMethodId,
+        returnUrl: input.returnUrl,
+      });
+      if (res.status === HTTP_BAD_REQUEST) {
+        const snapshot = await this.getIntent(externalPaymentId);
+        if (snapshot) return snapshot;
+      }
+      if (!res.ok) return fail('confirmIntent', res);
+      const body = (await res.json()) as IntentBody;
+      return { status: body.status, amountCents: body.amount, currency: body.currency };
+    },
+
+    /** Cobra una autorización. El único momento en que se mueve plata (spec 0033). */
+    async captureIntent(externalPaymentId: string): Promise<IntentSnapshot> {
+      const res = await request('POST', `/payment-intents/${externalPaymentId}/capture`);
+      if (!res.ok) return fail('captureIntent', res);
       const body = (await res.json()) as IntentBody;
       return { status: body.status, amountCents: body.amount, currency: body.currency };
     },

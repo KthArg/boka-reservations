@@ -25,6 +25,18 @@ const envSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((v) => v === 'true'),
+    // Cobro diferido (specs 0029 y 0033). Default false, igual que en la web: se encienden y se
+    // apagan juntos. Con la web encendida y el worker apagado, las reservas nunca se cobran.
+    DEFERRED_CHARGE_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    // Modo de reversión del spec 0033: suelta las autorizaciones vivas y cierra los ciclos
+    // abiertos, sin cobrar. Corre aunque el cobro diferido esté apagado.
+    RELEASE_AUTHORIZATIONS_ONLY: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
   })
   .superRefine((v, ctx) => {
     if (v.EMAIL_PROVIDER === 'resend' && !v.RESEND_API_KEY) {
