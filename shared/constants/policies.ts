@@ -9,14 +9,19 @@ import { Currency } from './enums';
 export const CANCELLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Comisión de OnvoPay por cobro con tarjeta (spec 0032): 3,9 % + US$0,35 según
- * https://onvopay.com/pricing (2026-09-21). Es el costo TOTAL que cobra OnvoPay por transacción:
- * si se confirma que suma IVA, se ajustan estas constantes para incluirlo. Si se suma otro
- * proveedor de pagos, pasa a un mapa por proveedor y moneda.
+ * Comisión de OnvoPay por cobro con tarjeta (spec 0032). Tabla de la cuenta del cliente, que el
+ * soporte detalló el 2026-09-23 (`docs/onvopay-consulta-reembolsos.md`):
+ *   - porcentajes: servicios ONVO 1,65 % + adquirencia ONVO 0,3 % + adquirencia procesador 0,2 %
+ *     + emisión 1,75 % = 3,9 %;
+ *   - fijos: transacción adquirente US$0,12 + transacción ONVO US$0,13 = US$0,25.
+ * La página de precios dice US$0,35 de fijo; la cuenta cobra US$0,25.
+ * NO se incluye la retención de IVA del 0,777 % sobre la comisión: es una retención acreditable
+ * en la declaración del operador, no un costo definitivo (sobre un cobro de US$60 son US$0,02).
+ * Si se suma otro proveedor de pagos, esto pasa a un mapa por proveedor y moneda.
  */
 export const PROCESSING_FEE_PERCENT_BPS = 390;
 export const PROCESSING_FEE_FIXED_CENTS: Partial<Record<Currency, number>> = {
-  [Currency.USD]: 35,
+  [Currency.USD]: 25,
 };
 
 /**

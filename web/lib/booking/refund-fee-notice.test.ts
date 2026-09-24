@@ -12,10 +12,10 @@ describe('refundFeeNoticeValues', () => {
   it('formatea la comisión en español', () => {
     const values = refundFeeNoticeValues('es', ACTIVE);
     expect(values?.percent).toBe('3,9%');
-    expect(values?.fixed).toContain('0,35');
+    expect(values?.fixed).toContain('0,25');
   });
 
   it('formatea la comisión en inglés', () => {
-    expect(refundFeeNoticeValues('en', ACTIVE)).toEqual({ percent: '3.9%', fixed: '$0.35' });
+    expect(refundFeeNoticeValues('en', ACTIVE)).toEqual({ percent: '3.9%', fixed: '$0.25' });
   });
 });

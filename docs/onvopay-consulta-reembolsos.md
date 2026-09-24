@@ -59,3 +59,27 @@ Este dato **no bloquea** la feature: `computeRefund` reembolsa al cliente el 100
 **Pendiente**: pedir la tabla de comisiones y retenciones de tarjeta de la cuenta del cliente (la
 ofrecieron tres veces) y, con esos números, ajustar las constantes del spec 0032 antes de activar la
 política. Hasta entonces, `REFUND_FEE_FROM_TERMS_VERSION` queda en `null`.
+
+## Tabla de comisiones de la cuenta (soporte, 2026-09-23)
+
+Tarjeta crédito/débito:
+
+| Componente                      | Comisión |
+| ------------------------------- | -------- |
+| Comisión transacción adquirente | US$0,12  |
+| Comisión servicios ONVO         | 1,65 %   |
+| Emisión ONVO                    | 0 %      |
+| Adquirencia ONVO                | 0,30 %   |
+| Adquirencia procesador          | 0,20 %   |
+| Emisión                         | 1,75 %   |
+| Servicios procesador            | 0 %      |
+| Comisión transacción ONVO       | US$0,13  |
+
+Retenciones: IVA 0,777 % sobre la comisión; renta 0 %.
+
+**Suma: 3,9 % + US$0,25 por cobro.** El porcentaje coincide con la página de precios; el fijo no (la
+página dice US$0,35). Ejemplo de un cobro de US$60: comisión US$2,59 y retención de IVA US$0,02.
+
+Las constantes del spec 0032 quedaron en 390 puntos básicos y 25 centavos. La retención de IVA **no**
+se descuenta al turista: es acreditable en la declaración del operador. El soporte no pudo dar el total
+de un cobro concreto; indicó verificarlo en la _balance transaction_ del pago (`fee` y `vatTax`).

@@ -27,9 +27,9 @@ vi.mock('@shared/constants/policies', async (importOriginal) => {
 
 const { cancelByStaff, cancelByToken } = await import('@/lib/booking/cancel-action');
 
-// 9000 centavos: 3,9 % = 351 + 35 fijos.
+// 9000 centavos: 3,9 % = 351 + 25 fijos.
 const TOTAL = 9000;
-const FEE = 386;
+const FEE = 376;
 const SEEN_WITH_FEE = { status: BookingStatus.Confirmed, refundAmountCents: TOTAL - FEE };
 
 let admin: SupabaseClient;
