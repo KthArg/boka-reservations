@@ -75,11 +75,29 @@ Tarjeta crédito/débito:
 | Servicios procesador            | 0 %      |
 | Comisión transacción ONVO       | US$0,13  |
 
-Retenciones: IVA 0,777 % sobre la comisión; renta 0 %.
+Retenciones: IVA 0,777 %; renta 0 %. **El soporte dijo que la retención era sobre la comisión, y
+es sobre el MONTO de la transacción** (ver la verificación de abajo).
 
-**Suma: 3,9 % + US$0,25 por cobro.** El porcentaje coincide con la página de precios; el fijo no (la
-página dice US$0,35). Ejemplo de un cobro de US$60: comisión US$2,59 y retención de IVA US$0,02.
+**Suma: 3,9 % + US$0,25 de comisión**, más la retención de IVA. El porcentaje coincide con la página
+de precios; el fijo no (la página dice US$0,35).
 
-Las constantes del spec 0032 quedaron en 390 puntos básicos y 25 centavos. La retención de IVA **no**
-se descuenta al turista: es acreditable en la declaración del operador. El soporte no pudo dar el total
-de un cobro concreto; indicó verificarlo en la _balance transaction_ del pago (`fee` y `vatTax`).
+## Verificación en sandbox (2026-09-23)
+
+Se cobró US$60 con captura manual y se leyó la `balanceTransaction` del pago:
+
+```
+amount=6000  fee=259  vatTax=47  net=5694
+  Emisión 105 · Comisión servicios ONVO 99 · Adquirencia ONVO 18 · Comisión transacción ONVO 13
+  Comisión transacción adquirente 12 · Adquirencia procesador 12 · Emisión ONVO 0 · Servicios procesador 0
+```
+
+- La comisión (`fee`) da **US$2,59**, exactamente 3,9 % + US$0,25: la tabla del soporte es correcta.
+- La retención (`vatTax`) da **US$0,47**, que es 0,777 % **del monto** (US$60), no de la comisión
+  (habrían sido US$0,02). **Acá el soporte se equivocó.**
+- **Costo total de un cobro de US$60: US$3,06.** Al operador le quedan US$56,94.
+
+También se verificó que un reembolso parcial de US$57,41 se acredita sin devolver nada de la comisión:
+la `balanceTransaction` del cobro queda igual.
+
+Decisión del usuario (2026-09-23): **se descuenta el costo total, retención incluida**. Las constantes
+del spec 0032 son 390 puntos básicos, 25 centavos fijos y 777 por cada 100 000 de retención.

@@ -8,7 +8,7 @@ import { BookingStatus } from '@shared/constants/enums';
 import { bookingStatus, cleanupSeeds, seed } from './cancellation-fixtures';
 
 const TOTAL = 9000;
-const FEE = 376;
+const FEE = 446;
 
 let admin: SupabaseClient;
 

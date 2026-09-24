@@ -9,20 +9,24 @@ import { Currency } from './enums';
 export const CANCELLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Comisión de OnvoPay por cobro con tarjeta (spec 0032). Tabla de la cuenta del cliente, que el
- * soporte detalló el 2026-09-23 (`docs/onvopay-consulta-reembolsos.md`):
- *   - porcentajes: servicios ONVO 1,65 % + adquirencia ONVO 0,3 % + adquirencia procesador 0,2 %
- *     + emisión 1,75 % = 3,9 %;
- *   - fijos: transacción adquirente US$0,12 + transacción ONVO US$0,13 = US$0,25.
+ * Costo de OnvoPay por cobro con tarjeta (spec 0032). Verificado el 2026-09-23 contra la
+ * `balanceTransaction` de un cobro en sandbox y contra la tabla de la cuenta, que el soporte
+ * detalló ese día (`docs/onvopay-consulta-reembolsos.md`). Sobre un cobro de US$60:
+ *   - comisión (`fee`) US$2,59 = 3,9 % (servicios ONVO 1,65 + adquirencia ONVO 0,3 + adquirencia
+ *     procesador 0,2 + emisión 1,75) + US$0,25 fijos (transacción adquirente 0,12 + ONVO 0,13);
+ *   - retención de IVA (`vatTax`) US$0,47 = 0,777 % del MONTO de la transacción. El soporte dijo
+ *     que era sobre la comisión; la `balanceTransaction` demuestra que no.
  * La página de precios dice US$0,35 de fijo; la cuenta cobra US$0,25.
- * NO se incluye la retención de IVA del 0,777 % sobre la comisión: es una retención acreditable
- * en la declaración del operador, no un costo definitivo (sobre un cobro de US$60 son US$0,02).
+ * Decisión del usuario (2026-09-23): se descuenta el costo total, retención incluida.
  * Si se suma otro proveedor de pagos, esto pasa a un mapa por proveedor y moneda.
  */
 export const PROCESSING_FEE_PERCENT_BPS = 390;
 export const PROCESSING_FEE_FIXED_CENTS: Partial<Record<Currency, number>> = {
   [Currency.USD]: 25,
 };
+
+/** Retención de IVA sobre el monto de la transacción: 0,777 % = 777 por cada 100 000. */
+export const VAT_RETENTION_PER_100K = 777;
 
 /**
  * Primera versión de términos (`TERMS_VERSION`, formato `YYYY-MM-DD`) que contiene la cláusula
@@ -34,6 +38,8 @@ export const REFUND_FEE_FROM_TERMS_VERSION: string | null = null;
 
 const BPS_DIVISOR = 10_000;
 const HALF_BPS_DIVISOR = 5_000;
+const VAT_DIVISOR = 100_000;
+const HALF_VAT_DIVISOR = 50_000;
 
 export type RefundEligibility = {
   eligible: boolean;
@@ -53,8 +59,9 @@ export class ProcessingFeeNotConfiguredError extends Error {
 }
 
 /**
- * Comisión de procesamiento de un cobro, en centavos. Solo aritmética entera: redondeo del
- * porcentaje al centavo más cercano (mitad hacia arriba) más la parte fija de la moneda.
+ * Costo de procesamiento de un cobro, en centavos: comisión más retención de IVA. Solo aritmética
+ * entera, con cada componente redondeado al centavo más cercano (mitad hacia arriba), igual que
+ * los calcula OnvoPay en su `balanceTransaction`.
  */
 export function computeProcessingFee(totalCents: number, currency: string): number {
   if (!Number.isInteger(totalCents) || totalCents < 0) {
@@ -65,7 +72,10 @@ export function computeProcessingFee(totalCents: number, currency: string): numb
   const percent = Math.floor(
     (totalCents * PROCESSING_FEE_PERCENT_BPS + HALF_BPS_DIVISOR) / BPS_DIVISOR,
   );
-  return percent + fixed;
+  const vatRetention = Math.floor(
+    (totalCents * VAT_RETENTION_PER_100K + HALF_VAT_DIVISOR) / VAT_DIVISOR,
+  );
+  return percent + fixed + vatRetention;
 }
 
 type ComputeRefundInput = {
