@@ -9,9 +9,9 @@
 
 ## 1. Contexto y motivación
 
-Cuando un turista cancela una reserva ya cobrada con al menos 24 horas de antelación, hoy se le devuelve el 100 % de lo que pagó (decisión del 2026-05-19 en `.claude/memory/decisions.md`, spec 0011, `computeRefund` en `shared/constants/policies.ts`). OnvoPay, la pasarela de pagos, cobra al comercio una comisión por cada cobro con tarjeta. Su página de precios (`https://onvopay.com/pricing`, consultada el 2026-09-21) dice **3,9 % + US$0,35** por transacción exitosa. La decisión de 2026-05-19 registraba "3,5 % + IVA", y `docs/onvopay-consulta-reembolsos.md` "~3,9 % + US$0,25"; la cifra vigente es la de la página de precios y se confirma contra un estado de cuenta antes de activar (§13).
+Cuando un turista cancela una reserva ya cobrada con al menos 24 horas de antelación, hoy se le devuelve el 100 % de lo que pagó (decisión del 2026-05-19 en `.claude/memory/decisions.md`, spec 0011, `computeRefund` en `shared/constants/policies.ts`). OnvoPay, la pasarela de pagos, le cobra al comercio por cada cobro con tarjeta. El costo real de la cuenta, verificado el 2026-09-23 contra la `balanceTransaction` de un cobro en sandbox, es **3,9 % + US$0,25 de comisión más 0,777 % del monto de retención de IVA**: US$3,06 sobre un cobro de US$60, con el desglose componente por componente en `docs/onvopay-consulta-reembolsos.md`. La página de precios dice US$0,35 de fijo y la decisión del 2026-05-19 registraba "3,5 % + IVA": las dos estaban desactualizadas.
 
-**Supuesto de partida, sin confirmar**: OnvoPay no le devuelve al comercio la comisión cuando se reembolsa un cobro. Nada público ni en la API dice lo contrario, pero la consulta formal (`docs/onvopay-consulta-reembolsos.md`) nunca se envió. Si resultara falso, este spec cobraría la comisión dos veces al turista; por eso la activación queda bloqueada hasta confirmarlo (§13).
+**Confirmado el 2026-09-23** por el soporte de OnvoPay: la comisión no vuelve al comercio al reembolsar, ni en un reembolso total ni en uno parcial, y no existe un cargo aparte por reembolsar. Queda registrado en `docs/onvopay-consulta-reembolsos.md`.
 
 Bajo ese supuesto, cada cancelación voluntaria le cuesta al operador la comisión de un cobro del que no obtuvo nada: en un tour de US$60, US$2,69. El cliente decidió el 2026-09-21 que, cuando el turista cancela por decisión propia, se le devuelva lo pagado **menos la comisión de procesamiento**. Si el operador tuviera que absorberla, preferiría no ofrecer reembolso. El código ya anticipaba esta opción (el `TODO(política-cliente)` de `computeRefund`).
 
@@ -46,7 +46,7 @@ Depende del spec 0031, que agrega `bookings.terms_version` y el estampado de la 
 
 > Como turista que va a reservar, quiero saber antes de pagar qué pasa si cancelo, para decidir con la información completa.
 
-- [ ] Con la política activa, el checkout muestra junto a la casilla de términos (los montos con el formato del locale: "3,9%" y "USD 0,35" en ES, "3.9%" y "$0.35" en EN): "Si cancelás con 24 horas o más de antelación, te devolvemos lo pagado menos la comisión de procesamiento del pago (3,9 % + US$0,35). Con menos de 24 horas no hay reembolso."
+- [ ] Con la política activa, el checkout muestra junto a la casilla de términos (los montos con el formato del locale: "3,9%" y "USD 0,25" en ES, "3.9%" y "$0.25" en EN): "Si cancelás con 24 horas o más de antelación, te devolvemos lo pagado menos la comisión de procesamiento del pago (3,9 % + US$0,25). Con menos de 24 horas no hay reembolso."
 - [ ] Con la política inactiva, ese texto no aparece.
 
 > Como turista que decide cancelar con 24 horas o más de antelación, quiero ver cuánto me van a devolver, para saber que se descuenta la comisión.
@@ -198,7 +198,7 @@ Sin cambios a las máquinas de estado. Una cancelación con reembolso parcial si
 - **Panel admin**: diálogo de cancelación con motivo (§5.4).
 - **Emails**: `cancellation-confirmation` y `refund-confirmation`, en ES y EN.
 - **i18n**: textos nuevos en `web/locales/es.json` y `en.json` (checkout, página de cancelación, `CancelConfirm`, diálogo del staff, errores `ReasonRequired` y `OperatorRefundAdminOnly`) y en las plantillas del worker.
-- **Términos**: el operador agrega una cláusula como "Si cancelás con 24 horas o más de antelación, te devolvemos lo pagado menos la comisión de procesamiento del pago (3,9 % + US$0,35), que la pasarela no nos reintegra. Si cancelamos nosotros, te devolvemos el total."
+- **Términos**: el operador agrega una cláusula como "Si cancelás con 24 horas o más de antelación, te devolvemos lo pagado menos la comisión de procesamiento del pago (3,9 % + US$0,25), que la pasarela no nos reintegra. Si cancelamos nosotros, te devolvemos el total."
 - **Legal**: la abogada valida la cláusula y el aviso del checkout frente a la Ley 7472 antes de activar. Registrado en `docs/lanzamiento-checklist.md`.
 - **Decisiones**: registrada en `.claude/memory/decisions.md` (2026-09-21), que reemplaza la política del 2026-05-19 y actualiza la tarifa de OnvoPay con su fuente y fecha.
 - **Pagos**: el `amount` que se envía en `POST /v1/refunds` pasa a ser parcial en estos casos. `worker/src/refunds/onvopay.ts` ya lo envía. El OpenAPI (`PaymentIntent.amountReceived`) menciona reembolsos parciales; se prueba en sandbox (§10).
@@ -250,8 +250,9 @@ Sin cambios a las máquinas de estado. Una cancelación con reembolso parcial si
 
 Ninguna bloquea la implementación. Todas bloquean la **activación** del flag.
 
-- [ ] **Pregunta**: ¿OnvoPay retiene la comisión al reembolsar? En un reembolso parcial, ¿la prorratea? ¿Reembolsar tiene un cargo propio? Se envía la consulta de `docs/onvopay-consulta-reembolsos.md`, preguntas 1 a 3. **Dueño**: Kenneth. **Antes de**: 2026-09-26.
-- [ ] **Pregunta**: ¿La comisión real es exactamente 3,9 % + US$0,35, o se le suma IVA u otro cargo? Se confirma con el estado de cuenta de un cobro real. **Dueño**: Kenneth / operador. **Antes de**: 2026-09-26.
+- [x] **Respondida el 2026-09-23** (soporte de OnvoPay, registrada en `docs/onvopay-consulta-reembolsos.md`): la comisión **no** vuelve al comercio al reembolsar, ni total ni parcialmente, y **no** hay un cargo propio por reembolsar. El supuesto del spec queda confirmado.
+- [x] **Respondida y verificada el 2026-09-23**: la comisión de la cuenta es **3,9 % + US$0,25** (no los US$0,35 de la página de precios) y la retención de IVA del 0,777 % es **sobre el monto de la transacción**, no sobre la comisión como había dicho el soporte. Se comprobó leyendo la `balanceTransaction` de un cobro de US$60 en sandbox: `fee` 259 y `vatTax` 47, costo total US$3,06. Decisión del usuario: se descuenta el costo total, retención incluida. Constantes: 390 puntos básicos, 25 centavos y 777 por cada 100 000.
+- [ ] **Pregunta**: confirmar el costo real con un cobro de prueba, mirando `fee` y `vatTax` de la _balance transaction_ del pago, como indicó el soporte. **Dueño**: Kenneth. **Antes de**: activar la política.
 - [ ] **Pregunta**: ¿La cláusula y el aviso del checkout cumplen la Ley 7472? ¿Alcanza con eso o hace falta el aviso también en la ficha del tour? **Dueño**: Dra. Xinia Guerrero. **Antes de**: 2026-09-30.
 
 Anotado para decidir: hoy un staff puede cancelar "por decisión del operador" (reembolso total) dentro de las 24 h previas a la salida, donde a pedido del cliente no correspondería reembolso. Queda auditado con el motivo. La auditoría de pagos sugirió exigir admin también ahí; el usuario decidió restringirlo solo después del inicio de la salida.
