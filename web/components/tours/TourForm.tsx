@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { createTour, updateTour } from '@/lib/tours/actions';
 import { slugify } from '@/lib/tours/validation';
 import { TicketType, TourDifficulty } from '@shared/constants/enums';
+import { ChargeTiming } from '@shared/constants/tours';
 import type {
   ActionResult,
   FieldErrors,
@@ -15,11 +16,12 @@ import type {
 } from '@/lib/tours/types';
 import TourBasicInfoSection from './TourBasicInfoSection';
 import TourMinimumPolicyField from './TourMinimumPolicyField';
+import TourChargeTimingField from './TourChargeTimingField';
 import PricingEditor from './PricingEditor';
 import ScheduleEditor from './ScheduleEditor';
 import styles from './TourForm.module.css';
 
-type Props = { defaultValues?: TourWithDetails };
+type Props = { defaultValues?: TourWithDetails; defaultChargeLeadHours: number };
 
 const EMPTY_ERRORS: FieldErrors = {};
 
@@ -47,7 +49,7 @@ function toScheduleRows(schedules: TourWithDetails['schedules']): ScheduleRow[] 
   }));
 }
 
-export default function TourForm({ defaultValues }: Props) {
+export default function TourForm({ defaultValues, defaultChargeLeadHours }: Props) {
   const t = useTranslations('tours');
   const isEdit = !!defaultValues;
 
@@ -93,6 +95,12 @@ export default function TourForm({ defaultValues }: Props) {
   const setBasicField = (name: keyof TourBasicValues, value: string) =>
     setBasic((b) => ({ ...b, [name]: value }));
   const [autoCancel, setAutoCancel] = useState(defaultValues?.auto_cancel_below_minimum ?? false);
+  const [chargeTiming, setChargeTiming] = useState<ChargeTiming>(
+    defaultValues?.charge_timing ?? ChargeTiming.BeforeDeparture,
+  );
+  const [chargeLeadHours, setChargeLeadHours] = useState(
+    defaultValues?.charge_lead_hours ? String(defaultValues.charge_lead_hours) : '',
+  );
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -117,6 +125,14 @@ export default function TourForm({ defaultValues }: Props) {
 
       <TourBasicInfoSection values={basic} onChange={setBasicField} errors={errors} />
       <TourMinimumPolicyField checked={autoCancel} onChange={setAutoCancel} />
+      <TourChargeTimingField
+        timing={chargeTiming}
+        leadHours={chargeLeadHours}
+        defaultLeadHours={defaultChargeLeadHours}
+        onTimingChange={setChargeTiming}
+        onLeadHoursChange={setChargeLeadHours}
+        errors={errors.charge_lead_hours}
+      />
       <PricingEditor
         value={pricing}
         onChange={setPricing}

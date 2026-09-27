@@ -58,6 +58,33 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
   create_deferred_booking: DEFERRED_BOOKING_ARGS,
   purge_stale_holds: { p_cutoff: '2000-01-01T00:00:00Z' },
   purge_old_notifications: { p_cutoff: '2000-01-01T00:00:00Z' },
+  // Spec 0033: el ciclo de cobro del mínimo. resolve_departure_minimum cancela salidas y emite
+  // reembolsos, y las de cancelación cierran reservas: ninguna puede quedar al alcance de anon.
+  // Las dos lecturas (departure_seat_counts, departure_charge_due) van más abajo, con los
+  // reportes: no mutan nada, pero tampoco son públicas.
+  open_departure_charge: { p_instance_id: ZERO_UUID },
+  close_departure_charge: { p_instance_id: ZERO_UUID },
+  record_authorization: { p_booking_id: ZERO_UUID, p_external_payment_id: 'x' },
+  release_departure_authorization: { p_booking_id: ZERO_UUID, p_external_payment_id: 'x' },
+  claim_authorization_cancel: {
+    p_booking_id: ZERO_UUID,
+    p_actor_id: null,
+    p_reason: 'customer_request',
+  },
+  cancel_authorized_booking: {
+    p_booking_id: ZERO_UUID,
+    p_actor_id: null,
+    p_reason: 'customer_request',
+  },
+  cancel_booking_for_departure: { p_booking_id: ZERO_UUID, p_resolution: 'auto_cancelled' },
+  resolve_departure_minimum: { p_instance_id: ZERO_UUID, p_resolution: 'auto_cancelled' },
+};
+
+// Lecturas del ciclo del mínimo (spec 0033): no mutan, pero exponen la configuración de cobro y
+// los cupos de una salida. Solo service_role.
+const DEPARTURE_READS: Record<string, Record<string, unknown>> = {
+  departure_seat_counts: { p_instance_id: ZERO_UUID },
+  departure_charge_due: { p_instance_id: ZERO_UUID },
 };
 
 // Reportes: SECURITY INVOKER, los llama el panel con sesión authenticated. anon no.
@@ -105,6 +132,15 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
       // interno (P0001), pero NUNCA por permiso denegado.
       expect(error?.code).not.toBe(PERMISSION_DENIED);
       await service.from('rate_limits').delete().eq('key', 'test-grants');
+    },
+  );
+
+  it.each(Object.entries(DEPARTURE_READS))(
+    'ni anon ni authenticated ejecutan la lectura %s',
+    async (fn, args) => {
+      expect((await anon.rpc(fn, args)).error?.code).toBe(PERMISSION_DENIED);
+      expect((await staff.rpc(fn, args)).error?.code).toBe(PERMISSION_DENIED);
+      expect((await service.rpc(fn, args)).error?.code).not.toBe(PERMISSION_DENIED);
     },
   );
 

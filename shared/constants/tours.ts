@@ -25,6 +25,12 @@ export enum TourActionError {
   ScheduleInUse = 'tour_schedule_in_use',
   /** No se archiva un tour con reservas activas en salidas futuras (spec 0028, B12). */
   ArchiveHasBookings = 'tour_archive_has_bookings',
+  /**
+   * No se archiva un tour con una salida en pleno ciclo de cobro (spec 0033): archivar cancela
+   * la salida, y el motor no toca salidas canceladas, así que el ciclo quedaría abierto para
+   * siempre, con retenciones vivas que nadie suelta.
+   */
+  ArchiveChargeInProgress = 'tour_archive_charge_in_progress',
   ArchiveFailed = 'tour_archive_failed',
 }
 
@@ -32,3 +38,26 @@ export enum TourActionError {
 export const PG_UNIQUE_VIOLATION = '23505';
 export const PG_EXCLUSION_VIOLATION = '23P01';
 export const PG_FK_VIOLATION = '23503';
+
+/**
+ * Momento en que se cobra una salida del tour (spec 0033 §5.1). Espejo del CHECK de
+ * `tours.charge_timing`; el worker mantiene su propia copia (no importa `@shared` en runtime).
+ */
+export const ChargeTiming = {
+  /** Apenas los cupos vendidos llegan al mínimo del tour. */
+  OnMinimum: 'on_minimum',
+  /** A `charge_lead_hours` de la salida, o al valor global si el tour no fija uno. */
+  BeforeDeparture: 'before_departure',
+} as const;
+
+export type ChargeTiming = (typeof ChargeTiming)[keyof typeof ChargeTiming];
+
+/** Rango de `tours.charge_lead_hours`: espejo del CHECK de DB (1 hora a 30 días). */
+export const CHARGE_LEAD_HOURS_MIN = 1;
+export const CHARGE_LEAD_HOURS_MAX = 720;
+
+/**
+ * Debajo de este plazo el formulario avisa: `charge_attempt_failed` exige 2 horas de margen
+ * para agendar un reintento, así que un rechazo se queda sin segundo intento (spec 0033 §5.1).
+ */
+export const CHARGE_LEAD_HOURS_WARN_BELOW = 6;

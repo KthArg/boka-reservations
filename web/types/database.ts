@@ -215,6 +215,8 @@ export type Database = {
           includes_en: string;
           min_participants: number;
           auto_cancel_below_minimum: boolean;
+          charge_timing: 'on_minimum' | 'before_departure';
+          charge_lead_hours: number | null;
           max_capacity: number;
           cover_image_url: string | null;
           status: 'active' | 'archived';
@@ -236,6 +238,8 @@ export type Database = {
           includes_en: string;
           min_participants?: number;
           auto_cancel_below_minimum?: boolean;
+          charge_timing?: 'on_minimum' | 'before_departure';
+          charge_lead_hours?: number | null;
           max_capacity: number;
           cover_image_url?: string | null;
           status?: 'active' | 'archived';
@@ -257,6 +261,8 @@ export type Database = {
           includes_en?: string;
           min_participants?: number;
           auto_cancel_below_minimum?: boolean;
+          charge_timing?: 'on_minimum' | 'before_departure';
+          charge_lead_hours?: number | null;
           max_capacity?: number;
           cover_image_url?: string | null;
           status?: 'active' | 'archived';
@@ -370,6 +376,7 @@ export type Database = {
           capacity_reserved: number;
           status: 'available' | 'full' | 'cancelled';
           minimum_charge_triggered_at: string | null;
+          minimum_charge_closed_at: string | null;
           staff_decision_required_at: string | null;
           minimum_resolved_at: string | null;
           minimum_resolved_by: string | null;
@@ -394,6 +401,7 @@ export type Database = {
           capacity_reserved?: number;
           status?: 'available' | 'full' | 'cancelled';
           minimum_charge_triggered_at?: string | null;
+          minimum_charge_closed_at?: string | null;
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
@@ -418,6 +426,7 @@ export type Database = {
           capacity_reserved?: number;
           status?: 'available' | 'full' | 'cancelled';
           minimum_charge_triggered_at?: string | null;
+          minimum_charge_closed_at?: string | null;
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
@@ -540,6 +549,9 @@ export type Database = {
           charge_last_error: string | null;
           awaiting_action_until: string | null;
           recovery_deadline: string | null;
+          authorized_at: string | null;
+          cancel_claimed_at: string | null;
+          capture_started_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -582,6 +594,9 @@ export type Database = {
           charge_last_error?: string | null;
           awaiting_action_until?: string | null;
           recovery_deadline?: string | null;
+          authorized_at?: string | null;
+          cancel_claimed_at?: string | null;
+          capture_started_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -624,6 +639,9 @@ export type Database = {
           charge_last_error?: string | null;
           awaiting_action_until?: string | null;
           recovery_deadline?: string | null;
+          authorized_at?: string | null;
+          cancel_claimed_at?: string | null;
+          capture_started_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -818,18 +836,21 @@ export type Database = {
         Row: {
           id: number;
           minimum_decision_window_hours: number;
+          default_charge_lead_hours: number;
           updated_at: string;
           updated_by: string | null;
         };
         Insert: {
           id?: number;
           minimum_decision_window_hours?: number;
+          default_charge_lead_hours?: number;
           updated_at?: string;
           updated_by?: string | null;
         };
         Update: {
           id?: number;
           minimum_decision_window_hours?: number;
+          default_charge_lead_hours?: number;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -1014,6 +1035,58 @@ export type Database = {
           p_reason: 'action_expired' | 'recovery_expired' | 'departure_started';
         };
         Returns: boolean;
+      };
+      departure_seat_counts: {
+        Args: { p_instance_id: string };
+        Returns: { sold: number; authorized: number; captured: number; minimum: number };
+      };
+      departure_charge_due: {
+        Args: { p_instance_id: string };
+        Returns: boolean;
+      };
+      open_departure_charge: {
+        Args: { p_instance_id: string };
+        Returns: 'opened' | 'already_open' | 'not_due' | 'not_chargeable';
+      };
+      close_departure_charge: {
+        Args: { p_instance_id: string };
+        Returns: boolean;
+      };
+      record_authorization: {
+        Args: { p_booking_id: string; p_external_payment_id: string };
+        Returns: boolean;
+      };
+      release_departure_authorization: {
+        Args: { p_booking_id: string; p_external_payment_id: string };
+        Returns: boolean;
+      };
+      claim_authorization_cancel: {
+        Args: {
+          p_booking_id: string;
+          p_actor_id: string | null;
+          p_reason: 'customer_request' | 'staff_request';
+        };
+        Returns: 'claimed' | 'capture_in_progress' | 'not_authorized';
+      };
+      cancel_authorized_booking: {
+        Args: {
+          p_booking_id: string;
+          p_actor_id: string | null;
+          p_reason: 'customer_request' | 'staff_request';
+        };
+        Returns: 'cancelled' | 'not_claimed';
+      };
+      cancel_booking_for_departure: {
+        Args: { p_booking_id: string; p_resolution: string };
+        Returns: 'cancelled' | 'not_cancellable';
+      };
+      resolve_departure_minimum: {
+        Args: {
+          p_instance_id: string;
+          p_resolution: 'reached' | 'auto_cancelled' | 'staff_confirmed' | 'staff_cancelled';
+          p_actor_id?: string | null;
+        };
+        Returns: 'resolved' | 'already_resolved' | 'invalid_resolution' | 'capture_in_progress';
       };
       cancel_unpaid_booking: {
         Args: {

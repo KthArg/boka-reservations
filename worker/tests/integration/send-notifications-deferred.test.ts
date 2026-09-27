@@ -21,7 +21,6 @@ import {
 } from './deferred-fixtures.js';
 
 const MAILPIT_API = 'http://127.0.0.1:54324/api/v1';
-const POSTPONED_AT_LEAST_MS = 50 * MINUTE_MS;
 
 type MailpitSummary = { ID: string; Subject: string; To: { Address: string }[] };
 
@@ -155,7 +154,9 @@ describe('send-notifications — avisos del cobro diferido', () => {
     expect(cancellation?.text).toContain('No se hizo ningún cobro');
   });
 
-  it('postpones a kind this worker cannot send yet, without cancelling it', async () => {
+  // Spec 0033 §5.12: lo encola cancel_booking_for_departure. Acá se inserta la fila directo
+  // porque los tipos de la DB todavía no exponen esa función; el objetivo es el envío del kind.
+  it('sends the departure cancelled notice when the minimum was not reached', async () => {
     // Arrange
     const { bookingId } = await createDeferredBooking(departure.instanceId);
     const { customer_email: email } = await readBooking(bookingId);
@@ -167,17 +168,16 @@ describe('send-notifications — avisos del cobro diferido', () => {
         locale: 'es',
         scheduled_for: isoFromNow(-MINUTE_MS),
       }),
-      'unsupported notification',
+      'departure cancelled notification',
     );
 
     // Act
     await sendNotifications();
 
     // Assert
-    const postponed = await notification(bookingId, 'departure_cancelled_minimum');
-    expect(postponed.status).toBe('pending');
-    expect(new Date(postponed.scheduled_for).getTime() - Date.now()).toBeGreaterThan(
-      POSTPONED_AT_LEAST_MS,
-    );
+    const notice = (await mailTo(email)).find((m) => m.subject.includes('salida fue cancelada'));
+    expect(notice?.text).toContain('no alcanzó el mínimo de participantes');
+    expect(notice?.text).toContain('No se hizo ningún cobro');
+    expect((await notification(bookingId, 'departure_cancelled_minimum')).status).toBe('sent');
   });
 });

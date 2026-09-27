@@ -76,6 +76,14 @@
     "minimum-policy-section": "Salidas bajo el mínimo",
     "field-auto-cancel-below-minimum": "Cancelar automáticamente, sin avisar al staff",
     "hint-auto-cancel-below-minimum": "Si una salida no alcanza el mínimo de participantes al llegar la ventana de decisión, se cancela sola y se avisa a los turistas. Si está desactivado, el staff ve la salida en el panel y decide si la confirma o la cancela.",
+    "charge-timing-section": "¿Cuándo se cobra?",
+    "field-charge-timing": "Momento del cobro",
+    "charge-timing-on-minimum": "Al cumplirse el mínimo",
+    "charge-timing-before-departure": "Antes de la salida",
+    "hint-charge-timing": "Con «al cumplirse el mínimo» se cobra apenas se junta la gente. Con «antes de la salida» se cobra a las horas que indiques, se haya juntado o no.",
+    "field-charge-lead-hours": "Horas antes de la salida",
+    "hint-charge-lead-hours": "Dejalo vacío para usar el valor global ({default} horas). Entre {min} y {max} horas.",
+    "warn-charge-lead-hours": "Con menos de {hours} horas, si a un turista le rechazan la tarjeta no queda tiempo para reintentar el cobro: la salida se resuelve con un solo intento.",
     "field-cover-image": "URL de imagen de portada (opcional)",
     "field-slug": "Slug (URL amigable)",
     "difficulty-easy": "Fácil",
@@ -119,6 +127,7 @@
       "tour_base_price_duplicate": "Hay más de un precio base activo para el mismo tipo de tiquete.",
       "tour_schedule_in_use": "No se puede eliminar un horario con salidas ya generadas; desactivalo.",
       "tour_archive_has_bookings": "No se puede archivar: hay reservas activas en salidas futuras.",
+      "tour_archive_charge_in_progress": "No se puede archivar: hay una salida en pleno cobro. Esperá a que se resuelva.",
       "tour_archive_failed": "No se pudo completar la operación. Intentá de nuevo."
     },
     "tour-not-found": "Tour no encontrado.",
@@ -182,7 +191,7 @@
     "privacy-title": "Aviso de privacidad",
     "privacy-body": "[PENDIENTE — el operador debe reemplazar este texto con su aviso de privacidad conforme a la Ley 8968 de Costa Rica: qué datos personales se recolectan, con qué finalidad, por cuánto tiempo se conservan, con quién se comparten, y cómo ejercer los derechos de acceso, rectificación y eliminación ante el responsable de la base de datos.]",
     "terms-title": "Términos y condiciones",
-    "terms-body": "[PENDIENTE — el operador debe reemplazar este texto con sus términos y condiciones: política de cancelación y reembolsos, responsabilidades de las partes, y condiciones del servicio.]",
+    "terms-body": "[PENDIENTE — el operador debe reemplazar este texto con sus términos y condiciones: política de cancelación y reembolsos, responsabilidades de las partes, y condiciones del servicio.] Cobro y retención: si la salida requiere un mínimo de participantes, al momento de cobrar se retiene el monto de la reserva en la tarjeta sin cobrarlo. Si la salida alcanza el mínimo, la retención se convierte en el cobro; si no lo alcanza, se libera y no se cobra nada, aunque puede tardar unos días en desaparecer del estado de cuenta según el banco.",
     "back": "Volver al inicio"
   },
   "public": {
@@ -374,6 +383,28 @@
     "view-invalid-title": "Enlace no válido",
     "view-invalid-body": "Este enlace ya no es válido. Pedí uno nuevo al operador."
   },
+  "departures": {
+    "col-charge": "Cobro",
+    "state-idle": "Sin cobrar",
+    "state-charging": "Cobrando",
+    "state-awaiting": "Espera decisión",
+    "state-resolved": "Resuelta",
+    "resolution-reached": "Mínimo alcanzado",
+    "resolution-auto-cancelled": "Cancelada por el mínimo",
+    "resolution-staff-confirmed": "Confirmada por el staff",
+    "resolution-staff-cancelled": "Cancelada por el staff",
+    "seats": "{authorized} de {minimum} cupos",
+    "deadline": "Hasta {date} {time}",
+    "tray-title": "Salidas que esperan decisión",
+    "tray-intro": "Estas salidas no alcanzaron el mínimo al vencer el plazo. No hay plata retenida: las autorizaciones ya se soltaron. Confirmar vuelve a cobrar; cancelar cancela la salida y reembolsa lo cobrado.",
+    "confirm": "Confirmar salida",
+    "cancel": "Cancelar salida",
+    "confirm-ask": "¿Confirmar la salida aunque no alcanzó el mínimo? Se les cobrará a los turistas en los próximos minutos.",
+    "cancel-ask": "¿Cancelar la salida? Se avisará a los turistas y se reembolsará el 100 % a quien ya haya pagado.",
+    "decision-error": "No se pudo aplicar la decisión. Recargá la página y probá de nuevo.",
+    "decision-already-resolved": "Otra persona ya resolvió esta salida. Recargá la página.",
+    "decision-capture-in-progress": "Hay un cobro en curso en esta salida. Probá de nuevo en unos minutos."
+  },
   "users": {
     "nav-label": "Usuarios",
     "page-title": "Usuarios internos",
@@ -508,14 +539,17 @@
   "settings": {
     "nav-label": "Configuración",
     "page-title": "Configuración",
-    "section-minimum": "Mínimo de participantes",
+    "section-minimum": "Mínimo de participantes y cobro",
     "field-decision-window": "Ventana de decisión (horas antes de la salida)",
     "hint-decision-window": "Si una salida no alcanza el mínimo de participantes de su tour, se resuelve esta cantidad de horas antes de empezar: el staff decide si la confirma o la cancela, o se cancela sola si el tour está configurado así. Entre {min} y {max} horas.",
+    "field-charge-lead-hours": "Plazo de cobro por defecto (horas antes de la salida)",
+    "hint-charge-lead-hours": "Cuántas horas antes de la salida se cobra a los turistas, para los tours que cobran «antes de la salida» y no fijan su propio plazo. Entre {min} y {max} horas.",
     "submit": "Guardar",
     "saved": "Configuración guardada.",
     "errors": {
       "settings_unauthorized": "Solo un administrador puede cambiar la configuración.",
       "settings_window_out_of_range": "Ingresa un número entero de horas entre {min} y {max}.",
+      "settings_lead_hours_out_of_range": "Ingresá un número entero de horas entre {min} y {max} para el plazo de cobro.",
       "settings_update_failed": "No se pudo guardar la configuración. Intenta de nuevo."
     }
   }

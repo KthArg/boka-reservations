@@ -2,15 +2,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NotificationRow } from './repository.js';
 import type { PreparedEmail } from './types.js';
 import { loadBookingForNotification, loadLatestRefund } from './repository.js';
-import { loadChargeSummary } from './deferred-repository.js';
+import { loadChargeSummary, wasAuthorized } from './deferred-repository.js';
 import { bookingViewUrl, localizedTourName } from './prepare.js';
 import { renderCancellationConfirmation } from './templates/cancellation-confirmation.js';
+import { renderDepartureCancelledMinimum } from './templates/departure-cancelled-minimum.js';
 import { renderRefundConfirmation } from './templates/refund-confirmation.js';
 import { renderOverbookedRefunded } from './templates/overbooked-refunded.js';
 
 // El link "ver mi reserva" del email de cancelación debe seguir vivo aunque el
 // tour ya haya pasado (a diferencia del de confirmación, que expira al inicio).
 const POST_CANCELLATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+/** Listado público de tours: el cierre invita a reservar otra fecha. */
+const TOURS_PATH_SEGMENT = 'tours';
 
 /** Email de confirmación de cancelación. La reserva ya NO está confirmada, así
  * que no aplica el guard de `prepareBookingEmail`. Informa el reembolso si hay. */
@@ -94,6 +97,35 @@ export async function prepareOverbookedEmail(
       startsAt: booking.tour_instance.starts_at,
       refundAmountCents: refund?.amountCents ?? booking.total_amount_cents,
       currency: refund?.currency ?? booking.currency,
+    },
+    notif.locale,
+  );
+  return { ok: true, email };
+}
+
+/**
+ * Email de "la salida no alcanzó el mínimo" (spec 0033 §5.12). Lo encola
+ * `cancel_booking_for_departure`, que ya dejó la reserva `cancelled` y no encola
+ * `cancellation_confirmation`: este es el único aviso. Nunca hubo cobro, así que no hay reembolso
+ * que anunciar; solo, si la hubo, la retención que se soltó.
+ */
+export async function prepareDepartureCancelledEmail(
+  db: SupabaseClient,
+  notif: NotificationRow,
+  appUrl: string,
+): Promise<PreparedEmail> {
+  if (!notif.booking_id) return { ok: false, reason: 'booking-missing' };
+
+  const booking = await loadBookingForNotification(db, notif.booking_id);
+  if (!booking) return { ok: false, reason: 'booking-not-found' };
+
+  const email = renderDepartureCancelledMinimum(
+    {
+      customerName: booking.customer_name,
+      tourName: localizedTourName(booking, notif.locale),
+      startsAt: booking.tour_instance.starts_at,
+      hadAuthorization: await wasAuthorized(db, booking.id),
+      toursUrl: `${appUrl}/${notif.locale}/${TOURS_PATH_SEGMENT}`,
     },
     notif.locale,
   );

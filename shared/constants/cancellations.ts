@@ -29,11 +29,32 @@ export const UnpaidCancelReason = {
   StaffRequest: 'staff_request',
 } as const;
 
+export type UnpaidCancelReasonValue = (typeof UnpaidCancelReason)[keyof typeof UnpaidCancelReason];
+
 /** Resultado de cancel_unpaid_booking (spec 0029 §5.8). */
 export const UnpaidCancelOutcome = {
   Cancelled: 'cancelled',
   ChargeInFlight: 'charge_in_flight',
   NotCancellable: 'not_cancellable',
+} as const;
+
+/**
+ * Resultado de claim_authorization_cancel (spec 0033 §5.6). El claim es la mitad del mecanismo que
+ * excluye cancelar y capturar a la vez: ninguna de las dos operaciones puede sostener un lock de
+ * fila mientras habla con la pasarela.
+ */
+export const AuthorizationClaimOutcome = {
+  Claimed: 'claimed',
+  /** El worker ya está capturando esta reserva: la UI pide reintentar en unos minutos. */
+  CaptureInProgress: 'capture_in_progress',
+  /** No hay autorización viva: sigue el camino de siempre. */
+  NotAuthorized: 'not_authorized',
+} as const;
+
+/** Resultado de cancel_authorized_booking (spec 0033 §5.6). */
+export const AuthorizedCancelOutcome = {
+  Cancelled: 'cancelled',
+  NotClaimed: 'not_claimed',
 } as const;
 
 /** Motivos por los que el reintento manual de un reembolso puede rechazarse. */

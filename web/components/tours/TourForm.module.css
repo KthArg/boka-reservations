@@ -97,6 +97,15 @@
   margin: var(--space-sm) 0 0;
 }
 
+.warn {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  margin: var(--space-sm) 0 0;
+}
+
 .fieldError {
   font-size: var(--text-sm);
   color: var(--color-error);
