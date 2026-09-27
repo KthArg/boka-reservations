@@ -2,7 +2,7 @@
 
 Complementa a [cutover-produccion.md](cutover-produccion.md), que sigue siendo el runbook completo. Este documento registra qué cambió desde junio y el orden para lanzar **con cobro inmediato**. El cobro diferido del spec 0029 queda apagado hasta completar la prueba de 30 días con tarjeta real (Fase 6b del runbook).
 
-Estado al 2026-09-21: `main` ya tiene todo `dev` (PR #73) y producción tiene aplicadas las migraciones hasta `…044` (verificado con `supabase migration list --linked`). El respaldo previo está en `boka trails/files/backups/prod-2026-09-21-pre-040/`, fuera del repo. Faltan la `…045` del spec 0031 y la `…046` del spec 0032, cuando se implementen.
+Estado al 2026-09-27: `main` tiene todo `dev` (PR #81) y producción tiene aplicadas las migraciones hasta `…047` (verificado con `supabase migration list --linked`). Respaldos previos, fuera del repo: `boka trails/files/backups/prod-2026-09-21-pre-040/`, `…/prod-2026-09-23-pre-045/` y `…/prod-2026-09-27-pre-047/`. Los specs 0031, 0032 y 0033 están desplegados; el cobro diferido y su motor siguen apagados.
 
 ## Lo que depende del cliente y de la abogada
 
