@@ -223,7 +223,13 @@ que el primer admin se siembra a mano. El hook `custom_access_token_hook` inyect
 - [ ] **Día 30**: repetir.
 - [ ] Registrar fechas, montos y respuestas en `docs/onvopay-consulta-cobro-diferido.md`.
 
-**Opcional — retención.** Solo si se reconsidera la autorización con captura posterior, descartada en el spec 0029 §5.1. El día 0 se crean tres autorizaciones de $1 con `captureMethod: "manual"` y se intenta capturar una a los 8 días, otra a los 15 y otra a los 29. Mirar en la app del banco cuándo desaparece cada retención del saldo.
+**Retención — ya no es opcional (spec 0033).** El motor del mínimo autoriza con `captureMethod: "manual"` y captura después, así que esta parte pasó a ser obligatoria antes de encender `DEFERRED_CHARGE_ENABLED`. En sandbox quedó verificado que cancelar una autorización no deja transacción de balance y que capturar cuesta la comisión más el IVA; lo que el sandbox no puede mostrar es al banco. Con la misma tarjeta de la prueba, dentro del límite de cobros:
+
+- [ ] **Autorizar y soltar**: crear una autorización de $1 y cancelarla en el acto. Verificar en el estado de cuenta de OnvoPay que **no** quedó ninguna comisión (la pregunta abierta del spec 0033 §13: si el monto fijo se cobra por autorización, el motor pasa a tener un costo por intento y hay que replantear la ventana).
+- [ ] **Medir la liberación**: mirar en la app del banco cuántos días tarda la retención cancelada en desaparecer del saldo. Ese número es lo que hay que decirle al turista en el correo de salida cancelada, que hoy dice "unos días".
+- [ ] **Autorizar y capturar**: crear una autorización de $1, capturarla al día siguiente y reembolsarla. Confirma el camino completo del motor.
+
+**Cómo leer el resultado de la retención**: si aparece comisión por una autorización cancelada, o si el banco tarda más de una semana en liberar, hay que decidirlo con el cliente antes de encender el motor.
 
 **Cómo leer el resultado**
 
