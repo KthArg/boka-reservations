@@ -14,7 +14,7 @@ import { TERMS_VERSION } from '@shared/constants/legal';
 const now = new Date('2026-06-02T12:00:00.000Z');
 const HOUR_MS = 60 * 60 * 1000;
 const TOTAL = 6000;
-const FEE = 269;
+const FEE = 306;
 const CUTOFF = '2026-10-01';
 
 type Overrides = Partial<Parameters<typeof computeRefund>[0]>;
@@ -34,10 +34,10 @@ function refund(overrides: Overrides = {}) {
 
 describe('computeProcessingFee', () => {
   it.each([
-    [6000, 269],
-    [1000, 74],
-    [500, 55],
-  ])('%i centavos → %i de comisión (3,9 % redondeado + US$0,35)', (total, fee) => {
+    [6000, 306],
+    [1000, 72],
+    [500, 49],
+  ])('%i centavos → %i de costo (3,9 % + US$0,25 + 0,777 % de IVA)', (total, fee) => {
     expect(computeProcessingFee(total, 'USD')).toBe(fee);
   });
 
@@ -83,10 +83,10 @@ describe('computeRefund — a pedido del cliente', () => {
   });
 
   it('no reembolsa nada si la comisión cubre el total', () => {
-    expect(refund({ totalAmountCents: 30 })).toEqual({
+    expect(refund({ totalAmountCents: 20 })).toEqual({
       eligible: false,
       amountCents: 0,
-      feeCents: 30,
+      feeCents: 20,
     });
   });
 
