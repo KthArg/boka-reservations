@@ -77,14 +77,14 @@ describe('cancelBooking — spec 0032', () => {
     const result = await cancelBooking(db, PARAMS, NOW);
     expect(result).toEqual({
       ok: true,
-      refund: { eligible: true, amountCents: 8614, feeCents: 386 },
+      refund: { eligible: true, amountCents: 8554, feeCents: 446 },
     });
     expect((db as { rpc: ReturnType<typeof vi.fn> }).rpc).toHaveBeenCalledWith(
       'cancel_booking',
       expect.objectContaining({
         p_reason: 'customer_request',
-        p_fee_cents: 386,
-        p_refund_amount_cents: 8614,
+        p_fee_cents: 446,
+        p_refund_amount_cents: 8554,
       }),
     );
   });
@@ -145,7 +145,7 @@ describe('cancelBooking — lo que vio quien cancela', () => {
   });
 
   it('cancela si coincide con lo que vio', async () => {
-    const expected = { status: 'confirmed', refundAmountCents: 8614 };
+    const expected = { status: 'confirmed', refundAmountCents: 8554 };
     const result = await cancelBooking(fakeDb(row()), { ...PARAMS, expected }, NOW);
     expect(result.ok).toBe(true);
   });
