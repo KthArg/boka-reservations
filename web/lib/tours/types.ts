@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { TourDifficulty, TicketType } from '@shared/constants/enums';
+import {
+  CHARGE_LEAD_HOURS_MAX,
+  CHARGE_LEAD_HOURS_MIN,
+  ChargeTiming,
+} from '@shared/constants/tours';
 import type { Tables } from '@/types/database';
 
 // Los <input type="date"> vacíos llegan como '' en el FormData; las columnas `date` de Postgres
@@ -50,6 +55,19 @@ export const TourFormSchema = z
     min_participants: z.coerce.number().int().min(1),
     max_capacity: z.coerce.number().int().positive(),
     auto_cancel_below_minimum: z.boolean().default(false),
+    charge_timing: z.nativeEnum(ChargeTiming).default(ChargeTiming.BeforeDeparture),
+    // Vacío o ausente (el campo solo se muestra con "antes de la salida") → null, que en DB
+    // significa "usar business_settings.default_charge_lead_hours".
+    charge_lead_hours: z.preprocess(
+      preprocess,
+      z.coerce
+        .number()
+        .int()
+        .min(CHARGE_LEAD_HOURS_MIN)
+        .max(CHARGE_LEAD_HOURS_MAX)
+        .nullable()
+        .default(null),
+    ),
     cover_image_url: z.preprocess(preprocess, z.string().url().nullable().optional()),
     pricing: z.array(PricingRowSchema),
     schedules: z.array(ScheduleRowSchema),

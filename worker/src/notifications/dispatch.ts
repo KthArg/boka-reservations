@@ -4,6 +4,7 @@ import type { NotificationKind, PreparedEmail } from './types.js';
 import { prepareBookingEmail, prepareGuideEmail } from './prepare.js';
 import {
   prepareCancellationEmail,
+  prepareDepartureCancelledEmail,
   prepareOverbookedEmail,
   prepareRefundEmail,
 } from './prepare-cancellation.js';
@@ -35,8 +36,7 @@ const PREPARERS: Record<NotificationKind, Preparer | null> = {
   charge_failed_action_required_2: prepareChargeActionEmail,
   charge_failed_action_required_3: prepareChargeActionEmail,
   charge_requires_action: prepareRequiresActionEmail,
-  // Llega con el workstream C (cancelación de la salida por mínimo): todavía sin plantilla.
-  departure_cancelled_minimum: null,
+  departure_cancelled_minimum: prepareDepartureCancelledEmail,
 };
 
 /** Preparador del kind, o null si este worker todavía no sabe enviarlo. */

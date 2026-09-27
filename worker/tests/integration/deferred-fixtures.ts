@@ -202,6 +202,20 @@ export async function recordDecline(
   );
 }
 
+/** Cobro iniciado y autorizado sin capturar (spec 0033): la plata queda reservada, no cobrada. */
+export async function authorizeCharge(bookingId: string): Promise<string> {
+  const intent = await startCharge(bookingId);
+  const recorded = must(
+    await db.rpc('record_authorization', {
+      p_booking_id: bookingId,
+      p_external_payment_id: intent,
+    }),
+    'record_authorization',
+  );
+  if (!recorded) throw new Error('record_authorization devolvió false');
+  return intent;
+}
+
 export async function cancelByTourist(bookingId: string): Promise<void> {
   const outcome = must(
     await db.rpc('cancel_unpaid_booking', {

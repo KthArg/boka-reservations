@@ -14,6 +14,7 @@ type IntentState = import('./charge-mocks.js').IntentState;
 const { watchCharges } = await import('../../src/jobs/watch-charges.js');
 const {
   auditOf,
+  authorizeCharge,
   createDeferredBooking,
   createDeparture,
   DAY_MS,
@@ -40,8 +41,12 @@ const intentIn = (status: string): IntentState => ({
   currency: MANDATE_CURRENCY,
 });
 
+/**
+ * Plazo de recuperación vencido. Lleva `charge_attempts` porque ese plazo solo existe después de
+ * un rechazo: el barrido se acota a las reservas que ya fallaron (spec 0033 §5.9).
+ */
 const expireRecovery = (bookingId: string) =>
-  updateBooking(bookingId, { recovery_deadline: isoFromNow(-MINUTE_MS) });
+  updateBooking(bookingId, { recovery_deadline: isoFromNow(-MINUTE_MS), charge_attempts: 1 });
 
 /** Rechazo registrado que conserva su intent para reintentar, con el plazo ya vencido. */
 async function expiredWithRetainedIntent(intent: IntentState | null) {
@@ -77,6 +82,20 @@ describe('watch-charges — reservas sin intent', () => {
     expect((await readBooking(bookingId)).status).toBe('cancelled');
     const { data: hold } = await db.from('tour_holds').select('status').eq('id', holdId).single();
     expect(hold?.status).toBe('released');
+  });
+
+  // El motor del mínimo (spec 0033) le copia su plazo a la reserva; este job NO está detrás del
+  // flag, así que sin el filtro por intentos cancelaría reservas que nunca se intentaron cobrar.
+  it('leaves an expired deadline alone while the booking never failed a charge', async () => {
+    // Arrange
+    const { bookingId } = await createDeferredBooking(departure.instanceId);
+    await updateBooking(bookingId, { recovery_deadline: isoFromNow(-MINUTE_MS) });
+
+    // Act
+    await watchCharges();
+
+    // Assert
+    expect((await readBooking(bookingId)).status).toBe('pending_minimum');
   });
 
   it('cancels the unpaid bookings of a departure that already started', async () => {
@@ -142,6 +161,42 @@ describe('watch-charges — reservas que conservan un intent', () => {
     expect((await readBooking(bookingId)).status).toBe('cancelled');
     expect(onvo.cancelled).toEqual([]);
     expect(alertFor('watch-charges-intent-not-found')?.level).toBe('error');
+  });
+
+  // Una autorización viva (spec 0033) tiene su propio plazo, el del ciclo del mínimo: el plazo de
+  // recuperación del cobro manual no la toca. La red terminal de la salida empezada sí.
+  it('leaves a live authorization to the minimum cycle even with the recovery deadline passed', async () => {
+    // Arrange
+    const { bookingId } = await createDeferredBooking(departure.instanceId);
+    const intent = await authorizeCharge(bookingId);
+    onvo.intents.set(intent, intentIn('requires_capture'));
+    eventIds.push(intent);
+    await updateBooking(bookingId, { recovery_deadline: isoFromNow(-MINUTE_MS) });
+
+    // Act
+    await watchCharges();
+
+    // Assert
+    expect((await readBooking(bookingId)).status).toBe('pending_payment');
+    expect(onvo.cancelled).toEqual([]);
+  });
+
+  it('releases and cancels an authorized booking once its departure started', async () => {
+    // Arrange
+    const { bookingId } = await createDeferredBooking(departure.instanceId);
+    const intent = await authorizeCharge(bookingId);
+    onvo.intents.set(intent, intentIn('requires_capture'));
+    eventIds.push(intent);
+    await startDepartureNow(departure.instanceId);
+
+    // Act
+    await watchCharges();
+
+    // Assert
+    const booking = await readBooking(bookingId);
+    expect(booking.status).toBe('cancelled');
+    expect(booking.authorized_at).toBeNull();
+    expect(onvo.cancelled).toEqual([intent]);
   });
 
   it('without the OnvoPay key still cancels bookings without an intent, and never blindly the rest', async () => {

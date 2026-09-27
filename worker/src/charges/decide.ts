@@ -7,6 +7,8 @@ export const IntentStatus = {
   RequiresPaymentMethod: 'requires_payment_method',
   RequiresAction: 'requires_action',
   Processing: 'processing',
+  /** Autorizado sin capturar (spec 0033): la plata está reservada, no cobrada. */
+  RequiresCapture: 'requires_capture',
   Succeeded: 'succeeded',
   Canceled: 'canceled',
   Failed: 'failed',
@@ -22,9 +24,17 @@ export function intentStatusOf(snapshot: { status: string } | null): string {
   return snapshot?.status ?? IntentStatus.NotFound;
 }
 
-/** Estados en los que el intent todavía puede cobrar y conviene cancelarlo en OnvoPay. */
+/**
+ * Estados en los que el intent todavía puede cobrar y conviene cancelarlo en OnvoPay. Incluye
+ * `requires_capture` (spec 0033): una autorización huérfana, de una reserva cancelada o fallada
+ * cuyo soltado no llegó a ejecutarse, hay que soltarla, no alertarla.
+ */
 export function isConfirmable(status: string): boolean {
-  return status === IntentStatus.RequiresAction || status === IntentStatus.RequiresPaymentMethod;
+  return (
+    status === IntentStatus.RequiresAction ||
+    status === IntentStatus.RequiresPaymentMethod ||
+    status === IntentStatus.RequiresCapture
+  );
 }
 
 const CLOSED = [IntentStatus.Canceled, IntentStatus.Failed, IntentStatus.NotFound] as const;
@@ -71,6 +81,12 @@ export function decideInFlight(status: string, times: InFlightTimes, now: Date):
     const age = now.getTime() - times.chargeStartedAt.getTime();
     return age > STUCK_PROCESSING_AFTER_MS ? WatchAction.AlertStuck : WatchAction.Wait;
   }
+  // Autorizada (spec 0033): el ciclo del mínimo la resuelve, no el watchdog. Solo la red terminal
+  // de la salida ya empezada manda: una retención viva a la hora del tour hay que soltarla.
+  if (status === IntentStatus.RequiresCapture) {
+    return times.startsAt <= now ? WatchAction.CancelDepartureStarted : WatchAction.Wait;
+  }
+
   const requiresAction = status === IntentStatus.RequiresAction;
   if (
     !requiresAction &&

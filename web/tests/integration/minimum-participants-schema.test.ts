@@ -397,6 +397,25 @@ describe('tour_instances — coherencia de la resolución del mínimo', () => {
     },
   );
 
+  // El disparo es evidencia de que hubo un ciclo, no autorización para cobrar (spec 0033): una
+  // salida cancelada por el mínimo pasó por el ciclo, y con la equivalencia anterior ese estado
+  // —el de una salida en pleno cobro— era imposible de representar.
+  it('accepts a cancelled resolution that did go through a charge cycle', async () => {
+    // Act
+    const { error } = await service
+      .from('tour_instances')
+      .update({
+        ...resolved(MinimumResolution.StaffCancelled),
+        minimum_charge_triggered_at: now(),
+        min_participants_at_trigger: 4,
+        seats_at_trigger: 2,
+      })
+      .eq('id', instanceId);
+
+    // Assert
+    expect(error).toBeNull();
+  });
+
   it.each([
     [
       'tour_instances_minimum_resolution_check',
@@ -410,15 +429,6 @@ describe('tour_instances — coherencia de la resolución del mínimo', () => {
     [
       'tour_instances_minimum_trigger_check',
       () => ({ ...resolved(MinimumResolution.StaffConfirmed), minimum_charge_triggered_at: null }),
-    ],
-    [
-      'tour_instances_minimum_trigger_check',
-      () => ({
-        ...resolved(MinimumResolution.StaffCancelled),
-        minimum_charge_triggered_at: now(),
-        min_participants_at_trigger: 4,
-        seats_at_trigger: 2,
-      }),
     ],
     [
       'tour_instances_minimum_snapshot_check',

@@ -75,7 +75,7 @@ describe('decideInFlight — lo que el GET dice que ya pasó', () => {
     expect(action).toBe(expected);
   });
 
-  it.each(['refunded', 'partially_refunded', 'requires_capture', 'something_new'])(
+  it.each(['refunded', 'partially_refunded', 'something_new'])(
     'alerts and never acts on an unexpected %s intent',
     (status) => {
       // Act
@@ -85,6 +85,27 @@ describe('decideInFlight — lo que el GET dice que ya pasó', () => {
       expect(action).toBe(WatchAction.AlertUnexpected);
     },
   );
+
+  // Una autorización (spec 0033) la resuelve el ciclo del mínimo, no el watchdog: este solo actúa
+  // como red terminal si la retención sigue viva a la hora de la salida.
+  it.each([
+    ['leaves a live authorization to the minimum cycle', inHours(10), WatchAction.Wait],
+    [
+      'cancels an authorization still live once the departure started',
+      inHours(-1),
+      WatchAction.CancelDepartureStarted,
+    ],
+  ])('%s', (_case, startsAt, expected) => {
+    // Act
+    const action = decideInFlight(
+      IntentStatus.RequiresCapture,
+      times({ startsAt, recoveryDeadline: inHours(-1) }),
+      NOW,
+    );
+
+    // Assert
+    expect(action).toBe(expected);
+  });
 });
 
 describe('decideInFlight — plazos', () => {

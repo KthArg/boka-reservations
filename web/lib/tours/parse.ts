@@ -43,6 +43,11 @@ export function parseTourFields(formData: FormData): Record<string, unknown> {
     max_capacity: formData.get('max_capacity'),
     // Checkbox: el navegador solo envía el campo cuando está marcado.
     auto_cancel_below_minimum: formData.get('auto_cancel_below_minimum') !== null,
+    // `?? undefined`: el .default() de Zod solo cubre undefined, y un form sin el campo
+    // (tours creados antes del spec 0033) tiene que caer en "antes de la salida".
+    charge_timing: formData.get('charge_timing') ?? undefined,
+    // El campo solo se renderiza con "antes de la salida": ausente o vacío = valor global.
+    charge_lead_hours: formData.get('charge_lead_hours'),
     cover_image_url: formData.get('cover_image_url'),
     pricing: parsePricing(formData),
     schedules: parseSchedules(formData),
