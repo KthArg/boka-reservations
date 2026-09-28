@@ -17,8 +17,12 @@ export type BookingRow = {
   terms_version: string | null;
   consent_version: string | null;
   no_show_tolerance_minutes: number | null;
+  /** Salida cancelada por clima o seguridad: la reserva espera la decisión del equipo (spec 0035). */
+  operator_review_required_at: string | null;
   tour_instance: {
     starts_at: string;
+    /** Motivo de cancelación de la salida (spec 0035); null si no se canceló. */
+    cancellation_reason: 'minimum' | 'weather' | 'safety' | 'other' | null;
     tour: {
       name_es: string;
       name_en: string;

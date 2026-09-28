@@ -8,7 +8,26 @@ export enum RefundStatus {
   Succeeded = 'succeeded',
   /** OnvoPay rechazó o se agotaron los reintentos (retry manual). */
   Failed = 'failed',
+  /** La tarjeta no lo aceptó: se devuelve por transferencia o SINPE Móvil (spec 0035). */
+  AwaitingTransfer = 'awaiting_transfer',
 }
+
+/** Cómo se devolvió el dinero (spec 0035). */
+export const RefundMethod = {
+  Card: 'card',
+  Transfer: 'transfer',
+} as const;
+
+/** Canal de una devolución por transferencia (spec 0035). */
+export const TransferChannel = {
+  SinpeMovil: 'sinpe_movil',
+  BankTransfer: 'bank_transfer',
+} as const;
+
+export type TransferChannelValue = (typeof TransferChannel)[keyof typeof TransferChannel];
+
+/** Largo máximo del comprobante de una transferencia. */
+export const TRANSFER_REFERENCE_MAX_LENGTH = 100;
 
 /** Motivo enviado a OnvoPay al crear el reembolso. */
 export const REFUND_REASON_REQUESTED = 'requested_by_customer';

@@ -27,6 +27,7 @@ export function createMailpitAdapter(host: string, port: number, from: string): 
           subject: input.subject,
           html: input.html,
           text: input.text,
+          replyTo: input.replyTo,
           headers: { 'X-Notification-Id': input.idempotencyKey },
         });
         return { providerMessageId: info.messageId };

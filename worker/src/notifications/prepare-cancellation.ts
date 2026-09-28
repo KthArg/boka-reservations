@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NotificationRow } from './repository.js';
 import type { PreparedEmail } from './types.js';
-import { loadBookingForNotification, loadLatestRefund } from './repository.js';
+import { loadBookingForNotification } from './repository.js';
+import { loadLatestRefund } from './refund-repository.js';
 import { loadChargeSummary, wasAuthorized } from './deferred-repository.js';
 import { bookingViewUrl, localizedTourName } from './prepare.js';
 import { renderCancellationConfirmation } from './templates/cancellation-confirmation.js';
@@ -69,6 +70,7 @@ export async function prepareRefundEmail(
       tourName: localizedTourName(booking, notif.locale),
       refundAmountCents: refund.amountCents,
       currency: refund.currency,
+      transferChannel: refund.transferChannel,
     },
     notif.locale,
   );

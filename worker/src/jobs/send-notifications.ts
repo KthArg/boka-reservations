@@ -96,7 +96,7 @@ async function processOne(
     audience: notif.guide_id ? FooterAudience.Guide : FooterAudience.Customer,
     appUrl: env.APP_URL,
   });
-  await deliver(db, adapter, notif, email);
+  await deliver(db, adapter, notif, email, operator.contactEmail.trim() || undefined);
 }
 
 /**
@@ -119,6 +119,7 @@ async function deliver(
   adapter: EmailAdapter,
   notif: NotificationRow,
   email: RenderedEmail,
+  replyTo: string | undefined,
 ): Promise<void> {
   let messageId: string;
   try {
@@ -128,6 +129,7 @@ async function deliver(
       html: email.html,
       text: email.text,
       idempotencyKey: notif.id,
+      replyTo,
     });
     messageId = result.providerMessageId;
   } catch (err) {

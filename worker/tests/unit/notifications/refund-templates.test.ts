@@ -46,6 +46,7 @@ describe('renderRefundConfirmation', () => {
         tourName: 'Cerro Chompipe',
         refundAmountCents: 9000,
         currency: 'USD',
+        transferChannel: null,
       },
       'es',
     );
