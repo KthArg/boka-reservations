@@ -42,6 +42,8 @@ export enum AuditAction {
   RefundRetried = 'refund.retried',
   /** Cambio de la identidad del operador o de la tolerancia (spec 0034): cambia textos aceptados. */
   OperatorSettingsUpdated = 'settings.operator_updated',
+  /** El admin corrigió nombre o correo de una reserva a pedido del turista (spec 0036). */
+  BookingContactCorrected = 'booking.contact_corrected',
 }
 
 /** Tipo de entidad referida por un registro de auditoría. */

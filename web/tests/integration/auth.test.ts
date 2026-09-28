@@ -75,14 +75,15 @@ describe('auth — usuario desactivado', () => {
     });
   });
 
-  it('puede obtener sesión aunque active=false (el guard se aplica en requireAuth)', async () => {
+  // Spec 0036: el hook del token (…050) le niega el token a un usuario desactivado. Antes obtenía
+  // sesión y solo lo frenaba requireAuth en la app.
+  it('no obtiene sesión con active=false', async () => {
     const client = createClient<Database>(SUPABASE_URL, ANON_KEY);
     const { error } = await client.auth.signInWithPassword({
       email: INACTIVE_EMAIL,
       password: 'inactive123',
     });
-    expect(error).toBeNull();
-    await client.auth.signOut();
+    expect(error).not.toBeNull();
     await admin.from('users').delete().eq('id', inactiveUserId);
     await admin.auth.admin.deleteUser(inactiveUserId);
   });

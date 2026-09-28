@@ -43,7 +43,9 @@ export function buildCsp(nonce: string): string {
     `default-src 'self'`,
     `script-src 'nonce-${nonce}' 'strict-dynamic' ${devEval} 'self' https: ${ONVO_SDK}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: https:`,
+    // Spec 0036: solo imágenes propias, del almacenamiento y de la pasarela; ninguna URL de un
+    // tercero recibe la IP del visitante.
+    `img-src 'self' data: blob: ${http} ${ONVO_FRAME}`,
     `font-src 'self' data:`,
     `connect-src 'self' ${http} ${ws} ${ONVO_SDK} ${ONVO_API} ${ONVO_JS} ${SENTRY}`,
     `frame-src ${ONVO_SDK} ${ONVO_FRAME}`,

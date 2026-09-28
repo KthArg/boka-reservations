@@ -22,6 +22,9 @@ const envSchema = z.object({
   // Secreto dedicado para firmar el token de invitación (spec 0023, ACCESS-04). Antes se
   // reutilizaba SUPABASE_SERVICE_ROLE_KEY; un secreto propio desacopla la clave más sensible.
   INVITE_SIGNING_SECRET: z.string().min(1),
+  // Clave de las huellas de IP y correo del límite de intentos (spec 0036). Obligatoria en
+  // producción (ver el refine de abajo); fuera de ella hay una de desarrollo.
+  IDENTIFIER_HASH_SECRET: z.string().min(32).optional(),
   // Rollout de la CSP con nonces (spec 0024). 'true' emite la política como
   // Content-Security-Policy-Report-Only (observa violaciones sin romper); default 'false'
   // = enforcing. El middleware lo lee directo de process.env (corre en edge), no por acá;
@@ -36,8 +39,14 @@ const envSchema = z.object({
   NEXT_PUBLIC_ONVOPAY_API_BASE_URL: z.string().url().optional(),
 });
 
+// El aviso de privacidad promete la IP cifrada: en producción no se arranca sin la clave.
+const envSchemaWithRules = envSchema.refine(
+  (e) => e.NODE_ENV !== 'production' || e.IDENTIFIER_HASH_SECRET !== undefined,
+  { path: ['IDENTIFIER_HASH_SECRET'] },
+);
+
 function parseEnv() {
-  const result = envSchema.safeParse(process.env);
+  const result = envSchemaWithRules.safeParse(process.env);
   if (!result.success) {
     const missing = result.error.issues.map((i) => i.path.join('.')).join(', ');
     throw new Error(`Variables de entorno inválidas o faltantes: ${missing}`);

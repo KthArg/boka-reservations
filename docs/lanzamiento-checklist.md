@@ -14,7 +14,7 @@ Sin esto no se abre a reservas reales. La lista viva, con responsables, está en
 - Tolerancia de llegada tarde revisada en el panel (15 min por defecto).
 - Persona que atiende solicitudes de datos e incidentes; plan de incidentes aprobado.
 - Aviso y consentimiento para guías y personal: en la plataforma, no en papel.
-- Factura electrónica: proceso de emisión (tiquete y notas de crédito ante Hacienda) — spec 0037, pendiente de redactar.
+- Factura electrónica **manual** (decisión del 2026-09-28): el operador está inscrito como emisor en Hacienda y emite con la herramienta gratuita un tiquete por reserva al confirmarse el pago, y una nota de crédito por cada reembolso. El contador define el código CAByS y la actividad. La automatización por la API de Hacienda queda para el spec 0037.
 - Proveedores en la región que declara el aviso (EE. UU.): Railway, Resend y Sentry; Sentry en plan Developer (retención de 30 días, lo que dice el aviso).
 - Specs 0035 (cierre por mínimo, cambio de fecha, revisión por clima, devolución por transferencia) y 0036 (anonimización y datos según el aviso) mergeados: los términos publicados describen ese comportamiento. `IDENTIFIER_HASH_SECRET` en Vercel (spec 0036).
 - Supabase Pro (copias de seguridad; evita la pausa del plan gratuito) y transferencia del proyecto al cliente.
@@ -25,11 +25,12 @@ Los borradores legales para la abogada y el operador están fuera del repo, en `
 
 ## Orden de despliegue
 
-1. **Código en `dev`.** Mergear el PR del spec 0031 y después el del 0032 (la rama del 0032 está apilada sobre la del 0031).
-2. **Base de datos, antes de promover.** Desde `dev`, `npx supabase db push` contra el proyecto linkeado (`zkuoegsjxjgvzkwkqpdr`): aplica la `…045` y la `…046`. Tienen que estar antes del código, porque el merge a `main` despliega solo la web (Vercel) y el worker (Railway), y ese código llama a la firma nueva de `cancel_booking` y lee columnas nuevas. Verificar con `npx supabase migration list --linked`. Antes del push, respaldo manual (`supabase db dump`, con Docker corriendo) si el proyecto todavía no está en Pro.
+1. **Código en `dev`.** Mergear en orden los PR apilados: #84 (spec 0034), #85 (spec 0035) y el del spec 0036.
+2. **Base de datos, antes de promover.** Respaldo manual si el proyecto no está en Pro (`supabase db dump`, con Docker corriendo). Después, desde `dev`, `npx supabase db push` contra el proyecto linkeado (`zkuoegsjxjgvzkwkqpdr`): aplica la `…048`, la `…049` y la `…050`. Tienen que estar antes del código. La `…050` crea el bucket `tour-images` de Storage. Verificar con `npx supabase migration list --linked`.
 3. **Promover** `dev → main` con **merge commit** (nunca squash).
 4. **Variables.** Además de las tablas del runbook:
    - Web: `DEFERRED_CHARGE_ENABLED=false` (explícito, aunque es el default).
+   - Web: `IDENTIFIER_HASH_SECRET` (spec 0036), 32 caracteres o más (`openssl rand -base64 36`). **Sin ella la web no arranca en producción**, y los deploys de Preview de Vercel también corren con `NODE_ENV=production`: cargarla en Production y en Preview.
    - Worker: `DEFERRED_CHARGE_ENABLED=false` y `RELEASE_AUTHORIZATIONS_ONLY=false` (spec 0033). Los dos flags del cobro diferido, el de la web y el del worker, se prenden y se apagan juntos: la web encendida con el worker apagado deja reservas que nunca se cobran.
    - Web y worker: no setear `ONVOPAY_API_BASE_URL` ni `NEXT_PUBLIC_ONVOPAY_API_BASE_URL`; el default es la API de producción.
    - Web: `RESEND_API_KEY` **ya no se exige** (se quitó del schema en el spec 0028). El runbook todavía dice lo contrario.

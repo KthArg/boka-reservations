@@ -9,6 +9,8 @@
 
 Aprobación: mismo pedido del usuario del 2026-09-27 que los specs 0034 y 0035. Revisado por spec-reviewer el mismo día; los hallazgos están resueltos en este texto.
 
+**Actualización 2026-09-27 (revisiones del PR #86).** La corrección de contacto audita **qué campos cambiaron**, no los valores: `audit_logs` no se anonimiza ni se purga, y guardar ahí el nombre o el correo contradecía P6. Al desactivar un usuario, el panel lo **bloquea en Supabase Auth** (`auth.admin.signOut` necesita el token de su sesión, que el panel no tiene). La purga a 5 años tampoco borra una reserva en `payment_mismatch` ni una con decisión de revisión abierta.
+
 ## 1. Contexto y motivación
 
 El aviso de privacidad del spec 0034 afirma cosas sobre los datos que hoy la plataforma no cumple:

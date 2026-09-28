@@ -3,7 +3,12 @@ import { formatMoneyCents } from '@/lib/format/money';
 import { reportTourName, type RevenueRow } from '@/lib/reports/types';
 import styles from './reports.module.css';
 
-type Props = { rows: RevenueRow[]; locale: string; exportHref: string };
+type Props = {
+  rows: RevenueRow[];
+  locale: string;
+  /** null: quien mira no es admin y no puede exportar (spec 0036). */
+  exportHref: string | null;
+};
 
 export async function RevenueSection({ rows, locale, exportHref }: Props) {
   const t = await getTranslations('reports');
@@ -16,9 +21,11 @@ export async function RevenueSection({ rows, locale, exportHref }: Props) {
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>{t('revenue-title')}</h2>
-        <a className={styles.secondaryBtn} href={exportHref}>
-          {t('export-csv')}
-        </a>
+        {exportHref ? (
+          <a className={styles.secondaryBtn} href={exportHref}>
+            {t('export-csv')}
+          </a>
+        ) : null}
       </div>
       <div className={styles.cards}>
         <div className={styles.card}>

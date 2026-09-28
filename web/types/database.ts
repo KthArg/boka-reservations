@@ -1339,6 +1339,10 @@ export type Database = {
         Args: { p_cutoff: string };
         Returns: number;
       };
+      purge_financial_records: {
+        Args: { p_cutoff: string };
+        Returns: { bookings_count: number; payments_count: number; refunds_count: number }[];
+      };
       purge_unpaid_bookings: {
         Args: { p_cutoff: string };
         Returns: number;

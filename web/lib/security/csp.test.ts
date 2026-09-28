@@ -42,7 +42,6 @@ describe('buildCsp — paridad de directivas con la CSP previa (sin pérdida)', 
     const csp = buildCsp(NONCE);
     expect(directive(csp, 'default-src')).toBe(`default-src 'self'`);
     expect(directive(csp, 'style-src')).toBe(`style-src 'self' 'unsafe-inline'`);
-    expect(directive(csp, 'img-src')).toBe(`img-src 'self' data: https:`);
     expect(directive(csp, 'font-src')).toBe(`font-src 'self' data:`);
     expect(directive(csp, 'frame-ancestors')).toBe(`frame-ancestors 'none'`);
     expect(directive(csp, 'base-uri')).toBe(`base-uri 'self'`);
@@ -78,5 +77,17 @@ describe('cspHeaderName — enforcing vs report-only', () => {
   it('con CSP_REPORT_ONLY=true usa el header report-only (rollout)', () => {
     vi.stubEnv('CSP_REPORT_ONLY', 'true');
     expect(cspHeaderName()).toBe('content-security-policy-report-only');
+  });
+});
+
+describe('buildCsp — imágenes (spec 0036)', () => {
+  it('solo permite imágenes propias, del almacenamiento y de la pasarela', () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', SUPABASE_URL);
+    const imgSrc = directive(buildCsp(NONCE), 'img-src');
+    expect(imgSrc).toBe(
+      `img-src 'self' data: blob: ${new URL(SUPABASE_URL).origin} https://*.onvopay.com`,
+    );
+    // Sin el comodín `https:`, que dejaba cargar imágenes de cualquier servidor.
+    expect(imgSrc.split(' ')).not.toContain('https:');
   });
 });

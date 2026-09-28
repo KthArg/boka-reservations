@@ -30,6 +30,8 @@ export enum TourActionError {
   ChildAgesInvalid = 'tour_child_ages_invalid',
   /** Punto de encuentro con reservas confirmadas en salidas futuras (trigger de …049, spec 0035). */
   MeetingPointLocked = 'tour_meeting_point_locked',
+  /** La foto no es un archivo del almacenamiento propio (spec 0036). */
+  CoverImageInvalid = 'tour_cover_image_invalid',
   /**
    * No se archiva un tour con una salida en pleno ciclo de cobro (spec 0033): archivar cancela
    * la salida, y el motor no toca salidas canceladas, así que el ciclo quedaría abierto para
