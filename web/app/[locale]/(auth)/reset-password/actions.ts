@@ -4,16 +4,23 @@ import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { verifyInviteSet } from '@/lib/auth/invite-set-token';
+import { PasswordSchema } from '@/lib/auth/password-policy';
 import { INVITE_SET_COOKIE } from '@shared/constants/users';
+import type { AuthError } from '@supabase/supabase-js';
 import { getLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-const MIN_PASSWORD_LENGTH = 8;
-
 const UpdatePasswordSchema = z.object({
-  password: z.string().min(MIN_PASSWORD_LENGTH),
+  password: PasswordSchema,
 });
+
+const WEAK_PASSWORD_CODE = 'weak_password';
+
+/** Auth rechazó la contraseña por su política: se muestra como contraseña inválida, no como falla. */
+function failureParam(error: AuthError): string {
+  return error.code === WEAK_PASSWORD_CODE ? 'invalid-password' : 'update-failed';
+}
 
 export async function updatePassword(formData: FormData) {
   const locale = await getLocale();
@@ -38,8 +45,12 @@ export async function updatePassword(formData: FormData) {
     const { error } = await service.auth.admin.updateUserById(inviteUid, {
       password: result.data.password,
     });
+    if (error) {
+      // La cookie se conserva: con una contraseña válida, el invitado reintenta sin otro enlace.
+      console.error('[reset-password] no se pudo fijar la contraseña del invitado:', error.message);
+      redirect(`/${locale}/reset-password?error=${failureParam(error)}`);
+    }
     cookieStore.delete(INVITE_SET_COOKIE);
-    if (error) redirect(`/${locale}/reset-password?error=update-failed`);
     redirect(`/${locale}/login?reset=success`);
   }
 
@@ -50,7 +61,8 @@ export async function updatePassword(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/${locale}/reset-password?error=update-failed`);
+    console.error('[reset-password] no se pudo cambiar la contraseña:', error.message);
+    redirect(`/${locale}/reset-password?error=${failureParam(error)}`);
   }
 
   redirect(`/${locale}/dashboard`);
