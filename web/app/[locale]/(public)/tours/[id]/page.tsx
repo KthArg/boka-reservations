@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { getTourBySlug, getTourPricing, getUpcomingInstances } from '@/lib/public/tours';
 import { isPublicReadThrottled } from '@/lib/public/read-limit';
+import { isTourBookable } from '@/lib/public/tour-bookable';
+import { isSalesEnabled } from '@/lib/booking/sales-gate';
 import { PriceList } from '@/components/public/PriceList/PriceList';
 import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/AvailabilityCalendar';
 import styles from './slug.module.css';
@@ -25,14 +27,20 @@ export default async function TourDetailPage({ params }: Props) {
 
   if (!tour) notFound();
 
-  const [pricing, instances] = await Promise.all([
+  const [pricing, instances, salesEnabled] = await Promise.all([
     getTourPricing(tour.id),
     getUpcomingInstances(tour.id),
+    isSalesEnabled(),
   ]);
+  // Spec 0034: sin la información que prometen los términos, o sin datos del operador, el tour se
+  // muestra pero no se puede reservar.
+  const bookable = salesEnabled && isTourBookable(tour, pricing);
 
   const name = locale === 'es' ? tour.name_es : tour.name_en;
   const description = locale === 'es' ? tour.description_es : tour.description_en;
   const includes = locale === 'es' ? tour.includes_es : tour.includes_en;
+  const excludes = locale === 'es' ? tour.excludes_es : tour.excludes_en;
+  const requirements = locale === 'es' ? tour.requirements_es : tour.requirements_en;
   const meetingPoint = locale === 'es' ? tour.meeting_point_es : tour.meeting_point_en;
   const difficultyKey = `tours-difficulty-${tour.difficulty}` as const;
 
@@ -64,6 +72,20 @@ export default async function TourDetailPage({ params }: Props) {
             <p className={styles.prose}>{includes}</p>
           </section>
 
+          {excludes.trim() && (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>{t('detail-excludes')}</h2>
+              <p className={styles.prose}>{excludes}</p>
+            </section>
+          )}
+
+          {requirements.trim() && (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>{t('detail-requirements')}</h2>
+              <p className={styles.prose}>{requirements}</p>
+            </section>
+          )}
+
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>{t('detail-meeting-point')}</h2>
             <p className={styles.prose}>{meetingPoint}</p>
@@ -72,13 +94,22 @@ export default async function TourDetailPage({ params }: Props) {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>{t('detail-prices')}</h2>
             <PriceList pricing={pricing} />
+            {tour.child_age_min !== null && tour.child_age_max !== null && (
+              <p className={styles.prose}>
+                {t('detail-child-ages', { min: tour.child_age_min, max: tour.child_age_max })}
+              </p>
+            )}
           </section>
         </div>
 
         <aside className={styles.aside}>
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>{t('detail-availability')}</h2>
-            <AvailabilityCalendar instances={instances} tourSlug={slug} />
+            {bookable ? (
+              <AvailabilityCalendar instances={instances} tourSlug={slug} />
+            ) : (
+              <p className={styles.prose}>{t('detail-not-bookable')}</p>
+            )}
           </section>
         </aside>
       </div>

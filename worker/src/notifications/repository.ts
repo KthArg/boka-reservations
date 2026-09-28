@@ -7,7 +7,7 @@ const BATCH_SIZE = 20;
 
 /** Columnas de BookingRow; los emails del cobro diferido le suman las suyas. */
 export const BOOKING_NOTIFICATION_SELECT =
-  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
+  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, terms_version, consent_version, no_show_tolerance_minutes, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
 
 export type NotificationRow = {
   id: string;
@@ -50,8 +50,7 @@ export async function loadBookingForNotification(
   return (data as unknown as BookingRow | null) ?? null;
 }
 
-/** `feeCents`: comisión de procesamiento descontada del reembolso (spec 0032), 0 si no hubo. */
-export type LatestRefund = { amountCents: number; currency: string; feeCents: number };
+export type LatestRefund = { amountCents: number; currency: string };
 
 /** Último reembolso de una reserva (cualquier estado). null si no hay. */
 export async function loadLatestRefund(
@@ -60,20 +59,14 @@ export async function loadLatestRefund(
 ): Promise<LatestRefund | null> {
   const { data, error } = await db
     .from('refunds')
-    .select('amount_cents, currency, processing_fee_cents')
+    .select('amount_cents, currency')
     .eq('booking_id', bookingId)
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle<{ amount_cents: number; currency: string; processing_fee_cents: number }>();
+    .maybeSingle<{ amount_cents: number; currency: string }>();
 
   if (error) throw new Error(`load refund: ${error.message}`);
-  return data
-    ? {
-        amountCents: data.amount_cents,
-        currency: data.currency,
-        feeCents: data.processing_fee_cents,
-      }
-    : null;
+  return data ? { amountCents: data.amount_cents, currency: data.currency } : null;
 }
 
 // Todas las escrituras verifican `error` y lanzan (spec 0028): supabase-js no lanza,

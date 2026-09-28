@@ -8,16 +8,17 @@ Estado al 2026-09-27: `main` tiene todo `dev` (PR #81) y producción tiene aplic
 
 Sin esto no se abre a reservas reales. La lista viva, con responsables, está en la página de lanzamiento compartida con el cliente.
 
-- Aviso de privacidad y términos redactados por la abogada.
-- Razón social, cédula jurídica, dirección y correo de privacidad del responsable.
+- Términos y aviso de privacidad definitivos publicados en el sitio (spec 0034, versión `2026-09-27`). Reembolso siempre del 100 % con 24 h o más; sin reembolso con menos de 24 h ni por no presentación; sin comisión descontada.
+- **Datos del operador en el panel** (Configuración → Identidad del operador): razón social, cédula jurídica, domicilio, marca, correo de contacto, correo de privacidad, teléfono, horario de atención, número de declaratoria ICT y si tiene póliza de responsabilidad civil. **Mientras falte alguno, el checkout no vende** (compuerta del spec 0034) y los correos salen sin la identidad en el pie.
+- Cada tour con "no incluye", requisitos y edades del tiquete de niño: sin eso no se puede reservar.
+- Tolerancia de llegada tarde revisada en el panel (15 min por defecto).
 - Persona que atiende solicitudes de datos e incidentes; plan de incidentes aprobado.
-- Aviso y consentimiento firmados por guías y personal.
-- Política de reembolso definitiva. Decidido el 2026-09-21: si el turista cancela por su cuenta con más de 24 h, se le devuelve lo pagado **menos la comisión de OnvoPay** (3,9 % + US$0,35); si cancela el operador, se reembolsa el 100 % (spec 0032). Falta:
-  - confirmar la comisión exacta con un estado de cuenta real de OnvoPay (¿suma IVA?);
-  - que la abogada valide la cláusula frente a la Ley 7472;
-  - que los términos la incluyan.
+- Aviso y consentimiento para guías y personal: en la plataforma, no en papel.
+- Factura electrónica: proceso de emisión (tiquete y notas de crédito ante Hacienda) — spec 0037, pendiente de redactar.
+- Proveedores en la región que declara el aviso (EE. UU.): Railway, Resend y Sentry; Sentry en plan Developer (retención de 30 días, lo que dice el aviso).
+- Specs 0035 (cierre por mínimo, cambio de fecha, revisión por clima, devolución por transferencia) y 0036 (anonimización y datos según el aviso) mergeados: los términos publicados describen ese comportamiento. `IDENTIFIER_HASH_SECRET` en Vercel (spec 0036).
 - Supabase Pro (copias de seguridad; evita la pausa del plan gratuito) y transferencia del proyecto al cliente.
-- Cómo corre el worker: Railway Hobby o Supabase Cron (spec 0030, sin aprobar, en el worktree `booking-platform-0030`).
+- Worker en Railway Hobby, corriendo, con `NOTIFICATIONS_ENABLED=true` y `RETENTION_ENABLED=true`: sin él no hay cierres por mínimo, correos ni borrado de datos, y los términos los prometen.
 - Dominio y DNS para Resend; OnvoPay en modo live con la URL del webhook; DSN de Sentry.
 
 Los borradores legales para la abogada y el operador están fuera del repo, en `boka trails/files/legal/borradores/`.
@@ -36,8 +37,8 @@ Los borradores legales para la abogada y el operador están fuera del repo, en `
    - Worker: `RETENTION_ENABLED=true`. Es lo que hace cumplir los plazos del registro de datos.
 5. **Worker.** Levantarlo y confirmar en los logs una corrida de `generate-tour-instances` y una de `apply-retention`. Si se usa Railway: plan Hobby y **App Sleeping apagado**.
 6. **Datos iniciales.** Primer admin (Fase 4b del runbook) y carga de tours reales desde el panel.
-7. **Texto legal.** Cuando llegue de la abogada: reemplazar `privacy-body` y `terms-body` en `web/locales/es.json` y `en.json`, subir `PRIVACY_NOTICE_VERSION` y `TERMS_VERSION` en `shared/constants/legal.ts` a la fecha de publicación, y desplegar. En el mismo deploy, poner `REFUND_FEE_FROM_TERMS_VERSION` (en `shared/constants/policies.ts`) en esa misma fecha para activar el descuento de la comisión (spec 0032). Si los términos no incluyen la cláusula, dejarlo en `null`. **Los dos cambios están desacoplados** (spec 0033): `TERMS_VERSION` ya se subió a `2026-09-23` por la cláusula de retención del cobro automático, y `REFUND_FEE_FROM_TERMS_VERSION` sigue en `null` a la espera de la abogada. Subir la versión de los términos NO activa el descuento de la comisión.
-8. **Prueba completa en producción** (Fase 7 del runbook): reserva real de monto mínimo, correo en la bandeja de entrada, cancelación del turista con reembolso parcial (monto = total − comisión, verificado en el dashboard de OnvoPay), cancelación del staff por decisión del operador con reembolso total, cuadre de reportes.
+7. **Texto legal.** Ya está en el código (spec 0034): `web/content/legal/`, versiones en `shared/constants/legal.ts`. Una versión nueva se agrega como archivo nuevo en el registro, sin tocar las anteriores, que siguen visibles en `/terms/<versión>` y `/privacy/<versión>`. Llenar los datos del operador en el panel antes de abrir ventas.
+8. **Prueba completa en producción** (Fase 7 del runbook): reserva real de monto mínimo, correo en la bandeja de entrada, cancelación del turista con 24 h o más y reembolso del 100 % (verificado en el dashboard de OnvoPay), cancelación del staff por decisión del operador con reembolso total, cuadre de reportes.
 9. **Tag** `v0.1.0` y recién entonces difundir la URL.
 
 ## Después del lanzamiento

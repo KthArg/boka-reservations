@@ -118,7 +118,6 @@ describe('renderCancellationConfirmation — reserva sin cobrar', () => {
         startsAt: base.startsAt,
         hasRefund: false,
         refundAmountCents: 0,
-        feeCents: 0,
         currency: 'USD',
         noCharge: true,
         bookingUrl: 'https://x/es/booking/tok',

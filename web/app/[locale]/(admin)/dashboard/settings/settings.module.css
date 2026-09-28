@@ -104,3 +104,11 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}

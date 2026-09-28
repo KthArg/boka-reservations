@@ -71,9 +71,9 @@ export enum RefundRetryError {
 }
 
 /**
- * Motivo de la cancelación de una reserva cobrada (spec 0032). Decide si el reembolso descuenta
- * la comisión de procesamiento: solo cuando cancelar es decisión del cliente. `customer_request`
- * coincide con el de `UnpaidCancelReason`.
+ * Motivo de la cancelación de una reserva cobrada (spec 0032). Decide el reembolso (spec 0034):
+ * a pedido del cliente depende de la antelación (el total o nada); por decisión del operador es
+ * siempre el total. `customer_request` coincide con el de `UnpaidCancelReason`.
  */
 export const CancellationReason = {
   CustomerRequest: 'customer_request',

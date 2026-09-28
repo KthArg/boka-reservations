@@ -4,10 +4,12 @@ import { cookies } from 'next/headers';
 import { initCheckout } from '@/lib/booking/create';
 import {
   checkoutLocale,
+  hasLegalAcceptance,
   holdSessionCookieOptions,
   isCheckoutThrottled,
   parseCheckoutInput,
 } from '@/lib/booking/checkout-input';
+import { isInstanceSellable, isSalesEnabled } from '@/lib/booking/sales-gate';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { checkoutErrorKey, CheckoutErrorKey } from '@/lib/booking/deferred-checkout-errors';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
@@ -24,12 +26,19 @@ export async function checkoutAction(
   // Con el cobro diferido activo (spec 0029 §11) el checkout con widget no se ofrece: invocarlo
   // directo cobraría de inmediato una reserva que tiene que esperar el mínimo.
   if (isDeferredChargeEnabled()) return { error: CheckoutErrorKey.Generic };
+  if (!(await isSalesEnabled())) return { error: CheckoutErrorKey.SalesNotEnabled };
+  if (!hasLegalAcceptance((key) => formData.get(key))) {
+    return { error: CheckoutErrorKey.ConsentRequired };
+  }
 
   // Consentimiento, nombre, email y cantidades se validan server-side ANTES de rate-limit,
   // hold y booking, para que una request inválida no consuma cupo ni cree inventario
   // (specs 0015, 0016, 0021, 0023; reglas en checkout-input.ts).
   const input = parseCheckoutInput((key) => formData.get(key));
   if (!input) return { error: CheckoutErrorKey.Generic };
+  if (!(await isInstanceSellable(input.instanceId))) {
+    return { error: CheckoutErrorKey.SalesNotEnabled };
+  }
 
   // Antes de crear hold/booking/payment: si se excedió el límite por IP, error genérico
   // sin tocar nada (no revela el throttle ni crea inventario reservado).

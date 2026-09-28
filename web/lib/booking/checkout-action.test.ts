@@ -15,6 +15,12 @@ vi.mock('@/lib/security/client-ip', () => ({ getClientIp: vi.fn(() => '1.2.3.4')
 // Flag del cobro diferido (spec 0029): lee la env tipada, que no existe en este runtime.
 const flag = vi.hoisted(() => ({ enabled: false }));
 vi.mock('@/lib/booking/deferred-flag', () => ({ isDeferredChargeEnabled: () => flag.enabled }));
+// Compuertas de venta (spec 0034): datos del operador y tour con la información de los términos.
+const gate = vi.hoisted(() => ({ sales: true, instance: true }));
+vi.mock('@/lib/booking/sales-gate', () => ({
+  isSalesEnabled: vi.fn(async () => gate.sales),
+  isInstanceSellable: vi.fn(async () => gate.instance),
+}));
 
 const { initCheckout } = await import('@/lib/booking/create');
 const { checkoutAction } = await import('@/lib/booking/checkout-action');
@@ -41,7 +47,8 @@ describe('checkoutAction — aceptaciones legales (specs 0021 y 0031)', () => {
   ])('rechaza la reserva %s, sin invocar initCheckout', async (_case, fields) => {
     const result = await checkoutAction(null, buildForm(fields));
 
-    expect(result).toEqual({ error: 'error-generic' });
+    // Spec 0034: la casilla faltante tiene su propio mensaje ("marcá las dos casillas").
+    expect(result).toEqual({ error: 'consent-required' });
     expect(initCheckout).not.toHaveBeenCalled();
   });
 
@@ -75,6 +82,30 @@ describe('checkoutAction — cobro diferido activo (spec 0029 §11)', () => {
 
     flag.enabled = false;
     expect(result).toEqual({ error: 'error-generic' });
+    expect(initCheckout).not.toHaveBeenCalled();
+  });
+});
+
+describe('checkoutAction — compuertas de venta (spec 0034)', () => {
+  it('no vende mientras falten datos del operador', async () => {
+    vi.mocked(initCheckout).mockClear();
+    gate.sales = false;
+
+    const result = await checkoutAction(null, buildForm(ACCEPTED));
+
+    gate.sales = true;
+    expect(result).toEqual({ error: 'sales-not-enabled' });
+    expect(initCheckout).not.toHaveBeenCalled();
+  });
+
+  it('no vende un tour sin la información que prometen los términos', async () => {
+    vi.mocked(initCheckout).mockClear();
+    gate.instance = false;
+
+    const result = await checkoutAction(null, buildForm(ACCEPTED));
+
+    gate.instance = true;
+    expect(result).toEqual({ error: 'sales-not-enabled' });
     expect(initCheckout).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,9 @@
+/**
+ * Marcador del pie legal (spec 0034). Cada plantilla envuelve su cuerpo con `wrapHtml`, y
+ * `send-notifications` reemplaza el marcador con el pie del operador justo antes de enviar.
+ */
+export const LEGAL_FOOTER_MARKER = '<!--legal-footer-->';
+
 export function wrapHtml(bodyHtml: string): string {
   return `<!doctype html>
 <html>
@@ -11,7 +17,7 @@ export function wrapHtml(bodyHtml: string): string {
         <td>${bodyHtml}</td>
       </tr>
     </table>
-    <p style="text-align:center;font-size:12px;color:#888;margin-top:16px;">Boka Verde</p>
+    ${LEGAL_FOOTER_MARKER}
   </body>
 </html>`;
 }

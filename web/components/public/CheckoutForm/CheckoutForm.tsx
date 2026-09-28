@@ -1,24 +1,29 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { PublicPricing } from '@/lib/public/tours';
 import { checkoutAction } from '@/lib/booking/checkout-action';
 import { calculateTotalCents } from '@/lib/booking/pricing-math';
+import { formatAmountCents } from '@/lib/format/money';
+import { HOLD_TTL_MINUTES } from '@shared/constants/bookings';
 import { CheckoutDetailsFields, type TicketCounts } from './CheckoutDetailsFields';
+import type { PurchaseSummaryInfo } from './PurchaseSummary';
 import { OnvoPaymentWidget } from './OnvoPaymentWidget';
 import styles from './CheckoutForm.module.css';
 
 type Props = {
   instanceId: string;
   pricing: PublicPricing[];
+  summary: PurchaseSummaryInfo;
 };
 
 const INITIAL_QUANTITIES: TicketCounts = { adult: 1, child: 0, student: 0 };
 
 /** Checkout con el widget de OnvoPay: cobra al reservar (flujo sin cobro diferido). */
-export function CheckoutForm({ instanceId, pricing }: Props) {
+export function CheckoutForm({ instanceId, pricing, summary }: Props) {
   const t = useTranslations('checkout');
+  const locale = useLocale();
   const [state, action, pending] = useActionState(checkoutAction, null);
   const [quantities, setQuantities] = useState<TicketCounts>(INITIAL_QUANTITIES);
 
@@ -42,6 +47,7 @@ export function CheckoutForm({ instanceId, pricing }: Props) {
     <form action={action} className={styles.form}>
       <input type="hidden" name="instance_id" value={instanceId} />
       <CheckoutDetailsFields
+        summary={summary}
         pricing={pricing}
         quantities={quantities}
         onQuantitiesChange={setQuantities}
@@ -54,8 +60,10 @@ export function CheckoutForm({ instanceId, pricing }: Props) {
         </p>
       )}
 
+      <p className={styles.fieldNote}>{t('hold-notice', { minutes: HOLD_TTL_MINUTES })}</p>
+
       <button type="submit" disabled={pending || totalCents === 0} className={styles.submit}>
-        {pending ? t('submitting') : t('submit')}
+        {pending ? t('submitting') : t('submit', { amount: formatAmountCents(totalCents, locale) })}
       </button>
     </form>
   );

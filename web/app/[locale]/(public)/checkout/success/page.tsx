@@ -121,10 +121,9 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
               <strong>{t('success-date')}</strong> {dateLabel}
             </p>
           )}
-          {maskEmail(booking.customer_email) && (
-            <p>
-              <strong>{t('success-email')}</strong> {maskEmail(booking.customer_email)}
-            </p>
+          {/* Texto aprobado (spec 0034): solo una reserva confirmada ya tiene su correo en camino. */}
+          {booking.status === BookingStatus.Confirmed && maskEmail(booking.customer_email) && (
+            <p>{t('success-email-sent', { email: maskEmail(booking.customer_email) })}</p>
           )}
         </div>
       ) : null}

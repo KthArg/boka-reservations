@@ -26,7 +26,20 @@ export type BusinessSettingsForm = z.infer<typeof BusinessSettingsFormSchema>;
 
 export type BusinessSettings = Pick<
   Tables<'business_settings'>,
-  'minimum_decision_window_hours' | 'default_charge_lead_hours' | 'updated_at'
+  | 'minimum_decision_window_hours'
+  | 'default_charge_lead_hours'
+  | 'updated_at'
+  | 'operator_legal_name'
+  | 'operator_tax_id'
+  | 'operator_address'
+  | 'operator_brand'
+  | 'operator_contact_email'
+  | 'operator_privacy_email'
+  | 'operator_phone'
+  | 'operator_hours'
+  | 'operator_ict_declaration'
+  | 'operator_has_liability_policy'
+  | 'no_show_tolerance_minutes'
 >;
 
 export type SettingsFormResult = { success: true } | { success: false; error: SettingsActionError };

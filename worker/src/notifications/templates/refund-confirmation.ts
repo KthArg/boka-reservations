@@ -6,8 +6,6 @@ export type RefundConfirmationProps = {
   customerName: string;
   tourName: string;
   refundAmountCents: number;
-  /** Comisión de procesamiento descontada del reembolso (spec 0032); 0 si no hubo. */
-  feeCents: number;
   currency: string;
 };
 
@@ -17,7 +15,6 @@ const COPY = {
     greeting: (name: string) => `Hola ${name},`,
     intro: (amount: string) =>
       `Procesamos tu reembolso de ${amount} por la cancelación de tu reserva.`,
-    fee: (fee: string) => `Se descontó la comisión de procesamiento del pago (${fee}).`,
     tourLabel: 'Tour',
     note: 'Según tu banco, puede tardar algunos días hábiles en reflejarse.',
     farewell: 'Esperamos verte en otra ocasión.',
@@ -26,7 +23,6 @@ const COPY = {
     subject: (tour: string) => `Your refund was processed — ${tour}`,
     greeting: (name: string) => `Hi ${name},`,
     intro: (amount: string) => `We processed your ${amount} refund for the cancelled booking.`,
-    fee: (fee: string) => `The payment processing fee (${fee}) was deducted.`,
     tourLabel: 'Tour',
     note: 'Depending on your bank, it may take a few business days to appear.',
     farewell: 'We hope to see you another time.',
@@ -39,10 +35,7 @@ export function renderRefundConfirmation(
 ): RenderedEmail {
   const t = COPY[locale];
   const amount = formatMoney(props.refundAmountCents, props.currency, locale);
-  const intro =
-    props.feeCents > 0
-      ? `${t.intro(amount)} ${t.fee(formatMoney(props.feeCents, props.currency, locale))}`
-      : t.intro(amount);
+  const intro = t.intro(amount);
 
   const html = wrapHtml(`
     <h1 style="font-size:20px;margin:0 0 16px;">${t.greeting(escapeHtml(props.customerName))}</h1>

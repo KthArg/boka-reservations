@@ -43,6 +43,21 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({})),
 }));
 
+// Pie legal (spec 0034): la identidad del operador se lee una vez por ciclo.
+vi.mock('../../../src/notifications/operator.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/notifications/operator.js')>()),
+  loadOperatorIdentity: vi.fn(() =>
+    Promise.resolve({
+      legalName: 'Boka Verde Tours S.A.',
+      taxId: '3-101-123456',
+      address: 'San José',
+      brand: 'Boka Verde',
+      contactEmail: 'hola@bokaverde.cr',
+      phone: '+506 2222-2222',
+    }),
+  ),
+}));
+
 // 0011: los emails de booking ahora emiten un token de acceso a la reserva.
 vi.mock('../../../src/notifications/booking-token.js', () => ({
   issueBookingToken: vi.fn().mockResolvedValue('tok-test'),
