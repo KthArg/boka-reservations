@@ -1,17 +1,22 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { PaymentStatus } from '@shared/constants/enums';
+import { REFUND_MANUAL_CHECK_REASONS, RefundStatus } from '@shared/constants/refunds';
 import type { AdminBookingDetail } from './admin-types';
 
 const DETAIL_SELECT = `
   id, customer_name, customer_email,
   tickets_adult, tickets_child, tickets_student,
   total_amount_cents, currency, terms_version, status, checked_in_at, created_at, updated_at,
-  charge_attempts, card_last4, payment_method_id,
-  tour_instances!inner ( starts_at, ends_at, tours!inner ( name_es ) ),
+  charge_attempts, card_last4, payment_method_id, operator_review_required_at,
+  tour_instances!inner (
+    id, tour_id, starts_at, ends_at, cancellation_reason, tours!inner ( name_es )
+  ),
   payments ( status, external_provider ),
   notifications ( kind, status, sent_at ),
-  refunds ( id, status, failure_reason )
+  refunds (
+    id, status, failure_reason, amount_cents, method, transfer_channel, external_refund_id
+  )
 `;
 
 // Con varios pagos (spec 0029: un intento rechazado y otro vigente) el panel muestra el que decide
@@ -42,10 +47,43 @@ interface RawDetail {
   charge_attempts: number;
   card_last4: string | null;
   payment_method_id: string | null;
-  tour_instances: { starts_at: string; ends_at: string; tours: { name_es: string } | null } | null;
+  operator_review_required_at: string | null;
+  tour_instances: {
+    id: string;
+    tour_id: string;
+    starts_at: string;
+    ends_at: string;
+    cancellation_reason: string | null;
+    tours: { name_es: string } | null;
+  } | null;
   payments: RawPayment[] | null;
   notifications: { kind: string; status: string; sent_at: string | null }[] | null;
-  refunds: { id: string; status: string; failure_reason: string | null }[] | null;
+  refunds: RawRefund[] | null;
+}
+
+type RawRefund = {
+  id: string;
+  status: string;
+  failure_reason: string | null;
+  amount_cents: number;
+  method: string;
+  transfer_channel: string | null;
+  external_refund_id: string | null;
+};
+
+function toRefund(r: RawRefund): AdminBookingDetail['refund'] {
+  return {
+    id: r.id,
+    status: r.status,
+    failureReason: r.failure_reason,
+    amountCents: r.amount_cents,
+    method: r.method,
+    transferChannel: r.transfer_channel,
+    transferAllowed:
+      r.status === RefundStatus.Failed &&
+      r.external_refund_id === null &&
+      !(r.failure_reason !== null && REFUND_MANUAL_CHECK_REASONS.includes(r.failure_reason)),
+  };
 }
 
 function currentPayment(payments: RawPayment[] | null): RawPayment | null {
@@ -86,13 +124,11 @@ function toDetail(r: RawDetail): AdminBookingDetail {
       status: n.status,
       sentAt: n.sent_at,
     })),
-    refund: r.refunds?.[0]
-      ? {
-          id: r.refunds[0].id,
-          status: r.refunds[0].status,
-          failureReason: r.refunds[0].failure_reason,
-        }
-      : null,
+    refund: r.refunds?.[0] ? toRefund(r.refunds[0]) : null,
+    tourId: r.tour_instances?.tour_id ?? '',
+    instanceId: r.tour_instances?.id ?? '',
+    cancellationReason: r.tour_instances?.cancellation_reason ?? null,
+    underReview: r.operator_review_required_at !== null,
   };
 }
 

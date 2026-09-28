@@ -28,6 +28,8 @@ export enum TourActionError {
   /** El tour vende tiquete de niño y no publica las edades (spec 0034, cláusula 3). */
   ChildAgesRequired = 'tour_child_ages_required',
   ChildAgesInvalid = 'tour_child_ages_invalid',
+  /** Punto de encuentro con reservas confirmadas en salidas futuras (trigger de …049, spec 0035). */
+  MeetingPointLocked = 'tour_meeting_point_locked',
   /**
    * No se archiva un tour con una salida en pleno ciclo de cobro (spec 0033): archivar cancela
    * la salida, y el motor no toca salidas canceladas, así que el ciclo quedaría abierto para
@@ -67,3 +69,6 @@ export const CHARGE_LEAD_HOURS_WARN_BELOW = 6;
 
 /** Edad máxima del tiquete de niño: 17 (espejo del CHECK `tours_child_ages_check`, spec 0034). */
 export const CHILD_AGE_MAX = 17;
+
+/** Mensaje con que el trigger tours_meeting_point_lock (…049) rechaza el cambio. */
+export const MEETING_POINT_LOCKED = 'MEETING_POINT_LOCKED';

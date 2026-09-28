@@ -34,6 +34,15 @@ export interface AdminBookingRefund {
   id: string;
   status: string;
   failureReason: string | null;
+  amountCents: number;
+  /** `card` o `transfer` (spec 0035). */
+  method: string;
+  transferChannel: string | null;
+  /**
+   * Se puede devolver por transferencia: falló sin id en OnvoPay y sin resultado desconocido. En
+   * los otros casos OnvoPay todavía puede acreditar a la tarjeta (spec 0035).
+   */
+  transferAllowed: boolean;
 }
 
 /** Detalle completo de una reserva. */
@@ -63,6 +72,13 @@ export interface AdminBookingDetail {
   hasSavedCard: boolean;
   notifications: AdminBookingNotification[];
   refund: AdminBookingRefund | null;
+  /** Salida y tour: el cambio de fecha ofrece otras salidas del mismo tour (spec 0035). */
+  tourId: string;
+  instanceId: string;
+  /** Motivo de cancelación de la salida, si se canceló. */
+  cancellationReason: string | null;
+  /** Salida cancelada por clima o seguridad: la reserva espera la decisión del equipo. */
+  underReview: boolean;
 }
 
 /** Fila enriquecida para el export CSV (más columnas que la lista). */

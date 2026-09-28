@@ -95,7 +95,6 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
   }));
   const setBasicField = (name: keyof TourBasicValues, value: string) =>
     setBasic((b) => ({ ...b, [name]: value }));
-  const [autoCancel, setAutoCancel] = useState(defaultValues?.auto_cancel_below_minimum ?? false);
   const [chargeTiming, setChargeTiming] = useState<ChargeTiming>(
     defaultValues?.charge_timing ?? ChargeTiming.BeforeDeparture,
   );
@@ -126,7 +125,7 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
 
       <TourBasicInfoSection values={basic} onChange={setBasicField} errors={errors} />
       <TourPublishedInfoSection defaultValues={defaultValues} errors={errors} />
-      <TourMinimumPolicyField checked={autoCancel} onChange={setAutoCancel} />
+      <TourMinimumPolicyField checked={defaultValues?.auto_cancel_below_minimum ?? false} />
       <TourChargeTimingField
         timing={chargeTiming}
         leadHours={chargeLeadHours}

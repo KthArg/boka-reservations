@@ -35,7 +35,8 @@ function reasonPreview(
  * confirmada (spec 0032); cobro manual y cancelación sin costo para una sin cobrar (spec 0029).
  */
 export function BookingDetailActions({ booking, locale, isAdmin }: Props) {
-  const isConfirmed = booking.status === BookingStatus.Confirmed;
+  // Una reserva en revisión (spec 0035) se decide en su propia sección, no con la cancelación.
+  const isConfirmed = booking.status === BookingStatus.Confirmed && !booking.underReview;
   const isUnpaid = booking.status === BookingStatus.PendingMinimum;
   const now = new Date();
   const departureStarted = new Date(booking.startsAt).getTime() <= now.getTime();

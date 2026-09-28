@@ -49,6 +49,14 @@ export default async function BookingViewPage({ params }: Props) {
           <dd className={styles.metaValue}>{t(`status-${view.status}`)}</dd>
         </dl>
 
+        {view.underReview ? (
+          <p className={styles.muted}>
+            {t('under-review', {
+              reason: t(`under-review-reason-${view.cancellationReason ?? 'other'}`),
+            })}
+          </p>
+        ) : null}
+
         <div className={styles.actions}>
           {/* Cobro diferido (spec 0029 §5.7): las páginas de 3DS y de tarjeta, solo en su estado. */}
           {view.awaitingAuthentication ? (
@@ -61,7 +69,7 @@ export default async function BookingViewPage({ params }: Props) {
               {t('card-cta')}
             </Link>
           ) : null}
-          {view.status === BookingStatus.Confirmed ||
+          {(view.status === BookingStatus.Confirmed && !view.underReview) ||
           view.status === BookingStatus.PendingMinimum ? (
             <Link href={`/booking/${token}/cancel`} className={styles.dangerLink}>
               {t('cancel-cta')}

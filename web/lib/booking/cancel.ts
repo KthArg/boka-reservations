@@ -65,6 +65,8 @@ export async function cancelBooking(
   if (view.status !== BookingStatus.Confirmed) {
     return { ok: false, error: CancellationError.NotCancellable };
   }
+  // Salida cancelada por clima o seguridad (spec 0035): la decide el equipo, no esta cancelación.
+  if (view.underReview) return { ok: false, error: CancellationError.UnderReview };
 
   // Spec 0032: el staff elige el motivo; el turista siempre cancela a pedido propio.
   const reason = params.reason;

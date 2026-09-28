@@ -21,6 +21,11 @@ export enum CancellationError {
    * diferido se completó o se cruzó el borde de 24 h. No se cancela; la UI recarga.
    */
   StateChanged = 'cancellation_state_changed',
+  /**
+   * La salida se canceló por clima o seguridad y la reserva espera la decisión del equipo
+   * (spec 0035): el turista no la cancela por su cuenta.
+   */
+  UnderReview = 'cancellation_under_review',
 }
 
 /** Motivo de cancel_unpaid_booking que queda auditado (spec 0029 §5.8). */
