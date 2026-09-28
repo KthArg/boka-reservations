@@ -37,9 +37,9 @@ describe('computeRetentionCutoffs', () => {
   });
 
   it('registro de la venta = 5 años antes de now (spec 0036)', () => {
-    const expected = new Date(now);
-    expected.setFullYear(expected.getFullYear() - 5);
-    expect(computeRetentionCutoffs(now).financialRecordCutoff).toBe(expected.toISOString());
+    expect(
+      computeRetentionCutoffs(new Date('2031-03-15T12:00:00.000Z')).financialRecordCutoff,
+    ).toBe('2026-03-15T12:00:00.000Z');
   });
 
   it('todos los cutoffs quedan en el pasado respecto de now', () => {

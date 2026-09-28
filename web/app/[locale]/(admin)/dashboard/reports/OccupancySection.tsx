@@ -4,7 +4,8 @@ import styles from './reports.module.css';
 
 type Props = {
   rows: OccupancyRow[];
-  locale: string; /** null: quien mira no es admin y no puede exportar (spec 0036). */
+  locale: string;
+  /** null: quien mira no es admin y no puede exportar (spec 0036). */
   exportHref: string | null;
 };
 

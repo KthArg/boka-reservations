@@ -5,7 +5,8 @@ import styles from './reports.module.css';
 
 type Props = {
   summary: RefundsSummary;
-  locale: string; /** null: quien mira no es admin y no puede exportar (spec 0036). */
+  locale: string;
+  /** null: quien mira no es admin y no puede exportar (spec 0036). */
   exportHref: string | null;
 };
 

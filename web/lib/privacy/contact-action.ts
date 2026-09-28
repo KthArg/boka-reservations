@@ -7,6 +7,7 @@ import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { writeAuditLog } from '@/lib/audit/log';
 import { AuditAction, AuditActorType, AuditEntityType } from '@shared/constants/audit';
 import { UserRole } from '@shared/constants/enums';
+import { NotificationStatus } from '@shared/constants/notifications';
 
 // Corrección de nombre y correo a pedido del turista (aviso de privacidad, P7; spec 0036).
 
@@ -47,20 +48,28 @@ export async function correctBookingContact(
   // Una reserva anonimizada ya no tiene datos de nadie que corregir.
   if (!before || before.anonymized_at !== null) return { ok: false, error: 'not-found' };
 
-  const { error } = await db
+  // Si la anonimización corrió entre la lectura y esta escritura, no se reescriben datos.
+  const { data: updated, error } = await db
     .from('bookings')
     .update({ customer_name: name, customer_email: email })
-    .eq('id', bookingId);
+    .eq('id', bookingId)
+    .is('anonymized_at', null)
+    .select('id');
+  if (!error && updated.length === 0) return { ok: false, error: 'not-found' };
   if (error) {
     console.error('[privacy] correct contact:', error.message, bookingId);
     return { ok: false, error: 'error-generic' };
   }
   // Los avisos que todavía no salieron van al correo corregido.
-  await db
+  const { error: noticesError } = await db
     .from('notifications')
     .update({ recipient_email: email })
     .eq('booking_id', bookingId)
-    .eq('status', 'pending');
+    .eq('status', NotificationStatus.Pending);
+  if (noticesError) {
+    console.error('[privacy] correct notices:', noticesError.message, bookingId);
+    return { ok: false, error: 'error-generic' };
+  }
 
   await writeAuditLog(db, {
     actorType: AuditActorType.Admin,
@@ -68,9 +77,13 @@ export async function correctBookingContact(
     action: AuditAction.BookingContactCorrected,
     entityType: AuditEntityType.Booking,
     entityId: bookingId,
+    // Solo qué cambió: audit_logs no se anonimiza ni se purga, y guardar el nombre o el correo
+    // ahí los conservaría para siempre, contra lo que promete el aviso (P6).
     metadata: {
-      before: { name: before.customer_name, email: before.customer_email },
-      after: { name, email },
+      fields: [
+        ...(before.customer_name !== name ? ['name'] : []),
+        ...(before.customer_email !== email ? ['email'] : []),
+      ],
     },
   });
 

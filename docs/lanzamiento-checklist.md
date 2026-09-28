@@ -30,7 +30,7 @@ Los borradores legales para la abogada y el operador están fuera del repo, en `
 3. **Promover** `dev → main` con **merge commit** (nunca squash).
 4. **Variables.** Además de las tablas del runbook:
    - Web: `DEFERRED_CHARGE_ENABLED=false` (explícito, aunque es el default).
-   - Web: `IDENTIFIER_HASH_SECRET` (spec 0036), 32 caracteres o más (`openssl rand -base64 36`). **Sin ella la web no arranca en producción.**
+   - Web: `IDENTIFIER_HASH_SECRET` (spec 0036), 32 caracteres o más (`openssl rand -base64 36`). **Sin ella la web no arranca en producción**, y los deploys de Preview de Vercel también corren con `NODE_ENV=production`: cargarla en Production y en Preview.
    - Worker: `DEFERRED_CHARGE_ENABLED=false` y `RELEASE_AUTHORIZATIONS_ONLY=false` (spec 0033). Los dos flags del cobro diferido, el de la web y el del worker, se prenden y se apagan juntos: la web encendida con el worker apagado deja reservas que nunca se cobran.
    - Web y worker: no setear `ONVOPAY_API_BASE_URL` ni `NEXT_PUBLIC_ONVOPAY_API_BASE_URL`; el default es la API de producción.
    - Web: `RESEND_API_KEY` **ya no se exige** (se quitó del schema en el spec 0028). El runbook todavía dice lo contrario.

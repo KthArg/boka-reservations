@@ -62,8 +62,9 @@ export async function setUserActive(
 
   const { error } = await db.from('users').update({ active }).eq('id', id);
   if (error) return { ok: false, error: UserManagementError.WriteFailed };
-  await setSessionsBlocked(db, target.role, id, false);
-  return { ok: true };
+  // Si el desbloqueo en Auth falla, el usuario seguiría sin poder entrar: se informa.
+  const unblocked = await setSessionsBlocked(db, target.role, id, false);
+  return unblocked ? { ok: true } : { ok: false, error: UserManagementError.WriteFailed };
 }
 
 /** Bloqueo indefinido en Supabase Auth: sin él, la sesión abierta seguiría renovándose. */
@@ -80,13 +81,16 @@ async function setSessionsBlocked(
   role: string,
   id: string,
   blocked: boolean,
-): Promise<void> {
-  if (!LOGIN_ROLES.includes(role as UserRole)) return;
+): Promise<boolean> {
+  if (!LOGIN_ROLES.includes(role as UserRole)) return true;
   const { error } = await db.auth.admin.updateUserById(id, {
     ban_duration: blocked ? BLOCKED_BAN_DURATION : UNBLOCKED_BAN_DURATION,
   });
-  if (error)
+  if (error) {
     console.error('[users] no se pudo actualizar el bloqueo de sesión:', error.message, id);
+    return false;
+  }
+  return true;
 }
 
 /** Reenvía la invitación a un admin/staff que aún no fijó contraseña. */

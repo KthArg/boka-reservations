@@ -33,7 +33,7 @@ export interface RetentionCutoffs {
 
 function yearsBefore(now: Date, years: number): string {
   const cutoff = new Date(now);
-  cutoff.setFullYear(cutoff.getFullYear() - years);
+  cutoff.setUTCFullYear(cutoff.getUTCFullYear() - years);
   return cutoff.toISOString();
 }
 

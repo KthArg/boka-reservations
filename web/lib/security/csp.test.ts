@@ -84,7 +84,9 @@ describe('buildCsp — imágenes (spec 0036)', () => {
   it('solo permite imágenes propias, del almacenamiento y de la pasarela', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', SUPABASE_URL);
     const imgSrc = directive(buildCsp(NONCE), 'img-src');
-    expect(imgSrc).toContain(new URL(SUPABASE_URL).origin);
+    expect(imgSrc).toBe(
+      `img-src 'self' data: blob: ${new URL(SUPABASE_URL).origin} https://*.onvopay.com`,
+    );
     // Sin el comodín `https:`, que dejaba cargar imágenes de cualquier servidor.
     expect(imgSrc.split(' ')).not.toContain('https:');
   });

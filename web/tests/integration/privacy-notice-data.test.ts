@@ -62,8 +62,38 @@ describe('anonimización a los 18 meses', () => {
     const bookingId = await paidBookingAt(-2 * YEAR_MS);
     await db
       .from('bookings')
-      .update({ card_brand: 'visa', card_last4: '4242', customer_external_id: 'cus_1' })
+      .update({
+        card_brand: 'visa',
+        card_last4: '4242',
+        card_exp_month: 12,
+        card_exp_year: 2030,
+        customer_external_id: 'cus_1',
+        payment_method_id: 'pm_1',
+      })
       .eq('id', bookingId);
+    // Una devolución por transferencia ya registrada, con su comprobante.
+    const { data: payment } = await db
+      .from('payments')
+      .select('id')
+      .eq('booking_id', bookingId)
+      .single();
+    const { data: refund } = await db
+      .from('refunds')
+      .insert({
+        booking_id: bookingId,
+        payment_id: payment!.id,
+        amount_cents: 9000,
+        status: RefundStatus.Succeeded,
+        method: 'transfer',
+        transfer_channel: 'sinpe_movil',
+        transfer_reference: 'SINPE-CUENTA-8888-0000',
+        transfer_requested_at: new Date().toISOString(),
+        transfer_paid_at: new Date().toISOString(),
+        transfer_amount_cents: 9000,
+        transfer_currency: 'USD',
+      })
+      .select('id')
+      .single();
 
     // Act
     await db.rpc('anonymize_bookings_past_retention', {
@@ -75,8 +105,33 @@ describe('anonimización a los 18 meses', () => {
     expect(booking.customer_name).toBe('ANONIMIZADO');
     expect(booking.card_last4).toBeNull();
     expect(booking.card_brand).toBeNull();
+    expect(booking.card_exp_month).toBeNull();
+    expect(booking.card_exp_year).toBeNull();
     expect(booking.customer_external_id).toBeNull();
+    expect(booking.payment_method_id).toBeNull();
     expect(booking.anonymized_at).not.toBeNull();
+    const { data: after } = await db
+      .from('refunds')
+      .select('transfer_reference')
+      .eq('id', refund!.id)
+      .single();
+    expect(after!.transfer_reference).toBe('ANONIMIZADO');
+  });
+
+  it('cancela los avisos pendientes en lugar de mandarlos a una dirección inválida', async () => {
+    const bookingId = await paidBookingAt(-2 * YEAR_MS);
+
+    await db.rpc('anonymize_bookings_past_retention', {
+      p_cutoff: new Date(Date.now() - 18 * 30 * DAY_MS).toISOString(),
+    });
+
+    const { data } = await db
+      .from('notifications')
+      .select('status')
+      .eq('booking_id', bookingId)
+      .eq('kind', 'reminder_24h')
+      .single();
+    expect(data!.status).toBe('cancelled');
   });
 
   it('alcanza también a las reservas en payment_mismatch', async () => {
@@ -95,9 +150,12 @@ describe('anonimización a los 18 meses', () => {
 describe('purga del registro a los 5 años', () => {
   const cutoff = () => new Date(Date.now() - 5 * YEAR_MS).toISOString();
 
+  // El corte apenas pasado el inicio de esta reserva: no anonimiza las de otras suites ni el seed.
   async function anonymized(startsInMs: number): Promise<string> {
     const bookingId = await paidBookingAt(startsInMs);
-    await db.rpc('anonymize_bookings_past_retention', { p_cutoff: new Date().toISOString() });
+    await db.rpc('anonymize_bookings_past_retention', {
+      p_cutoff: new Date(Date.now() + startsInMs + DAY_MS).toISOString(),
+    });
     return bookingId;
   }
 
@@ -110,8 +168,38 @@ describe('purga del registro a los 5 años', () => {
     expect(data).toEqual([]);
   });
 
+  it('borra también sus pagos, reembolsos y avisos, y una segunda corrida no hace nada', async () => {
+    const bookingId = await anonymized(-6 * YEAR_MS);
+
+    await db.rpc('purge_financial_records', { p_cutoff: cutoff() });
+    const second = await db.rpc('purge_financial_records', { p_cutoff: cutoff() });
+
+    for (const table of ['payments', 'refunds', 'notifications'] as const) {
+      const { data } = await db.from(table).select('id').eq('booking_id', bookingId);
+      expect(data).toEqual([]);
+    }
+    expect(second.error).toBeNull();
+  });
+
+  it('no borra una reserva vieja que todavía no se anonimizó', async () => {
+    const bookingId = await paidBookingAt(-6 * YEAR_MS);
+
+    await db.rpc('purge_financial_records', { p_cutoff: cutoff() });
+
+    expect((await readBooking(db, bookingId)).id).toBe(bookingId);
+  });
+
   it('conserva la de hace menos de 5 años', async () => {
     const bookingId = await anonymized(-4 * YEAR_MS);
+
+    await db.rpc('purge_financial_records', { p_cutoff: cutoff() });
+
+    expect((await readBooking(db, bookingId)).id).toBe(bookingId);
+  });
+
+  it('conserva una payment_mismatch sin conciliar', async () => {
+    const bookingId = await anonymized(-6 * YEAR_MS);
+    await db.from('bookings').update({ status: BookingStatus.PaymentMismatch }).eq('id', bookingId);
 
     await db.rpc('purge_financial_records', { p_cutoff: cutoff() });
 
@@ -152,7 +240,8 @@ describe('usuario desactivado', () => {
     });
 
     await db.from('users').update({ active: true }).eq('id', staffId);
-    expect(error).not.toBeNull();
+    // El rechazo es el del hook, no el de una contraseña equivocada.
+    expect(error?.message).toContain('Usuario desactivado');
   });
 });
 
@@ -174,6 +263,22 @@ describe('borrado a pedido', () => {
     });
     expect(erased).toEqual({ ok: true, result: { anonymizedCount: 1, deletedCount: 0 } });
     expect((await readBooking(db, bookingId)).customer_name).toBe('ANONIMIZADO');
+  });
+
+  it('la vista previa compara el correo literal: un _ no es comodín', async () => {
+    const bookingId = await paidBookingAt(3 * DAY_MS);
+    const tag = uid();
+    await db
+      .from('bookings')
+      .update({ customer_email: `ax${tag}@example.com` })
+      .eq('id', bookingId);
+
+    const preview = await previewCustomerErasure(`a_${tag}@example.com`);
+
+    expect(preview).toEqual({
+      ok: true,
+      preview: { total: 0, byStatus: {}, upcoming: 0, pendingRefunds: 0 },
+    });
   });
 
   it('no borra nada si hay un reembolso sin terminar', async () => {
@@ -245,10 +350,21 @@ describe('corrección de contacto', () => {
       .select('metadata')
       .eq('entity_id', bookingId)
       .eq('action', AuditAction.BookingContactCorrected);
-    expect(logs![0]!.metadata).toMatchObject({
-      before: { email: before.customer_email },
-      after: { email: 'ana@example.com' },
-    });
+    // El audit guarda qué cambió, nunca el nombre ni el correo (no se anonimiza ni se purga).
+    expect(logs![0]!.metadata).toEqual({ fields: ['name', 'email'] });
+    expect(JSON.stringify(logs![0]!.metadata)).not.toContain(before.customer_email);
+  });
+
+  it('no corrige una reserva ya anonimizada', async () => {
+    const bookingId = await paidBookingAt(3 * DAY_MS);
+    await db
+      .from('bookings')
+      .update({ anonymized_at: new Date().toISOString() })
+      .eq('id', bookingId);
+
+    const result = await correctBookingContact(null, form(bookingId, 'Ana', 'ana@example.com'));
+
+    expect(result).toEqual({ ok: false, error: 'not-found' });
   });
 
   it('rechaza un correo inválido y al staff', async () => {

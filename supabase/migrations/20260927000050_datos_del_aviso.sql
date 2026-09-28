@@ -13,7 +13,9 @@
 -- REVOKE de PUBLIC, anon, authenticated.
 --
 -- Reversión: restaurar las funciones de …034/…044 y el hook de …007; DROP de
--- purge_financial_records, del CHECK y de las políticas de Storage. El bucket se puede dejar.
+-- purge_financial_records, booking_has_financial_trace, anonymize_booking_row, del CHECK y de
+-- las políticas de Storage. El bucket se puede dejar. Revertir el hook vuelve a darle token a un
+-- usuario desactivado. Lo que la anonimización vació y la purga borró no vuelve (por diseño).
 
 SET LOCAL lock_timeout = '5s';
 
@@ -45,10 +47,26 @@ RETURNS void
 LANGUAGE plpgsql
 SET search_path = ''
 AS $$
+DECLARE
+  v_live boolean;
 BEGIN
+  -- Un aviso pendiente iría a una dirección inválida: rebota y daña la reputación del remitente.
+  UPDATE public.notifications
+    SET status = 'cancelled', cancelled_reason = 'anonymized'
+    WHERE booking_id = p_booking_id AND status = 'pending';
+
   UPDATE public.notifications
     SET recipient_email = 'anonimizado@anonimizado.local'
     WHERE booking_id = p_booking_id;
+
+  -- Una reserva viva de una salida futura (borrado a pedido antes del tour) conserva el cliente y
+  -- el método de pago de OnvoPay: el motor del cobro diferido distingue su flujo por ellos. La
+  -- corrida de los 18 meses los vacía cuando la salida ya pasó.
+  SELECT b.status IN ('pending_minimum', 'pending_payment', 'confirmed') AND ti.starts_at > now()
+    INTO v_live
+    FROM public.bookings b
+    JOIN public.tour_instances ti ON ti.id = b.tour_instance_id
+    WHERE b.id = p_booking_id;
 
   UPDATE public.refunds
     SET transfer_reference = CASE WHEN transfer_reference IS NULL THEN NULL ELSE 'ANONIMIZADO' END
@@ -61,8 +79,8 @@ BEGIN
         card_last4           = NULL,
         card_exp_month       = NULL,
         card_exp_year        = NULL,
-        customer_external_id = NULL,
-        payment_method_id    = NULL,
+        customer_external_id = CASE WHEN v_live THEN customer_external_id END,
+        payment_method_id    = CASE WHEN v_live THEN payment_method_id END,
         anonymized_at        = now()
     WHERE id = p_booking_id;
 END;
@@ -129,6 +147,17 @@ BEGIN
   IF public.is_public_request() THEN
     RAISE EXCEPTION 'FORBIDDEN_PUBLIC_ROLE'
       USING HINT = 'Solo service_role puede ejecutar esta funcion';
+  END IF;
+
+  -- Con dinero pendiente de devolver no se borra nada: la persona perdería el aviso. La acción del
+  -- panel ya lo verifica; esto es la segunda capa.
+  IF EXISTS (
+    SELECT 1 FROM public.refunds r
+    JOIN public.bookings b ON b.id = r.booking_id
+    WHERE lower(b.customer_email) = v_email
+      AND r.status IN ('pending', 'processing', 'failed', 'awaiting_transfer')
+  ) THEN
+    RAISE EXCEPTION 'PENDING_REFUND';
   END IF;
 
   -- 1) Con rastro financiero: se anonimizan (el registro de la venta se conserva 5 años).
@@ -210,6 +239,7 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
+  v_ids      uuid[];
   v_bookings integer := 0;
   v_payments integer := 0;
   v_refunds  integer := 0;
@@ -219,29 +249,31 @@ BEGIN
       USING HINT = 'Solo service_role puede ejecutar esta funcion';
   END IF;
 
-  -- Candidatas: salida terminada antes del corte, ya anonimizada y sin plata pendiente.
-  CREATE TEMP TABLE purge_candidates ON COMMIT DROP AS
-    SELECT b.id
+  -- Candidatas: salida terminada antes del corte, ya anonimizada y sin plata pendiente: ni un
+  -- reembolso sin terminar, ni un cobro con monto distinto sin conciliar (payment_mismatch), ni
+  -- una decisión de revisión abierta (…049). Se bloquean para que un reembolso no nazca en medio.
+  SELECT coalesce(array_agg(b.id), '{}') INTO v_ids
     FROM public.bookings b
     JOIN public.tour_instances ti ON ti.id = b.tour_instance_id
     WHERE ti.ends_at < p_cutoff
       AND b.anonymized_at IS NOT NULL
+      AND b.status <> 'payment_mismatch'
+      AND b.operator_review_required_at IS NULL
       AND NOT EXISTS (
         SELECT 1 FROM public.refunds r
         WHERE r.booking_id = b.id
           AND r.status IN ('pending', 'processing', 'failed', 'awaiting_transfer')
       );
+  PERFORM 1 FROM public.bookings WHERE id = ANY (v_ids) FOR UPDATE;
 
-  DELETE FROM public.notifications WHERE booking_id IN (SELECT id FROM purge_candidates);
-  DELETE FROM public.booking_access_tokens WHERE booking_id IN (SELECT id FROM purge_candidates);
-  DELETE FROM public.refunds WHERE booking_id IN (SELECT id FROM purge_candidates);
+  DELETE FROM public.notifications WHERE booking_id = ANY (v_ids);
+  DELETE FROM public.booking_access_tokens WHERE booking_id = ANY (v_ids);
+  DELETE FROM public.refunds WHERE booking_id = ANY (v_ids);
   GET DIAGNOSTICS v_refunds = ROW_COUNT;
-  DELETE FROM public.payments WHERE booking_id IN (SELECT id FROM purge_candidates);
+  DELETE FROM public.payments WHERE booking_id = ANY (v_ids);
   GET DIAGNOSTICS v_payments = ROW_COUNT;
-  DELETE FROM public.bookings WHERE id IN (SELECT id FROM purge_candidates);
+  DELETE FROM public.bookings WHERE id = ANY (v_ids);
   GET DIAGNOSTICS v_bookings = ROW_COUNT;
-
-  DROP TABLE purge_candidates;
 
   INSERT INTO public.audit_logs (actor_type, action, entity_type, entity_id, metadata)
   VALUES (
@@ -269,7 +301,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   claims     jsonb;
@@ -281,6 +313,8 @@ BEGIN
     FROM public.users
     WHERE id = (event->>'user_id')::uuid;
   EXCEPTION WHEN OTHERS THEN
+    -- Si la lectura falla se emite el token sin rol (como en …007): bloquear todos los logins por
+    -- un error de lectura sería peor. Sin rol, las políticas del panel lo rechazan igual.
     role_value := NULL;
     is_active := NULL;
   END;
@@ -318,23 +352,30 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- Storage aplica la política SELECT a update, move y remove: sin ella esas operaciones no hacen
+-- nada. Las URL públicas del bucket no pasan por RLS.
+CREATE POLICY tour_images_admin_select ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'tour-images' AND (SELECT auth.jwt() ->> 'user_role') = 'admin');
+
 CREATE POLICY tour_images_admin_insert ON storage.objects
   FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'tour-images' AND (auth.jwt() ->> 'user_role') = 'admin');
+  WITH CHECK (bucket_id = 'tour-images' AND (SELECT auth.jwt() ->> 'user_role') = 'admin');
 
 CREATE POLICY tour_images_admin_update ON storage.objects
   FOR UPDATE TO authenticated
-  USING (bucket_id = 'tour-images' AND (auth.jwt() ->> 'user_role') = 'admin')
-  WITH CHECK (bucket_id = 'tour-images' AND (auth.jwt() ->> 'user_role') = 'admin');
+  USING (bucket_id = 'tour-images' AND (SELECT auth.jwt() ->> 'user_role') = 'admin')
+  WITH CHECK (bucket_id = 'tour-images' AND (SELECT auth.jwt() ->> 'user_role') = 'admin');
 
 CREATE POLICY tour_images_admin_delete ON storage.objects
   FOR DELETE TO authenticated
-  USING (bucket_id = 'tour-images' AND (auth.jwt() ->> 'user_role') = 'admin');
+  USING (bucket_id = 'tour-images' AND (SELECT auth.jwt() ->> 'user_role') = 'admin');
 
 -- Una URL que no es del bucket haría que la página del tour le entregue la IP del visitante a
 -- un tercero. El dominio varía entre entornos; el camino del bucket no.
 ALTER TABLE public.tours ADD CONSTRAINT tours_cover_image_url_check
   CHECK (
     cover_image_url IS NULL
-    OR cover_image_url ~ '^https?://[^/]+/storage/v1/object/public/tour-images/[^?#]+$'
+    OR cover_image_url ~ '^https?://[^/\s]+/storage/v1/object/public/tour-images/[A-Za-z0-9._-]+$'
+       AND cover_image_url NOT LIKE '%..%'
   );

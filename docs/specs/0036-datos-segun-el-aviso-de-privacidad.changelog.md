@@ -43,3 +43,30 @@ Rama: feat/0036-datos-del-aviso (apilada sobre feat/0035-operacion-de-los-termin
 
 - `IDENTIFIER_HASH_SECRET` en Vercel antes de promover a `main`.
 - Al cambiar la clave de las huellas, los contadores de `rate_limits` se reinician una vez.
+
+## 2026-09-27 — Correcciones de las revisiones
+
+Revisiones de db-schema-guardian y code-reviewer sobre el PR #86.
+
+- La corrección de contacto audita solo los campos que cambiaron (el spec lo registra); revisa el
+  error al mover los avisos y no escribe sobre una reserva que se anonimizó en medio.
+- La purga no toca `payment_mismatch` ni reservas en revisión, bloquea las candidatas antes de
+  borrar y ya no usa tabla temporal.
+- La anonimización cancela los avisos pendientes y conserva los ids de OnvoPay de una reserva
+  viva de una salida futura (el motor diferido los usa); el borrado a pedido rechaza en SQL si
+  hay un reembolso sin terminar (`PENDING_REFUND`).
+- Storage: política SELECT para admin (update y remove la necesitan) y `(SELECT auth.jwt())`.
+  El CHECK de la foto no acepta espacios ni `..`.
+- Reactivar a un usuario informa si el desbloqueo en Auth falla. `img-src` incluye
+  `https://*.onvopay.com`. El ejemplo del secreto tiene 32 caracteres o más, y el checklist pide
+  cargarlo también en Preview.
+- Tests: comprobante y todos los datos de tarjeta vaciados, purga de pagos/reembolsos/avisos e
+  idempotencia, reserva vieja sin anonimizar, escape de `_` en la vista previa, reserva ya
+  anonimizada en la corrección, y el rechazo del hook por su mensaje. El helper de la purga ya no
+  anonimiza reservas de otras suites.
+
+**Pendiente**:
+
+- La pantalla no muestra cuántas reservas quedaron retenidas (vivas) en un borrado; queda en
+  `audit_logs`.
+- Quitar una foto no borra el archivo del bucket.

@@ -1,10 +1,16 @@
 import 'server-only';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
+import { RefundStatus } from '@shared/constants/refunds';
 
 // Vista previa del borrado a pedido (spec 0036): lo necesario para decidir, sin mostrar datos.
 
-/** Reembolsos que todavía mueven dinero hacia la persona. */
-const UNFINISHED_REFUND_STATUSES = ['pending', 'processing', 'failed', 'awaiting_transfer'];
+/** Reembolsos que todavía mueven dinero hacia la persona (mismo criterio que …050). */
+const UNFINISHED_REFUND_STATUSES: readonly string[] = [
+  RefundStatus.Pending,
+  RefundStatus.Processing,
+  RefundStatus.Failed,
+  RefundStatus.AwaitingTransfer,
+];
 
 export type ErasurePreview = {
   total: number;
@@ -21,7 +27,10 @@ type Row = {
   refunds: { status: string }[] | null;
 };
 
-/** `ilike` sin comodines: el correo se compara literal, sin mayúsculas. */
+/**
+ * `ilike` sin comodines: el correo se compara literal, sin mayúsculas. Se escapan `%`, `_` y `\`;
+ * el `*` que PostgREST también trata como comodín no llega, porque Zod no lo acepta en un correo.
+ */
 function literalPattern(email: string): string {
   return email.replace(/[\\%_]/g, (c) => `\\${c}`);
 }

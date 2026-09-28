@@ -7,7 +7,14 @@ export const TOUR_IMAGES_BUCKET = 'tour-images';
 /** 5 MB, igual que el límite del bucket (…050). */
 export const TOUR_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
-export const TOUR_IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp'];
+/** Tipos aceptados y la extensión con que se guardan (el bucket de …050 acepta los mismos). */
+export const TOUR_IMAGE_EXTENSIONS: Readonly<Record<string, string>> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+export const TOUR_IMAGE_TYPES: readonly string[] = Object.keys(TOUR_IMAGE_EXTENSIONS);
 
 /** Prefijo de las URL públicas del bucket en este entorno. */
 export function tourImagesPublicPrefix(

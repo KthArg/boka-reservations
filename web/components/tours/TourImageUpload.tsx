@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { createSupabaseBrowserClient } from '@/lib/db/supabase-browser';
 import {
+  TOUR_IMAGE_EXTENSIONS,
   TOUR_IMAGE_MAX_BYTES,
   TOUR_IMAGE_TYPES,
   TOUR_IMAGES_BUCKET,
@@ -14,12 +15,6 @@ type Props = {
   value: string;
   onChange: (url: string) => void;
   errors?: string[];
-};
-
-const EXTENSIONS: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
 };
 
 /**
@@ -38,14 +33,19 @@ export function TourImageUpload({ value, onChange, errors }: Props) {
     if (file.size > TOUR_IMAGE_MAX_BYTES) return setError(t('image-error-size'));
 
     setUploading(true);
-    const supabase = createSupabaseBrowserClient();
-    const path = `${crypto.randomUUID()}.${EXTENSIONS[file.type]}`;
-    const { error: uploadError } = await supabase.storage
-      .from(TOUR_IMAGES_BUCKET)
-      .upload(path, file, { contentType: file.type, upsert: false });
-    setUploading(false);
-    if (uploadError) return setError(t('image-error-upload'));
-    onChange(supabase.storage.from(TOUR_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const path = `${crypto.randomUUID()}.${TOUR_IMAGE_EXTENSIONS[file.type]}`;
+      const { error: uploadError } = await supabase.storage
+        .from(TOUR_IMAGES_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) return setError(t('image-error-upload'));
+      onChange(supabase.storage.from(TOUR_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl);
+    } catch {
+      setError(t('image-error-upload'));
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
