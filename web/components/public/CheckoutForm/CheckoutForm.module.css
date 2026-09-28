@@ -94,12 +94,20 @@
   text-decoration: underline;
 }
 
-/* Aviso de la política de reembolso bajo la casilla de términos (spec 0032). */
-.consentNotice {
-  margin: 0 0 0 1.5rem;
+/* Notas cortas junto a los campos: uso de los datos y cupos apartados (spec 0034). */
+.fieldNote {
+  margin: 0;
   font-size: 0.8rem;
   color: var(--color-text-muted);
   line-height: 1.4;
+}
+
+/* Resumen antes de pagar (spec 0034). */
+.summaryLine {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text);
 }
 
 .error {

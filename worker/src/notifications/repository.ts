@@ -7,7 +7,7 @@ const BATCH_SIZE = 20;
 
 /** Columnas de BookingRow; los emails del cobro diferido le suman las suyas. */
 export const BOOKING_NOTIFICATION_SELECT =
-  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
+  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, terms_version, consent_version, no_show_tolerance_minutes, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
 
 export type NotificationRow = {
   id: string;

@@ -27,3 +27,15 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/**
+ * Tarifa del IVA de los tours y el IVA incluido en un precio final (spec 0034). Espejo de
+ * `VAT_RATE_PERCENT`/`vatIncludedCents` de `shared/constants/policies.ts`: el worker no importa
+ * @shared en runtime. Un test compara los dos.
+ */
+export const VAT_RATE_PERCENT = 13;
+const PERCENT = 100;
+
+export function vatIncludedCents(totalCents: number): number {
+  return Math.round((totalCents * VAT_RATE_PERCENT) / (PERCENT + VAT_RATE_PERCENT));
+}

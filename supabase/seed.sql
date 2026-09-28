@@ -71,6 +71,39 @@ VALUES
    'Ornithologist guide, binoculars if needed, bird checklist, La Selva entrance fee',
    1, 8, 'active');
 
+-- Información que los términos prometen publicar de cada tour (spec 0034): sin ella el tour no se
+-- puede reservar.
+UPDATE tours SET
+  excludes_es = 'Transporte hasta el punto de encuentro, almuerzo',
+  excludes_en = 'Transport to the meeting point, lunch',
+  requirements_es = 'Mayores de 8 años, condición física moderada, zapatos de montaña',
+  requirements_en = 'Ages 8 and up, moderate fitness, hiking shoes',
+  child_age_min = 8,
+  child_age_max = 12
+WHERE id = '11111111-0000-0000-0000-000000000001';
+
+UPDATE tours SET
+  excludes_es = 'Transporte hasta el punto de encuentro, alimentación',
+  excludes_en = 'Transport to the meeting point, meals',
+  requirements_es = 'Sin requisito de edad; caminata suave por senderos planos',
+  requirements_en = 'No age requirement; easy walk on flat trails',
+  child_age_min = 3,
+  child_age_max = 12
+WHERE id = '11111111-0000-0000-0000-000000000002';
+
+-- Identidad del operador SOLO PARA DESARROLLO LOCAL (spec 0034). Producción la carga el admin
+-- desde el panel; sin ella la venta en línea queda cerrada.
+UPDATE business_settings SET
+  operator_legal_name = 'Boka Verde Datos de Prueba S.A.',
+  operator_tax_id = '3-101-000000',
+  operator_address = 'San José, Costa Rica (dirección de prueba)',
+  operator_brand = 'Boka Verde',
+  operator_contact_email = 'consultas@example.com',
+  operator_privacy_email = 'privacidad@example.com',
+  operator_phone = '+506 2000-0000',
+  operator_hours = 'de lunes a viernes, de 8:00 a. m. a 5:00 p. m.'
+WHERE id = 1;
+
 -- Precios Cerro Chompipe
 INSERT INTO tour_pricing (tour_id, ticket_type, price_usd, season_label, valid_from, valid_until, active) VALUES
   ('11111111-0000-0000-0000-000000000001', 'adult',   65.00, 'alta', '2025-12-01', '2026-04-30', true),

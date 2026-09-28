@@ -1,6 +1,6 @@
 // cancelBooking y la vista de la reserva (spec 0032) con la base mockeada: la carrera entre dos
 // cancelaciones y un error de configuración de la comisión.
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CancelBookingOutcome,
   CancellationError,
@@ -8,18 +8,7 @@ import {
 } from '@shared/constants/cancellations';
 import { AuditActorType } from '@shared/constants/audit';
 
-const alert = vi.hoisted(() => vi.fn());
-vi.mock('./sentry-alert', () => ({ captureAlert: alert }));
 vi.mock('./cancel-unpaid', () => ({ cancelUnpaidBooking: vi.fn() }));
-// Política activa con un corte de la suite (se despliega inactiva).
-vi.mock('@shared/constants/policies', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@shared/constants/policies')>();
-  return {
-    ...mod,
-    computeRefund: (input: Parameters<typeof mod.computeRefund>[0]) =>
-      mod.computeRefund({ feeFromTermsVersion: '2026-10-01', ...input }),
-  };
-});
 
 const { cancelBooking, getBookingView } = await import('./cancel');
 
@@ -60,8 +49,6 @@ const PARAMS = {
   reason: CancellationReason.CustomerRequest,
 };
 
-beforeEach(() => alert.mockClear());
-
 describe('cancelBooking — spec 0032', () => {
   it('informa NotCancellable sin monto si otra cancelación ganó la carrera', async () => {
     const result = await cancelBooking(
@@ -72,29 +59,22 @@ describe('cancelBooking — spec 0032', () => {
     expect(result).toEqual({ ok: false, error: CancellationError.NotCancellable });
   });
 
-  it('envía el motivo y la comisión a la función SQL', async () => {
+  // Spec 0034: el reembolso es completo; la comisión que recibe la función es siempre 0.
+  it('envía el motivo y el total, sin comisión, a la función SQL', async () => {
     const db = fakeDb(row());
     const result = await cancelBooking(db, PARAMS, NOW);
     expect(result).toEqual({
       ok: true,
-      refund: { eligible: true, amountCents: 8554, feeCents: 446 },
+      refund: { eligible: true, amountCents: 9000, feeCents: 0 },
     });
     expect((db as { rpc: ReturnType<typeof vi.fn> }).rpc).toHaveBeenCalledWith(
       'cancel_booking',
       expect.objectContaining({
         p_reason: 'customer_request',
-        p_fee_cents: 446,
-        p_refund_amount_cents: 8554,
+        p_fee_cents: 0,
+        p_refund_amount_cents: 9000,
       }),
     );
-  });
-
-  it('no aplica la cancelación si la comisión no se puede calcular', async () => {
-    const db = fakeDb(row({ currency: 'CRC' }));
-    const result = await cancelBooking(db, PARAMS, NOW);
-    expect(result).toEqual({ ok: false, error: CancellationError.WriteFailed });
-    expect((db as { rpc: ReturnType<typeof vi.fn> }).rpc).not.toHaveBeenCalled();
-    expect(alert).toHaveBeenCalled();
   });
 });
 
@@ -138,29 +118,27 @@ describe('cancelBooking — lo que vio quien cancela', () => {
 
   it('no cancela si el monto cambió', async () => {
     const db = fakeDb(row());
-    const expected = { status: 'confirmed', refundAmountCents: 9000 };
+    const expected = { status: 'confirmed', refundAmountCents: 0 };
     const result = await cancelBooking(db, { ...PARAMS, expected }, NOW);
     expect(result).toEqual({ ok: false, error: CancellationError.StateChanged });
     expect((db as { rpc: ReturnType<typeof vi.fn> }).rpc).not.toHaveBeenCalled();
   });
 
   it('cancela si coincide con lo que vio', async () => {
-    const expected = { status: 'confirmed', refundAmountCents: 8554 };
+    const expected = { status: 'confirmed', refundAmountCents: 9000 };
     const result = await cancelBooking(fakeDb(row()), { ...PARAMS, expected }, NOW);
     expect(result.ok).toBe(true);
   });
 });
 
-describe('getBookingView — spec 0032', () => {
-  it('muestra la vista sin reembolso si la comisión no se puede calcular, y lo reporta', async () => {
-    const view = await getBookingView(fakeDb(row({ currency: 'CRC' })), 'booking-1', NOW);
-    expect(view?.refund).toEqual({ eligible: false, amountCents: 0, feeCents: 0 });
-    expect(alert).toHaveBeenCalledOnce();
+describe('getBookingView', () => {
+  it('muestra el reembolso completo de una reserva confirmada con antelación', async () => {
+    const view = await getBookingView(fakeDb(row()), 'booking-1', NOW);
+    expect(view?.refund).toEqual({ eligible: true, amountCents: 9000, feeCents: 0 });
   });
 
   it('no calcula reembolso para una reserva que no está confirmada', async () => {
     const view = await getBookingView(fakeDb(row({ status: 'cancelled' })), 'booking-1', NOW);
     expect(view?.refund).toEqual({ eligible: false, amountCents: 0, feeCents: 0 });
-    expect(alert).not.toHaveBeenCalled();
   });
 });

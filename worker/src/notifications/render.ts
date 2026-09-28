@@ -13,6 +13,10 @@ export type BookingRow = {
   total_amount_cents: number;
   currency: string;
   status: string;
+  /** Versiones aceptadas y tolerancia (spec 0034); null en reservas anteriores. */
+  terms_version: string | null;
+  consent_version: string | null;
+  no_show_tolerance_minutes: number | null;
   tour_instance: {
     starts_at: string;
     tour: {
@@ -29,6 +33,7 @@ export function renderForKind(
   locale: EmailLocale,
   booking: BookingRow,
   bookingUrl: string,
+  appUrl: string,
 ): RenderedEmail {
   const tour = booking.tour_instance.tour;
   const tourName = locale === 'es' ? tour.name_es : tour.name_en;
@@ -47,6 +52,12 @@ export function renderForKind(
         totalAmountCents: booking.total_amount_cents,
         currency: booking.currency,
         bookingUrl,
+        legal: {
+          appUrl,
+          termsVersion: booking.terms_version,
+          privacyVersion: booking.consent_version,
+          toleranceMinutes: booking.no_show_tolerance_minutes,
+        },
       },
       locale,
     );

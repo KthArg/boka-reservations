@@ -7,6 +7,8 @@ import { AuditActorType } from '@shared/constants/audit';
 import { BookingStatus } from '@shared/constants/enums';
 import { bookingStatus, cleanupSeeds, seed } from './cancellation-fixtures';
 
+const CHECK_VIOLATION = '23514';
+
 const TOTAL = 9000;
 const FEE = 446;
 
@@ -78,30 +80,19 @@ describe('cancel_booking — validaciones', () => {
 });
 
 describe('cancel_booking — resultados', () => {
-  it('guarda la comisión en el reembolso y en las dos entradas de la bitácora', async () => {
+  // Spec 0034: los reembolsos son siempre completos. La base rechaza un reembolso con comisión
+  // aunque un llamador la pase, y la transacción entera se deshace.
+  it('rechaza un reembolso con comisión y deja la reserva como estaba', async () => {
     // Arrange
     const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
     // Act
-    const { data } = await cancel(bookingId, CancellationReason.CustomerRequest, TOTAL - FEE, FEE);
+    const { error } = await cancel(bookingId, CancellationReason.CustomerRequest, TOTAL - FEE, FEE);
 
     // Assert
-    expect(data).toBe(CancelBookingOutcome.Cancelled);
-    const { data: refund } = await admin
-      .from('refunds')
-      .select('amount_cents, processing_fee_cents')
-      .eq('booking_id', bookingId)
-      .single();
-    expect(refund).toEqual({ amount_cents: TOTAL - FEE, processing_fee_cents: FEE });
-    const { data: audits } = await admin
-      .from('audit_logs')
-      .select('action, metadata')
-      .eq('entity_id', bookingId)
-      .in('action', ['booking.cancelled', 'refund.requested']);
-    for (const audit of audits ?? []) {
-      expect((audit.metadata as Record<string, unknown>).fee_cents).toBe(FEE);
-    }
-    expect(audits).toHaveLength(2);
+    expect(error?.code).toBe(CHECK_VIOLATION);
+    expect(error?.message).toContain('refunds_no_processing_fee_check');
+    expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Confirmed);
   });
 
   it('sin monto a reembolsar (la comisión cubre el total) no encola reembolso', async () => {

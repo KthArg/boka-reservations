@@ -1,16 +1,17 @@
 /**
- * Constantes legales (specs 0021 y 0031).
+ * Constantes legales (specs 0021, 0031 y 0034).
  *
  * Versiones vigentes de los textos que el turista acepta en el checkout. Se estampan
  * server-side en la reserva como evidencia de QUÉ texto aceptó cada turista: la del aviso de
  * privacidad en `bookings.consent_version` y la de los términos en `bookings.terms_version`.
  * Cada una se sube por separado, a la fecha de publicación, cuando cambie su texto (/privacy o
  * /terms), para que las reservas nuevas registren la versión nueva sin afectar las previas.
- * Formato `YYYY-MM-DD`, sin sufijos.
+ * Formato `YYYY-MM-DD`, sin sufijos. Cada valor tiene que existir en el registro de textos
+ * publicados (`web/content/legal/registry.ts`, spec 0034): un test lo verifica.
  */
-export const PRIVACY_NOTICE_VERSION = '2026-06-13';
+export const PRIVACY_NOTICE_VERSION = '2026-09-27';
 
-export const TERMS_VERSION = '2026-09-23';
+export const TERMS_VERSION = '2026-09-27';
 
 /**
  * Nombres de las casillas legales del checkout y su valor marcado (spec 0031). Son el contrato

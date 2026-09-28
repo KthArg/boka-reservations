@@ -1,5 +1,4 @@
 import { formatMoneyCents } from '@/lib/format/money';
-import { captureAlert } from '@/lib/booking/sentry-alert';
 import { BookingStatus } from '@shared/constants/enums';
 import { CancellationReason, type CancellationReasonValue } from '@shared/constants/cancellations';
 import { computeRefund } from '@shared/constants/policies';
@@ -12,38 +11,23 @@ import styles from '../bookings.module.css';
 
 type Props = { booking: AdminBookingDetail; locale: string; isAdmin: boolean };
 
-/**
- * Reembolso de un motivo, ya formateado para el diálogo (spec 0032). `null` si la comisión no se
- * pudo calcular: se reporta a Sentry y esa opción queda deshabilitada; la otra sigue disponible.
- */
+/** Reembolso de un motivo, ya formateado para el diálogo (specs 0032 y 0034). */
 function reasonPreview(
   booking: AdminBookingDetail,
   reason: CancellationReasonValue,
   locale: string,
   now: Date,
-): ReasonPreview | null {
-  try {
-    const refund = computeRefund({
-      startsAt: new Date(booking.startsAt),
-      totalAmountCents: booking.totalAmountCents,
-      currency: booking.currency,
-      termsVersion: booking.termsVersion,
-      reason,
-      now,
-    });
-    const money = (cents: number) => formatMoneyCents(cents, booking.currency, locale);
-    return {
-      amountCents: refund.amountCents,
-      amount: refund.eligible ? money(refund.amountCents) : null,
-      fee: refund.eligible && refund.feeCents > 0 ? money(refund.feeCents) : null,
-    };
-  } catch (err) {
-    captureAlert('[cancel] no se pudo calcular la vista previa', 'refund-preview-failed', {
-      bookingId: booking.id,
-      error: err instanceof Error ? err.message : 'unknown',
-    });
-    return null;
-  }
+): ReasonPreview {
+  const refund = computeRefund({
+    startsAt: new Date(booking.startsAt),
+    totalAmountCents: booking.totalAmountCents,
+    reason,
+    now,
+  });
+  return {
+    amountCents: refund.amountCents,
+    amount: refund.eligible ? formatMoneyCents(refund.amountCents, booking.currency, locale) : null,
+  };
 }
 
 /**

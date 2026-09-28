@@ -25,6 +25,9 @@ export enum TourActionError {
   ScheduleInUse = 'tour_schedule_in_use',
   /** No se archiva un tour con reservas activas en salidas futuras (spec 0028, B12). */
   ArchiveHasBookings = 'tour_archive_has_bookings',
+  /** El tour vende tiquete de niño y no publica las edades (spec 0034, cláusula 3). */
+  ChildAgesRequired = 'tour_child_ages_required',
+  ChildAgesInvalid = 'tour_child_ages_invalid',
   /**
    * No se archiva un tour con una salida en pleno ciclo de cobro (spec 0033): archivar cancela
    * la salida, y el motor no toca salidas canceladas, así que el ciclo quedaría abierto para
@@ -61,3 +64,6 @@ export const CHARGE_LEAD_HOURS_MAX = 720;
  * para agendar un reintento, así que un rechazo se queda sin segundo intento (spec 0033 §5.1).
  */
 export const CHARGE_LEAD_HOURS_WARN_BELOW = 6;
+
+/** Edad máxima del tiquete de niño: 17 (espejo del CHECK `tours_child_ages_check`, spec 0034). */
+export const CHILD_AGE_MAX = 17;

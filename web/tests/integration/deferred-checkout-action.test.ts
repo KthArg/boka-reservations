@@ -197,8 +197,8 @@ describe('startDeferredCheckoutAction', () => {
       // Act
       const result = await startDeferredCheckoutAction(null, checkoutForm({ [field]: null }));
 
-      // Assert
-      expect(result).toEqual({ error: 'error-generic' });
+      // Assert: mensaje propio para la casilla faltante (spec 0034).
+      expect(result).toEqual({ error: 'consent-required' });
       expect(provider.createCustomer).not.toHaveBeenCalled();
     },
   );

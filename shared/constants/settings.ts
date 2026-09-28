@@ -18,10 +18,23 @@ export const MINIMUM_DECISION_WINDOW_HOURS_MAX = 720;
 export const DEFAULT_CHARGE_LEAD_HOURS_MIN = 1;
 export const DEFAULT_CHARGE_LEAD_HOURS_MAX = 720;
 
+/**
+ * Tolerancia de llegada tarde antes de considerar no presentación (spec 0034). Espejo del CHECK de
+ * `business_settings.no_show_tolerance_minutes`.
+ */
+export const NO_SHOW_TOLERANCE_MINUTES_MIN = 0;
+export const NO_SHOW_TOLERANCE_MINUTES_MAX = 120;
+
+/** Largo máximo de cada dato del operador: son textos de una línea para el pie y los términos. */
+export const OPERATOR_FIELD_MAX_LENGTH = 200;
+
 /** Códigos de error de la action de configuración; la UI los traduce (`settings.errors.*`). */
 export enum SettingsActionError {
   Unauthorized = 'settings_unauthorized',
   WindowOutOfRange = 'settings_window_out_of_range',
   LeadHoursOutOfRange = 'settings_lead_hours_out_of_range',
   UpdateFailed = 'settings_update_failed',
+  /** Algún dato del operador no es válido (correo mal escrito, texto demasiado largo). */
+  OperatorInvalid = 'settings_operator_invalid',
+  ToleranceOutOfRange = 'settings_tolerance_out_of_range',
 }

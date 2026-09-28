@@ -30,6 +30,18 @@ export type CheckoutInput = {
 type FieldGetter = (key: string) => FormDataEntryValue | null;
 
 /**
+ * Las dos casillas legales, marcadas por separado (specs 0021 y 0031). Se verifican antes que el
+ * resto para responder con su propio mensaje: el navegador ya las exige, así que llegar acá sin
+ * ellas es un envío manipulado o un formulario viejo.
+ */
+export function hasLegalAcceptance(get: FieldGetter): boolean {
+  return (
+    get(CheckoutLegalField.Terms) === CHECKOUT_ACCEPTED_VALUE &&
+    get(CheckoutLegalField.PrivacyConsent) === CHECKOUT_ACCEPTED_VALUE
+  );
+}
+
+/**
  * Valida los datos del formulario del checkout. Aceptación de términos y consentimiento de
  * datos obligatorios server-side, cada uno por separado (specs 0021 y 0031); email con formato
  * (0016, B-3); cantidades enteras con tope (0015). Devuelve null ante cualquier dato inválido.

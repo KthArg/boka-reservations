@@ -47,8 +47,9 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // Locales i18n y tipos generados: datos puros o código auto-generado, excluir límite de líneas
-    files: ['locales/**', 'types/**'],
+    // Locales i18n, tipos y textos legales versionados (spec 0034): datos puros, excluir límite de
+    // líneas. Partir un documento legal en pedazos de 150 líneas lo haría más difícil de revisar.
+    files: ['locales/**', 'types/**', 'content/**'],
     rules: {
       'max-lines': 'off',
     },

@@ -10,7 +10,6 @@ import {
   type CancellationReasonValue,
 } from '@shared/constants/cancellations';
 import { computeRefund, type RefundEligibility } from '@shared/constants/policies';
-import { captureAlert } from './sentry-alert';
 import { cancelUnpaidBooking } from './cancel-unpaid';
 import { getBookingView } from './booking-view';
 
@@ -42,8 +41,8 @@ const STATE_CHANGED = { ok: false, error: CancellationError.StateChanged } as co
  * Cancela una reserva confirmada vía la función DB atómica `cancel_booking`
  * (libera cupo, cancela el recordatorio, encola el email y el refund si
  * corresponde). El monto del reembolso se calcula acá, al momento de ejecutar, según el motivo y
- * la versión de términos aceptada (spec 0032). Si el estado o el monto no coinciden con lo que
- * vio quien cancela, no cancela. Idempotente ante doble cancelación por el guard de la función.
+ * la antelación (specs 0032 y 0034: siempre completo o nada). Si el estado o el monto no
+ * coinciden con lo que vio quien cancela, no cancela. Idempotente ante doble cancelación por el guard de la función.
  * Devuelve el reembolso aplicado para que la UI lo muestre.
  */
 export async function cancelBooking(
@@ -75,27 +74,13 @@ export async function cancelBooking(
     return { ok: false, error: CancellationError.OperatorRefundAdminOnly };
   }
 
-  let refund: RefundEligibility;
-  try {
-    refund = computeRefund({
-      startsAt: new Date(view.startsAt),
-      totalAmountCents: view.totalAmountCents,
-      currency: view.currency,
-      termsVersion: view.termsVersion,
-      reason,
-      now,
-    });
-  } catch (err) {
-    // Nunca reembolsar un monto mal calculado: la cancelación no se aplica.
-    captureAlert(
-      '[cancel] no se pudo calcular el reembolso',
-      'refund-compute-failed',
-      { bookingId: params.bookingId, error: err instanceof Error ? err.message : 'unknown' },
-      'error',
-    );
-    return { ok: false, error: CancellationError.WriteFailed };
-  }
-  // Se cruzó el borde de 24 h o cambió la política desde que se mostró el monto.
+  const refund = computeRefund({
+    startsAt: new Date(view.startsAt),
+    totalAmountCents: view.totalAmountCents,
+    reason,
+    now,
+  });
+  // Se cruzó el borde de 24 h desde que se mostró el monto.
   if (params.expected && params.expected.refundAmountCents !== refund.amountCents) {
     return STATE_CHANGED;
   }

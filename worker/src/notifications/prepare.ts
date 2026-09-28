@@ -58,7 +58,7 @@ export async function prepareBookingEmail(
   if (isStale(booking.tour_instance.starts_at)) return { ok: false, reason: 'stale' };
 
   const url = await bookingViewUrl(db, booking, notif.locale, appUrl);
-  return { ok: true, email: renderForKind(notif.kind, notif.locale, booking, url) };
+  return { ok: true, email: renderForKind(notif.kind, notif.locale, booking, url, appUrl) };
 }
 
 /** Resuelve el email de asignación al guía: genera el token y arma el enlace. */

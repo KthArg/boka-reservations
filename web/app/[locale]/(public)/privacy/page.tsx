@@ -1,7 +1,6 @@
-import { getTranslations } from 'next-intl/server';
-import { LegalPage } from '@/components/public/LegalPage/LegalPage';
+import { LegalTextPage } from '@/components/public/LegalPage/LegalTextPage';
+import { LegalText } from '@/content/legal/registry';
 
-export default async function PrivacyPage() {
-  const t = await getTranslations('legal');
-  return <LegalPage title={t('privacy-title')} body={t('privacy-body')} backLabel={t('back')} />;
+export default function PrivacyPage() {
+  return <LegalTextPage text={LegalText.Privacy} />;
 }

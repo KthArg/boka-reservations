@@ -5,10 +5,12 @@ import { z } from 'zod';
 import {
   checkoutLocale,
   holdSessionCookieOptions,
+  hasLegalAcceptance,
   isCheckoutThrottled,
   parseCheckoutInput,
   type CheckoutInput,
 } from '@/lib/booking/checkout-input';
+import { isInstanceSellable, isSalesEnabled } from '@/lib/booking/sales-gate';
 import { startDeferredCheckout } from '@/lib/booking/deferred-checkout';
 import { completeDeferredCheckout } from '@/lib/booking/deferred-checkout-complete';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
@@ -88,9 +90,16 @@ export async function startDeferredCheckoutAction(
   formData: FormData,
 ): Promise<DeferredStartState> {
   if (!isDeferredChargeEnabled()) return GENERIC;
+  if (!(await isSalesEnabled())) return { error: CheckoutErrorKey.SalesNotEnabled };
+  if (!hasLegalAcceptance((key) => formData.get(key))) {
+    return { error: CheckoutErrorKey.ConsentRequired };
+  }
 
   const input = parseCheckoutInput((key) => formData.get(key));
   if (!input) return GENERIC;
+  if (!(await isInstanceSellable(input.instanceId))) {
+    return { error: CheckoutErrorKey.SalesNotEnabled };
+  }
   // Antes de crear hold y customer: el throttle no revela nada ni crea inventario.
   if (await isCheckoutThrottled()) return GENERIC;
 

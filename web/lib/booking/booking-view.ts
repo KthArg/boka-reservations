@@ -4,7 +4,6 @@ import type { Database } from '@/types/database';
 import { BookingStatus } from '@shared/constants/enums';
 import { CancellationReason } from '@shared/constants/cancellations';
 import { computeRefund, NO_REFUND, type RefundEligibility } from '@shared/constants/policies';
-import { captureAlert } from './sentry-alert';
 import { isAwaitingAuthentication, isCardUpdateOpen } from './deferred-booking-rules';
 
 // Vista de una reserva para las páginas del turista (ver y cancelar) y para cancelBooking.
@@ -23,7 +22,7 @@ export type BookingView = {
   ticketsStudent: number;
   totalAmountCents: number;
   currency: string;
-  /** `bookings.terms_version`: decide si el reembolso descuenta la comisión (spec 0032). */
+  /** `bookings.terms_version`: la versión de los términos que aceptó el turista. */
   termsVersion: string | null;
   /** Reembolso que correspondería si el turista cancelara ahora (solo reservas confirmadas). */
   refund: RefundEligibility;
@@ -62,29 +61,15 @@ interface RawView {
   } | null;
 }
 
-/**
- * Reembolso que vería el turista al cancelar ahora. Solo una reserva confirmada tiene cobro que
- * reembolsar. Un error de configuración de la comisión no tira la página: se reporta y se muestra
- * sin reembolso; la cancelación en sí lo vuelve a calcular y falla sin aplicar nada.
- */
+/** Reembolso que vería el turista al cancelar ahora. Solo una reserva confirmada tiene cobro. */
 function customerRefundPreview(r: RawView, startsAt: string, now: Date): RefundEligibility {
   if (r.status !== BookingStatus.Confirmed) return NO_REFUND;
-  try {
-    return computeRefund({
-      startsAt: new Date(startsAt),
-      totalAmountCents: r.total_amount_cents,
-      currency: r.currency,
-      termsVersion: r.terms_version,
-      reason: CancellationReason.CustomerRequest,
-      now,
-    });
-  } catch (err) {
-    captureAlert('[cancel] no se pudo calcular el reembolso', 'refund-preview-failed', {
-      bookingId: r.id,
-      error: err instanceof Error ? err.message : 'unknown',
-    });
-    return NO_REFUND;
-  }
+  return computeRefund({
+    startsAt: new Date(startsAt),
+    totalAmountCents: r.total_amount_cents,
+    reason: CancellationReason.CustomerRequest,
+    now,
+  });
 }
 
 function toView(r: RawView, now: Date): BookingView {

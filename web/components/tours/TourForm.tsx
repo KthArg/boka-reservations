@@ -15,6 +15,7 @@ import type {
   TourWithDetails,
 } from '@/lib/tours/types';
 import TourBasicInfoSection from './TourBasicInfoSection';
+import TourPublishedInfoSection from './TourPublishedInfoSection';
 import TourMinimumPolicyField from './TourMinimumPolicyField';
 import TourChargeTimingField from './TourChargeTimingField';
 import PricingEditor from './PricingEditor';
@@ -124,6 +125,7 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
       ))}
 
       <TourBasicInfoSection values={basic} onChange={setBasicField} errors={errors} />
+      <TourPublishedInfoSection defaultValues={defaultValues} errors={errors} />
       <TourMinimumPolicyField checked={autoCancel} onChange={setAutoCancel} />
       <TourChargeTimingField
         timing={chargeTiming}

@@ -40,6 +40,8 @@ export enum AuditAction {
   RefundSucceeded = 'refund.succeeded',
   RefundFailed = 'refund.failed',
   RefundRetried = 'refund.retried',
+  /** Cambio de la identidad del operador o de la tolerancia (spec 0034): cambia textos aceptados. */
+  OperatorSettingsUpdated = 'settings.operator_updated',
 }
 
 /** Tipo de entidad referida por un registro de auditoría. */
@@ -47,7 +49,14 @@ export enum AuditEntityType {
   Booking = 'booking',
   Refund = 'refund',
   TourHold = 'tour_hold',
+  BusinessSettings = 'business_settings',
 }
+
+/**
+ * `audit_logs.entity_id` es uuid y `business_settings` tiene una sola fila de id entero (1): los
+ * registros de la configuración usan este id fijo para poder filtrarse (spec 0034).
+ */
+export const BUSINESS_SETTINGS_AUDIT_ENTITY_ID = '00000000-0000-0000-0000-000000000001';
 
 /** Mapea el rol del usuario interno al actor de auditoría. */
 export function actorTypeForRole(role: UserRole): AuditActorType {

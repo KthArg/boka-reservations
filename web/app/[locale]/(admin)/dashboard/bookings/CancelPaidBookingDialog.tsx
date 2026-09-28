@@ -12,7 +12,7 @@ import buttons from './bookings.module.css';
 import styles from './CancelPaidBookingDialog.module.css';
 
 /** Reembolso de un motivo: centavos (para el servidor) y textos ya formateados (`null` = sin). */
-export type ReasonPreview = { amountCents: number; amount: string | null; fee: string | null };
+export type ReasonPreview = { amountCents: number; amount: string | null };
 
 type Props = {
   bookingId: string;
@@ -58,8 +58,7 @@ export function CancelPaidBookingDialog(props: Props) {
     if (!allowed) return t('cancel-option-admin-only');
     if (!preview) return t('cancel-error');
     if (!preview.amount) return t('cancel-option-no-refund');
-    if (!preview.fee) return t('cancel-option-refund', { amount: preview.amount });
-    return t('cancel-option-refund-fee', { amount: preview.amount, fee: preview.fee });
+    return t('cancel-option-refund', { amount: preview.amount });
   }
 
   function confirm() {

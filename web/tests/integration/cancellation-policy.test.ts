@@ -1,7 +1,7 @@
-// Reembolso sin la comisión de procesamiento (spec 0032), por las server actions y contra la DB
-// real: motivo, política activa por versión de términos, restricción de admin sobre salidas ya
-// empezadas, cambio de estado entre la pantalla y la confirmación, y carrera entre dos
-// cancelaciones. Las validaciones de la función SQL están en cancel-booking-rpc.test.ts.
+// Política de cancelación (specs 0032 y 0034), por las server actions y contra la DB real: motivo,
+// reembolso siempre completo o nada, restricción de admin sobre salidas ya empezadas, cambio de
+// estado entre la pantalla y la confirmación, y carrera entre dos cancelaciones. Las validaciones de
+// la función SQL están en cancel-booking-rpc.test.ts.
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { CancellationError, CancellationReason } from '@shared/constants/cancellations';
@@ -13,24 +13,10 @@ const requireAnyRoleMock = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/auth/server', () => ({ requireAnyRole: requireAnyRoleMock }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
-// La política se despliega inactiva (REFUND_FEE_FROM_TERMS_VERSION = null). Para probarla
-// activa, computeRefund recibe el corte de la suite; los fixtures usan versiones con fecha.
-const CUTOFF = '2026-10-01';
-vi.mock('@shared/constants/policies', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@shared/constants/policies')>();
-  return {
-    ...mod,
-    computeRefund: (input: Parameters<typeof mod.computeRefund>[0]) =>
-      mod.computeRefund({ feeFromTermsVersion: CUTOFF, ...input }),
-  };
-});
-
 const { cancelByStaff, cancelByToken } = await import('@/lib/booking/cancel-action');
 
-// 9000 centavos: comisión 351 + 25 fijos, más 70 de retención de IVA (0,777 %).
 const TOTAL = 9000;
-const FEE = 446;
-const SEEN_WITH_FEE = { status: BookingStatus.Confirmed, refundAmountCents: TOTAL - FEE };
+const SEEN_FULL = { status: BookingStatus.Confirmed, refundAmountCents: TOTAL };
 
 let admin: SupabaseClient;
 let staffUserId: string;
@@ -80,46 +66,51 @@ afterEach(async () => {
   await cleanupSeeds(admin);
 });
 
-describe('cancelación del turista con la política activa', () => {
-  it('reembolsa el total menos la comisión y la registra', async () => {
-    // Arrange
-    const { bookingId, token } = await seed(admin, { hoursAhead: 48, termsVersion: CUTOFF });
-
-    // Act
-    const result = await cancelByToken(token, SEEN_WITH_FEE);
-
-    // Assert
-    expect(result).toEqual({
-      ok: true,
-      refund: { eligible: true, amountCents: TOTAL - FEE, feeCents: FEE },
-    });
-    expect(await refundRow(bookingId)).toEqual([
-      { amount_cents: TOTAL - FEE, processing_fee_cents: FEE },
-    ]);
-    expect(await cancellationAudit(bookingId)).toMatchObject({
-      reason: CancellationReason.CustomerRequest,
-      fee_cents: FEE,
-      refund_amount_cents: TOTAL - FEE,
-    });
-  });
-
+describe('cancelación del turista', () => {
+  // Spec 0034: con 24 horas o más se devuelve todo lo pagado, sin descontar la comisión, sea cual
+  // sea la versión de los términos que aceptó.
   it.each([
     ['sin versión de términos', null],
-    ['con términos anteriores al corte', '2026-09-30'],
-  ])('reembolsa el total %s', async (_case, termsVersion) => {
+    ['con términos anteriores', '2026-06-13'],
+    ['con los términos del 2026-09-27', '2026-09-27'],
+  ])('reembolsa el total %s y lo registra', async (_case, termsVersion) => {
     // Arrange
     const { bookingId, token } = await seed(admin, { hoursAhead: 48, termsVersion });
 
     // Act
-    await cancelByToken(token, { status: BookingStatus.Confirmed, refundAmountCents: TOTAL });
+    const result = await cancelByToken(token, SEEN_FULL);
 
     // Assert
+    expect(result).toEqual({
+      ok: true,
+      refund: { eligible: true, amountCents: TOTAL, feeCents: 0 },
+    });
     expect(await refundRow(bookingId)).toEqual([{ amount_cents: TOTAL, processing_fee_cents: 0 }]);
+    expect(await cancellationAudit(bookingId)).toMatchObject({
+      reason: CancellationReason.CustomerRequest,
+      fee_cents: 0,
+      refund_amount_cents: TOTAL,
+    });
+  });
+
+  it('no reembolsa nada con menos de 24 horas', async () => {
+    // Arrange
+    const { bookingId, token } = await seed(admin, { hoursAhead: 12 });
+
+    // Act
+    const result = await cancelByToken(token, {
+      status: BookingStatus.Confirmed,
+      refundAmountCents: 0,
+    });
+
+    // Assert
+    expect(result).toEqual({ ok: true, refund: { eligible: false, amountCents: 0, feeCents: 0 } });
+    expect(await refundRow(bookingId)).toEqual([]);
   });
 
   it('no cancela si la reserva cambió desde que se mostró la página', async () => {
     // Arrange: la página se mostró sin cobrar; el cobro diferido se completó antes de confirmar.
-    const { bookingId, token } = await seed(admin, { hoursAhead: 12, termsVersion: CUTOFF });
+    const { bookingId, token } = await seed(admin, { hoursAhead: 12 });
 
     // Act
     const result = await cancelByToken(token, {
@@ -133,14 +124,11 @@ describe('cancelación del turista con la política activa', () => {
   });
 
   it('no cancela si el monto mostrado ya no es el que corresponde', async () => {
-    // Arrange: la página mostró el total; con la cláusula aceptada corresponde descontar.
-    const { bookingId, token } = await seed(admin, { hoursAhead: 48, termsVersion: CUTOFF });
+    // Arrange: la página mostró el total; entretanto se cruzó el borde de 24 h.
+    const { bookingId, token } = await seed(admin, { hoursAhead: 12 });
 
     // Act
-    const result = await cancelByToken(token, {
-      status: BookingStatus.Confirmed,
-      refundAmountCents: TOTAL,
-    });
+    const result = await cancelByToken(token, SEEN_FULL);
 
     // Assert
     expect(result).toEqual({ ok: false, error: CancellationError.StateChanged });
@@ -170,7 +158,7 @@ describe('cancelación desde el panel', () => {
 
   it('por decisión del operador reembolsa el total aun dentro de las 24 h', async () => {
     actAs(UserRole.Staff);
-    const { bookingId } = await seed(admin, { hoursAhead: 12, termsVersion: CUTOFF });
+    const { bookingId } = await seed(admin, { hoursAhead: 12 });
 
     const result = await cancelByStaff(bookingId, CancellationReason.OperatorDecision, TOTAL);
 
@@ -187,11 +175,11 @@ describe('cancelación desde el panel', () => {
 
   it('a pedido del cliente aplica la misma regla que el turista', async () => {
     actAs(UserRole.Staff);
-    const { bookingId } = await seed(admin, { hoursAhead: 48, termsVersion: CUTOFF });
+    const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
-    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest, TOTAL - FEE);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest, TOTAL);
 
-    expect(result).toMatchObject({ ok: true, refund: { amountCents: TOTAL - FEE, feeCents: FEE } });
+    expect(result).toMatchObject({ ok: true, refund: { amountCents: TOTAL, feeCents: 0 } });
   });
 
   it('no cancela si el monto que vio el staff ya no corresponde', async () => {
@@ -229,11 +217,11 @@ describe('cancelaciones simultáneas', () => {
   it('aplica una sola y encola un solo reembolso', async () => {
     // Arrange
     actAs(UserRole.Admin);
-    const { bookingId, token } = await seed(admin, { hoursAhead: 48, termsVersion: CUTOFF });
+    const { bookingId, token } = await seed(admin, { hoursAhead: 48 });
 
     // Act
     const results = await Promise.all([
-      cancelByToken(token, SEEN_WITH_FEE),
+      cancelByToken(token, SEEN_FULL),
       cancelByStaff(bookingId, CancellationReason.OperatorDecision, TOTAL),
     ]);
 
