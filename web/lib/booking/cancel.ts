@@ -101,6 +101,10 @@ export async function cancelBooking(
   if (data === CancelBookingOutcome.AlreadyCancelled) {
     return { ok: false, error: CancellationError.NotCancellable };
   }
+  // La salida se canceló por clima o seguridad entre la lectura y la cancelación (spec 0035).
+  if (data === CancelBookingOutcome.UnderReview) {
+    return { ok: false, error: CancellationError.UnderReview };
+  }
 
   return { ok: true, refund };
 }

@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAnyRole } from '@/lib/auth/server';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
 import { DEPARTURES_PATH } from '@shared/constants/departures';
 import {
   OperationError,
@@ -12,7 +11,8 @@ import {
   ReviewDecision,
   ReviewDecisionOutcome,
 } from '@shared/constants/operations';
-import { BOOKINGS_ADMIN_PATH, type OperationResult } from './types';
+import { ADMIN_PANEL_ROLES, BOOKINGS_ADMIN_PATH } from '@shared/constants/bookings';
+import type { OperationResult } from './types';
 
 // Acciones sobre una reserva (spec 0035): decidir una reserva en revisión y cambiarla de fecha.
 // Admin y staff. Las funciones SQL validan el actor, bloquean la salida y la reserva, y auditan.

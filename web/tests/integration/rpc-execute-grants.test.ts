@@ -96,6 +96,8 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
     p_channel: 'sinpe_movil',
     p_reference: 'x',
     p_paid_at: '2000-01-01T00:00:00Z',
+    p_amount_cents: 1,
+    p_currency: 'USD',
   },
 };
 

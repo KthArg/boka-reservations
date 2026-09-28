@@ -7,20 +7,26 @@ export const DepartureCancellationReason = {
   Minimum: 'minimum',
   Weather: 'weather',
   Safety: 'safety',
+  /** Fuerza mayor (cierre de ruta, actividad volcánica): se trata como clima o seguridad. */
+  ForceMajeure: 'force_majeure',
   Other: 'other',
 } as const;
 
 export type DepartureCancellationReasonValue =
   (typeof DepartureCancellationReason)[keyof typeof DepartureCancellationReason];
 
-/** Clima o seguridad: sin reembolso automático, cada reserva queda en revisión. */
+/** Clima, seguridad o fuerza mayor: sin reembolso automático, cada reserva queda en revisión. */
 export const REVIEW_REASONS: readonly DepartureCancellationReasonValue[] = [
   DepartureCancellationReason.Weather,
   DepartureCancellationReason.Safety,
+  DepartureCancellationReason.ForceMajeure,
 ];
 
 /** Aviso mínimo para cancelar por falta de mínimo. */
 export const MINIMUM_NOTICE_HOURS = 24;
+
+/** Margen sobre las 24 h: el aviso lo manda el worker al minuto siguiente (…049). */
+export const MINIMUM_NOTICE_MARGIN_MINUTES = 10;
 
 /** La bandeja muestra las salidas bajo el mínimo cuyo corte cae en estas horas. */
 export const MINIMUM_TRAY_HORIZON_HOURS = 72;
@@ -99,4 +105,6 @@ export enum OperationError {
   NotReschedulable = 'operation_not_reschedulable',
   /** OnvoPay todavía puede acreditar a la tarjeta: transferir pagaría dos veces. */
   ProviderMaySettle = 'operation_provider_may_settle',
+  /** La reserva tiene otro reembolso en curso (un reintento): no se transfiere encima. */
+  OtherRefundActive = 'operation_other_refund_active',
 }

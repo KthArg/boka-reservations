@@ -8,10 +8,16 @@ import { env } from '../env.js';
 // antes del límite. Con menos de 24 h ya no se cancela por mínimo: la salida se hace y se alerta.
 // Espeja las horas de resolve_immediate_minimum (…049); si cambia uno, cambian los dos.
 
-const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 const NOTICE_HOURS = 24;
+// Margen sobre las 24 h: el aviso sale al minuto siguiente y tiene que llegar con 24 h o más.
+const NOTICE_MARGIN_MINUTES = 10;
+const NOTICE_MS = NOTICE_HOURS * HOUR_MS + NOTICE_MARGIN_MINUTES * MINUTE_MS;
 const CUTOFF_HOURS = 25;
-const BATCH_SIZE = 50;
+// Holgado: las salidas del cobro diferido vuelven en cada corrida sin resolverse (las decide su
+// motor) y no pueden desplazar a las del cobro inmediato.
+const BATCH_SIZE = 200;
 const DEFERRED_STATUSES = ['pending_minimum', 'pending_payment', 'confirmed'];
 
 export const MSG_MINIMUM_OVERDUE =
@@ -25,7 +31,10 @@ type OverdueRow = {
   tour: { min_participants: number } | null;
 };
 
-/** Salidas que se alertan una sola vez por proceso: la issue de Sentry ya queda abierta. */
+/**
+ * Salidas ya alertadas en este proceso. Es solo para no repetir el evento cada 5 minutos: la issue
+ * de Sentry se agrupa por fingerprint, así que un reinicio del worker a lo sumo suma un evento.
+ */
 const alerted = new Set<string>();
 
 type RpcOutcome = { data: string | null; error: { message: string } | null };
@@ -63,7 +72,7 @@ async function fetchDue(db: SupabaseClient, now: Date): Promise<DueInstance[]> {
     .select('id')
     .neq('status', 'cancelled')
     .is('minimum_resolved_at', null)
-    .gt('starts_at', new Date(now.getTime() + NOTICE_HOURS * HOUR_MS).toISOString())
+    .gt('starts_at', new Date(now.getTime() + NOTICE_MS).toISOString())
     .lte('starts_at', new Date(now.getTime() + CUTOFF_HOURS * HOUR_MS).toISOString())
     .order('starts_at', { ascending: true })
     .limit(BATCH_SIZE);
@@ -79,7 +88,7 @@ async function alertOverdue(db: SupabaseClient, now: Date): Promise<void> {
     .neq('status', 'cancelled')
     .is('minimum_resolved_at', null)
     .gt('starts_at', now.toISOString())
-    .lte('starts_at', new Date(now.getTime() + NOTICE_HOURS * HOUR_MS).toISOString())
+    .lte('starts_at', new Date(now.getTime() + NOTICE_MS).toISOString())
     .limit(BATCH_SIZE);
   if (error) throw new Error(`resolve-minimum alertOverdue: ${error.message}`);
 

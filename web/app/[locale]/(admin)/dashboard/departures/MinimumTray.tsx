@@ -40,6 +40,7 @@ export async function MinimumTray({ departures }: { departures: Departure[] }) {
                 <CancelDepartureDialog
                   instanceId={departure.id}
                   canCancelForMinimum={departure.minimum.canCancelForMinimum}
+                  minimumResolved={departure.minimum.resolved}
                 />
               </div>
             </li>

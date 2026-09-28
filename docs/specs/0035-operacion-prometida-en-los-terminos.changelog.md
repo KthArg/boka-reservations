@@ -48,3 +48,41 @@ Rama: feat/0035-operacion-de-los-terminos (apilada sobre feat/0034-terminos-defi
   `shared/constants/operations.ts` y en la SQL. Si cambia una, cambian todas.
 - El registro de alertas atrasadas es por proceso: un reinicio del worker puede repetir una
   alerta (la issue de Sentry es la misma por fingerprint).
+
+## 2026-09-27 — Correcciones de las revisiones
+
+Revisiones de db-schema-guardian, payment-flow-auditor y code-reviewer sobre el PR #85. El spec
+registra los cambios de regla al principio.
+
+**Hecho**:
+
+- `notifications.generation` y guardas por generación en el worker: reencolar un aviso ya no
+  choca con la clave de idempotencia de Resend ni deja que un "sent" viejo pise el pendiente.
+- `cancel_booking` redefinida en `…049`: salida antes que reserva (sin deadlock contra
+  `cancel_departure`) y `under_review` explícito.
+- `confirm_booking` redefinida: un pago sobre una salida cancelada cancela la reserva y sigue por
+  el pago tardío, que la reembolsa entera. `cancel_departure` deja los pagos en curso del widget
+  al reconciliador.
+- Transferencia solo con rechazo definitivo de OnvoPay (o pago inexistente), con monto y moneda,
+  y fecha de pago no anterior al pedido.
+- `force_majeure`, margen de 10 minutos, motivo de cancelación por trigger con backfill,
+  punto de encuentro con `SECURITY DEFINER` y reservas pendientes, `payment_mismatch` en el audit.
+- Worker: lote de 200 en `resolve-minimum`, variante del correo de cierre tras revisión, tipos y
+  TTL sin duplicar. `retryRefund` no audita un reintento que perdió la carrera.
+- Web: reembolsos del detalle ordenados (el último primero), destinos de cambio de fecha solo
+  con cupo, rótulo "En revisión" para el turista, texto correcto cuando el mínimo ya se resolvió.
+- Tests: concurrencia (dos cambios de fecha por el último cupo, registrar la transferencia dos
+  veces, mantener contra el proceso), captura en curso, bordes de la ventana, pago acreditado
+  después de cancelar la salida, generación de avisos, y el job contra la base real (reemplaza al
+  test con cliente simulado).
+
+**Decisiones**:
+
+- **Reply-To en todos los correos al turista y a los guías**: cualquier respuesta le llega al
+  operador; no hay otra dirección que atienda.
+- **Deadlock residual con `confirm_booking` del flujo diferido** (bloquea reserva y después
+  salida): el flag está apagado y Postgres aborta una de las dos; se revisa si se enciende.
+
+**Pendiente**:
+
+- Una bandeja de reembolsos `failed` y `awaiting_transfer` fuera del detalle de cada reserva.

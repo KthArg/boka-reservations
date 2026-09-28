@@ -1,7 +1,11 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { PaymentStatus } from '@shared/constants/enums';
-import { REFUND_MANUAL_CHECK_REASONS, RefundStatus } from '@shared/constants/refunds';
+import {
+  REFUND_PAYMENT_MISSING_REASON,
+  REFUND_UNSETTLED_REASONS,
+  RefundStatus,
+} from '@shared/constants/refunds';
 import type { AdminBookingDetail } from './admin-types';
 
 const DETAIL_SELECT = `
@@ -15,7 +19,8 @@ const DETAIL_SELECT = `
   payments ( status, external_provider ),
   notifications ( kind, status, sent_at ),
   refunds (
-    id, status, failure_reason, amount_cents, method, transfer_channel, external_refund_id
+    id, status, failure_reason, amount_cents, currency, method, transfer_channel,
+    transfer_amount_cents, transfer_currency, external_refund_id, created_at
   )
 `;
 
@@ -66,8 +71,11 @@ type RawRefund = {
   status: string;
   failure_reason: string | null;
   amount_cents: number;
+  currency: string;
   method: string;
   transfer_channel: string | null;
+  transfer_amount_cents: number | null;
+  transfer_currency: string | null;
   external_refund_id: string | null;
 };
 
@@ -77,12 +85,18 @@ function toRefund(r: RawRefund): AdminBookingDetail['refund'] {
     status: r.status,
     failureReason: r.failure_reason,
     amountCents: r.amount_cents,
+    currency: r.currency,
     method: r.method,
     transferChannel: r.transfer_channel,
+    transferAmountCents: r.transfer_amount_cents,
+    transferCurrency: r.transfer_currency,
+    // Mismo criterio que request_refund_transfer (…049): OnvoPay tiene el reembolso y lo rechazó
+    // de forma definitiva.
     transferAllowed:
       r.status === RefundStatus.Failed &&
-      r.external_refund_id === null &&
-      !(r.failure_reason !== null && REFUND_MANUAL_CHECK_REASONS.includes(r.failure_reason)),
+      r.failure_reason !== null &&
+      !REFUND_UNSETTLED_REASONS.includes(r.failure_reason) &&
+      (r.external_refund_id !== null || r.failure_reason === REFUND_PAYMENT_MISSING_REASON),
   };
 }
 
@@ -138,6 +152,8 @@ export async function getBookingDetailForAdmin(id: string): Promise<AdminBooking
     .from('bookings')
     .select(DETAIL_SELECT)
     .eq('id', id)
+    // Con más de un reembolso (uno fallido y su reintento) el panel muestra y opera el último.
+    .order('created_at', { referencedTable: 'refunds', ascending: false })
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data ? toDetail(data as unknown as RawDetail) : null;

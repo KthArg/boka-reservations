@@ -3,10 +3,16 @@
 import { useActionState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { requestTransferAction, settleTransferAction } from '@/lib/operations/transfer-actions';
-import { TRANSFER_REFERENCE_MAX_LENGTH, TransferChannel } from '@shared/constants/refunds';
+import {
+  TRANSFER_REFERENCE_MAX_LENGTH,
+  TransferChannel,
+  TransferCurrency,
+} from '@shared/constants/refunds';
 import styles from '../bookings.module.css';
 
 type Props = { refundId: string; bookingId: string };
+
+type SettleProps = Props & { refundAmount: string };
 
 /** Pedirle al turista los datos de una cuenta (spec 0035): la tarjeta no aceptó el reembolso. */
 export function RequestTransferButton({ refundId, bookingId }: Props) {
@@ -29,7 +35,7 @@ export function RequestTransferButton({ refundId, bookingId }: Props) {
 }
 
 /** Registrar la transferencia hecha desde el banco del operador: canal, comprobante y fecha. */
-export function SettleTransferForm({ refundId, bookingId }: Props) {
+export function SettleTransferForm({ refundId, bookingId, refundAmount }: SettleProps) {
   const t = useTranslations('operations');
   const [state, action, pending] = useActionState(settleTransferAction, null);
 
@@ -53,6 +59,22 @@ export function SettleTransferForm({ refundId, bookingId }: Props) {
         <span>{t('transfer-reference')}</span>
         <input name="reference" required maxLength={TRANSFER_REFERENCE_MAX_LENGTH} />
       </label>
+      <label className={styles.operationField}>
+        <span>{t('transfer-currency')}</span>
+        <select name="currency" required defaultValue="">
+          <option value="" disabled />
+          {Object.values(TransferCurrency).map((currency) => (
+            <option key={currency} value={currency}>
+              {t(`currency-${currency}`)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.operationField}>
+        <span>{t('transfer-amount')}</span>
+        <input name="amount" type="number" min="0.01" step="0.01" required />
+      </label>
+      <p className={styles.empty}>{t('transfer-amount-hint', { amount: refundAmount })}</p>
       <label className={styles.operationField}>
         <span>{t('transfer-paid-on')}</span>
         <input type="date" name="paidOn" required />

@@ -4,6 +4,7 @@ import { renderDepartureCancelled } from '../../../src/notifications/templates/d
 import { renderBookingRescheduled } from '../../../src/notifications/templates/booking-rescheduled.js';
 import { renderRefundTransferRequest } from '../../../src/notifications/templates/refund-transfer-request.js';
 import { renderRefundConfirmation } from '../../../src/notifications/templates/refund-confirmation.js';
+import { renderCancellationConfirmation } from '../../../src/notifications/templates/cancellation-confirmation.js';
 
 const BASE = {
   customerName: 'María',
@@ -96,5 +97,26 @@ describe('renderRefundConfirmation — por transferencia', () => {
       'es',
     );
     expect(email.text).toContain('por SINPE Móvil');
+  });
+});
+
+describe('renderCancellationConfirmation — cierre tras revisión (spec 0035)', () => {
+  it('explica la decisión de la cláusula 7, no la política de cancelación del turista', () => {
+    const email = renderCancellationConfirmation(
+      {
+        customerName: 'María',
+        tourName: 'Cerro Chompipe',
+        startsAt: BASE.startsAt,
+        hasRefund: false,
+        refundAmountCents: 0,
+        currency: 'USD',
+        noCharge: false,
+        reviewClosed: true,
+        bookingUrl: 'https://example.com/es/booking/tok',
+      },
+      'es',
+    );
+    expect(email.text).toContain('Revisamos tu reserva');
+    expect(email.text).not.toContain('política de cancelación');
   });
 });

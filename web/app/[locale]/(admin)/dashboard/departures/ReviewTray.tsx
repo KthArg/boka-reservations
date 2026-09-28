@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import type { ReviewBooking } from '@/lib/operations/repository';
+import { BOOKINGS_ADMIN_PATH } from '@shared/constants/bookings';
 import styles from './departures.module.css';
 
 /**
@@ -30,7 +31,7 @@ export async function ReviewTray({ bookings }: { bookings: ReviewBooking[] }) {
                   {booking.reason ? ` · ${t(`reason-${booking.reason}`)}` : ''}
                 </p>
               </div>
-              <Link href={`/dashboard/bookings/${booking.id}`} className={styles.confirmButton}>
+              <Link href={`${BOOKINGS_ADMIN_PATH}/${booking.id}`} className={styles.confirmButton}>
                 {t('review-open')}
               </Link>
             </li>

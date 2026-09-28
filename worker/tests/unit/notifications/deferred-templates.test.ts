@@ -120,6 +120,7 @@ describe('renderCancellationConfirmation — reserva sin cobrar', () => {
         refundAmountCents: 0,
         currency: 'USD',
         noCharge: true,
+        reviewClosed: false,
         bookingUrl: 'https://x/es/booking/tok',
       },
       locale,

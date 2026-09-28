@@ -6,6 +6,7 @@ import type { EmailLocale, PreparedEmail } from './types.js';
 import { loadBookingForNotification } from './repository.js';
 import { loadLatestRefund } from './refund-repository.js';
 import { bookingViewUrl, localizedTourName } from './prepare.js';
+import { POST_CANCELLATION_TOKEN_TTL_MS } from './prepare-cancellation.js';
 import {
   renderDepartureCancelled,
   type DepartureOutcome,
@@ -19,8 +20,6 @@ import { renderRefundTransferRequest } from './templates/refund-transfer-request
 const TOURS_PATH_SEGMENT = 'tours';
 const CONFIRMED_STATUS = 'confirmed';
 const AWAITING_TRANSFER_STATUS = 'awaiting_transfer';
-// El enlace de una reserva cancelada o con plata pendiente sigue vivo aunque la fecha pase.
-const POST_CANCELLATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function departureOutcome(booking: BookingRow, refund: LatestRefund | null): DepartureOutcome {
   if (booking.operator_review_required_at !== null) return { kind: 'review' };

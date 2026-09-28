@@ -546,7 +546,9 @@
     "under-review-reason-weather": "el clima",
     "under-review-reason-safety": "seguridad",
     "under-review-reason-other": "una causa del operador",
-    "error-under-review": "Estamos revisando tu reserva: te vamos a escribir con la decisión."
+    "error-under-review": "Estamos revisando tu reserva: te vamos a escribir con la decisión.",
+    "under-review-reason-force_majeure": "fuerza mayor",
+    "status-under-review": "En revisión"
   },
   "reports": {
     "nav-label": "Reportes",
@@ -663,7 +665,7 @@
     "transfer-reference": "Comprobante",
     "transfer-paid-on": "Fecha de pago",
     "transfer-submit": "Registrar transferencia",
-    "transfer-done": "Devuelto por {channel}.",
+    "transfer-done": "Devuelto por {channel}: {amount}.",
     "error-operation_unauthorized": "No tenés permiso para hacer esto.",
     "error-operation_invalid": "Revisá los datos e intentá de nuevo.",
     "error-operation_write_failed": "No se pudo guardar. Intentá de nuevo.",
@@ -680,6 +682,15 @@
     "review-reason-minimum": "falta de mínimo",
     "review-reason-weather": "clima",
     "review-reason-safety": "seguridad",
-    "review-reason-other": "otra causa"
+    "review-reason-other": "otra causa",
+    "reason-force_majeure": "Fuerza mayor",
+    "review-reason-force_majeure": "fuerza mayor",
+    "reason-minimum-resolved": "Esta salida ya se resolvió por mínimo (se mantuvo o alcanzó el mínimo). Elegí otra causa.",
+    "error-operation_other_refund_active": "Esta reserva tiene otro reembolso en curso. Revisalo antes de transferir.",
+    "transfer-amount": "Monto transferido",
+    "transfer-currency": "Moneda",
+    "currency-USD": "Dólares (USD)",
+    "currency-CRC": "Colones (CRC)",
+    "transfer-amount-hint": "En dólares, exactamente lo reembolsado ({amount}). En colones, lo que transferiste al tipo de cambio del día."
   }
 }

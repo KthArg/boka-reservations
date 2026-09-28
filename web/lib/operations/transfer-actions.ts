@@ -4,14 +4,20 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAnyRole } from '@/lib/auth/server';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
 import {
   OperationError,
   TransferRequestOutcome,
   TransferSettleOutcome,
 } from '@shared/constants/operations';
-import { TRANSFER_REFERENCE_MAX_LENGTH, TransferChannel } from '@shared/constants/refunds';
-import { BOOKINGS_ADMIN_PATH, type OperationResult } from './types';
+import {
+  TRANSFER_REFERENCE_MAX_LENGTH,
+  TransferChannel,
+  TransferCurrency,
+} from '@shared/constants/refunds';
+
+import { ADMIN_PANEL_ROLES, BOOKINGS_ADMIN_PATH, CENTS_PER_UNIT } from '@shared/constants/bookings';
+import { CR_UTC_OFFSET, crDate } from '@/lib/dates/cr-date';
+import type { OperationResult } from './types';
 
 // Devolución por transferencia o SINPE Móvil (spec 0035; términos, cláusula 8). El operador hace
 // la transferencia desde su banco; la plataforma registra el pedido de datos y el comprobante.
@@ -48,17 +54,15 @@ export async function requestTransferAction(
   if (data === TransferRequestOutcome.ProviderMaySettle) {
     return { ok: false, error: OperationError.ProviderMaySettle };
   }
+  if (data === TransferRequestOutcome.OtherRefundActive) {
+    return { ok: false, error: OperationError.OtherRefundActive };
+  }
   if (data !== TransferRequestOutcome.Requested) {
     return { ok: false, error: OperationError.AlreadyDone };
   }
 
   revalidateRefunds(parsed.data.bookingId);
   return { ok: true };
-}
-
-/** Hoy en Costa Rica, como `YYYY-MM-DD` (en-CA formatea así). */
-function todayInCostaRica(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica' }).format(new Date());
 }
 
 /**
@@ -68,9 +72,9 @@ function todayInCostaRica(): string {
 const PaidOnSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((day) => day <= todayInCostaRica())
+  .refine((day) => day <= crDate())
   .transform((day) => {
-    const noon = new Date(`${day}T12:00:00-06:00`);
+    const noon = new Date(`${day}T12:00:00${CR_UTC_OFFSET}`);
     return noon.getTime() > Date.now() ? new Date() : noon;
   })
   .refine((date) => !Number.isNaN(date.getTime()));
@@ -81,6 +85,12 @@ const SettleSchema = z.object({
   channel: z.enum([TransferChannel.SinpeMovil, TransferChannel.BankTransfer]),
   reference: z.string().trim().min(1).max(TRANSFER_REFERENCE_MAX_LENGTH),
   paidOn: PaidOnSchema,
+  // El monto llega en unidades ("45000" colones, "90.00" dólares) y se guarda en centavos.
+  amount: z.coerce
+    .number()
+    .positive()
+    .transform((units) => Math.round(units * CENTS_PER_UNIT)),
+  currency: z.enum([TransferCurrency.Usd, TransferCurrency.Crc]),
 });
 
 export async function settleTransferAction(
@@ -96,6 +106,8 @@ export async function settleTransferAction(
     channel: formData.get('channel'),
     reference: formData.get('reference'),
     paidOn: formData.get('paidOn'),
+    amount: formData.get('amount'),
+    currency: formData.get('currency'),
   });
   if (!parsed.success) return { ok: false, error: OperationError.Invalid };
 
@@ -105,6 +117,8 @@ export async function settleTransferAction(
     p_channel: parsed.data.channel,
     p_reference: parsed.data.reference,
     p_paid_at: parsed.data.paidOn.toISOString(),
+    p_amount_cents: parsed.data.amount,
+    p_currency: parsed.data.currency,
   });
   if (error) {
     console.error('[operations] settle_refund_transfer:', error.message, parsed.data.refundId);

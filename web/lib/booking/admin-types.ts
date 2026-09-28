@@ -35,12 +35,16 @@ export interface AdminBookingRefund {
   status: string;
   failureReason: string | null;
   amountCents: number;
+  currency: string;
   /** `card` o `transfer` (spec 0035). */
   method: string;
   transferChannel: string | null;
+  /** Lo que se transfirió de verdad (en colones por SINPE Móvil, por ejemplo). */
+  transferAmountCents: number | null;
+  transferCurrency: string | null;
   /**
-   * Se puede devolver por transferencia: falló sin id en OnvoPay y sin resultado desconocido. En
-   * los otros casos OnvoPay todavía puede acreditar a la tarjeta (spec 0035).
+   * Se puede devolver por transferencia: OnvoPay tiene el reembolso y lo rechazó de forma
+   * definitiva. En los otros casos todavía puede acreditarse a la tarjeta (spec 0035).
    */
   transferAllowed: boolean;
 }

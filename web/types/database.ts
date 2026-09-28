@@ -39,6 +39,8 @@ export type Database = {
           method: 'card' | 'transfer';
           transfer_channel: 'sinpe_movil' | 'bank_transfer' | null;
           transfer_reference: string | null;
+          transfer_amount_cents: number | null;
+          transfer_currency: 'USD' | 'CRC' | null;
           transfer_requested_at: string | null;
           transfer_paid_at: string | null;
           attempts: number;
@@ -59,6 +61,8 @@ export type Database = {
           method?: 'card' | 'transfer';
           transfer_channel?: 'sinpe_movil' | 'bank_transfer' | null;
           transfer_reference?: string | null;
+          transfer_amount_cents?: number | null;
+          transfer_currency?: 'USD' | 'CRC' | null;
           transfer_requested_at?: string | null;
           transfer_paid_at?: string | null;
           attempts?: number;
@@ -79,6 +83,8 @@ export type Database = {
           method?: 'card' | 'transfer';
           transfer_channel?: 'sinpe_movil' | 'bank_transfer' | null;
           transfer_reference?: string | null;
+          transfer_amount_cents?: number | null;
+          transfer_currency?: 'USD' | 'CRC' | null;
           transfer_requested_at?: string | null;
           transfer_paid_at?: string | null;
           attempts?: number;
@@ -413,7 +419,7 @@ export type Database = {
           staff_decision_required_at: string | null;
           minimum_resolved_at: string | null;
           minimum_resolved_by: string | null;
-          cancellation_reason: 'minimum' | 'weather' | 'safety' | 'other' | null;
+          cancellation_reason: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
           minimum_resolution:
             | 'reached'
             | 'staff_confirmed'
@@ -439,7 +445,7 @@ export type Database = {
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
-          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'other' | null;
+          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
           minimum_resolution?:
             | 'reached'
             | 'staff_confirmed'
@@ -465,7 +471,7 @@ export type Database = {
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
-          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'other' | null;
+          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
           minimum_resolution?:
             | 'reached'
             | 'staff_confirmed'
@@ -779,6 +785,7 @@ export type Database = {
           recipient_email: string;
           locale: 'es' | 'en';
           status: 'pending' | 'sent' | 'failed' | 'cancelled';
+          generation: number;
           scheduled_for: string;
           attempts: number;
           provider: string | null;
@@ -814,6 +821,7 @@ export type Database = {
           recipient_email: string;
           locale: 'es' | 'en';
           status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          generation?: number;
           scheduled_for: string;
           attempts?: number;
           provider?: string | null;
@@ -849,6 +857,7 @@ export type Database = {
           recipient_email?: string;
           locale?: 'es' | 'en';
           status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          generation?: number;
           scheduled_for?: string;
           attempts?: number;
           provider?: string | null;
@@ -1175,7 +1184,7 @@ export type Database = {
       cancel_departure: {
         Args: {
           p_instance_id: string;
-          p_reason: 'minimum' | 'weather' | 'safety' | 'other';
+          p_reason: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other';
           p_actor_id?: string | null;
         };
         Returns:
@@ -1233,6 +1242,8 @@ export type Database = {
           p_channel: 'sinpe_movil' | 'bank_transfer';
           p_reference: string;
           p_paid_at: string;
+          p_amount_cents: number;
+          p_currency: 'USD' | 'CRC';
         };
         Returns: 'settled' | 'not_awaiting_transfer';
       };
@@ -1297,7 +1308,7 @@ export type Database = {
               p_fee_cents: number;
               p_actor_id?: string;
             };
-            Returns: 'cancelled' | 'already_cancelled';
+            Returns: 'cancelled' | 'already_cancelled' | 'under_review';
           };
       flag_payment_mismatch: {
         Args: {

@@ -148,53 +148,81 @@ describe('cancel_departure — por falta de mínimo u otra causa', () => {
 });
 
 describe('cancel_departure — clima o seguridad', () => {
-  it.each([DepartureCancellationReason.Weather, DepartureCancellationReason.Safety])(
-    'con motivo %s deja la reserva en revisión, sin reembolso',
-    async (reason) => {
-      // Arrange
-      const instanceId = await createInstance(db, await tour(4), 3 * DAY_MS);
-      const bookingId = await createPaidBooking(db, instanceId);
+  it.each([
+    DepartureCancellationReason.Weather,
+    DepartureCancellationReason.Safety,
+    DepartureCancellationReason.ForceMajeure,
+  ])('con motivo %s deja la reserva en revisión, sin reembolso', async (reason) => {
+    // Arrange
+    const instanceId = await createInstance(db, await tour(4), 3 * DAY_MS);
+    const bookingId = await createPaidBooking(db, instanceId);
 
-      // Act
-      await cancelDeparture(instanceId, reason);
+    // Act
+    await cancelDeparture(instanceId, reason);
 
-      // Assert
-      const booking = await readBooking(db, bookingId);
-      expect(booking.status).toBe(BookingStatus.Confirmed);
-      expect(booking.operator_review_required_at).not.toBeNull();
-      expect(await refundsOf(db, bookingId)).toEqual([]);
-      const notices = await noticesOf(db, bookingId);
-      expect(notices[NotificationKind.DepartureCancelled]).toBe(NotificationStatus.Pending);
-      expect(notices[NotificationKind.Reminder24h]).toBe(NotificationStatus.Cancelled);
-      expect((await readInstance(db, instanceId)).minimum_resolution).toBeNull();
-    },
-  );
+    // Assert
+    const booking = await readBooking(db, bookingId);
+    expect(booking.status).toBe(BookingStatus.Confirmed);
+    expect(booking.operator_review_required_at).not.toBeNull();
+    expect(await refundsOf(db, bookingId)).toEqual([]);
+    const notices = await noticesOf(db, bookingId);
+    expect(notices[NotificationKind.DepartureCancelled]).toBe(NotificationStatus.Pending);
+    expect(notices[NotificationKind.Reminder24h]).toBe(NotificationStatus.Cancelled);
+    expect((await readInstance(db, instanceId)).minimum_resolution).toBeNull();
+  });
 });
 
 describe('cancel_departure — reservas sin cobrar', () => {
-  it('cancela el pago en curso del widget y libera su hold', async () => {
+  it('deja el pago en curso del widget para el reconciliador', async () => {
     const instanceId = await createInstance(db, await tour(4), 3 * DAY_MS);
     const bookingId = await createPayingBooking(db, instanceId);
 
     await cancelDeparture(instanceId, DepartureCancellationReason.Other);
 
-    const booking = await readBooking(db, bookingId);
-    expect(booking.status).toBe(BookingStatus.Cancelled);
+    // Cancelarlo sin preguntarle a OnvoPay podría dejar un pago acreditado fuera de toda red.
+    expect((await readBooking(db, bookingId)).status).toBe(BookingStatus.PendingPayment);
+  });
+
+  it('si ese pago se acredita después, la reserva se cancela y se reembolsa entera', async () => {
+    // Arrange
+    const instanceId = await createInstance(db, await tour(4), 3 * DAY_MS);
+    const bookingId = await createPayingBooking(db, instanceId);
+    await cancelDeparture(instanceId, DepartureCancellationReason.Other);
     const { data: payment } = await db
       .from('payments')
-      .select('status')
+      .select('external_payment_id')
       .eq('booking_id', bookingId)
       .single();
-    expect(payment!.status).toBe('failed');
-    const { data: hold } = await db
-      .from('tour_holds')
-      .select('status')
-      .eq('id', booking.hold_id!)
-      .single();
-    expect(hold!.status).toBe('released');
-    expect((await noticesOf(db, bookingId))[NotificationKind.DepartureCancelled]).toBe(
-      NotificationStatus.Pending,
-    );
+
+    // Act
+    const { data } = await db.rpc('confirm_booking', {
+      p_booking_id: bookingId,
+      p_external_payment_id: payment!.external_payment_id,
+    });
+
+    // Assert
+    expect(data).toBe('late_payment_refunded');
+    expect((await readBooking(db, bookingId)).status).toBe(BookingStatus.Cancelled);
+    expect((await refundsOf(db, bookingId))[0]?.amount_cents).toBe(4500);
+    expect((await readInstance(db, instanceId)).capacity_reserved).toBe(0);
+  });
+
+  it('con una captura del cobro diferido en curso no cancela', async () => {
+    const instanceId = await createInstance(db, await tour(4), 3 * DAY_MS);
+    const { bookingId } = await createDeferredBooking(db, instanceId);
+    await db
+      .from('bookings')
+      .update({
+        status: BookingStatus.PendingPayment,
+        authorized_at: new Date().toISOString(),
+        capture_started_at: new Date().toISOString(),
+      })
+      .eq('id', bookingId);
+
+    const { data } = await cancelDeparture(instanceId, DepartureCancellationReason.Other);
+
+    expect(data).toBe(CancelDepartureOutcome.CaptureInProgress);
+    expect((await readInstance(db, instanceId)).status).not.toBe('cancelled');
   });
 
   it('una reserva del cobro diferido recibe el aviso nuevo en lugar del de mínimo', async () => {
@@ -272,7 +300,8 @@ describe('resolve_immediate_minimum', () => {
 
   it.each([
     ['con menos de 24 h', 23 * HOUR_MS],
-    ['con más de 25 h', 26 * HOUR_MS],
+    ['dentro del margen de 10 minutos sobre las 24 h', 24 * HOUR_MS + 5 * MINUTE_MS],
+    ['con más de 25 h', 25 * HOUR_MS + MINUTE_MS],
   ])('no la toca %s', async (_case, startsInMs) => {
     const instanceId = await createInstance(db, await tour(4), startsInMs);
 
@@ -292,7 +321,38 @@ describe('resolve_immediate_minimum', () => {
   });
 });
 
+describe('motivo de cancelación en otros caminos', () => {
+  it('una salida cancelada sin motivo queda como otra causa, y restaurarla lo limpia', async () => {
+    const instanceId = await createInstance(db, await tour(4), 3 * DAY_MS);
+
+    await db.from('tour_instances').update({ status: 'cancelled' }).eq('id', instanceId);
+    const cancelled = await readInstance(db, instanceId);
+    await db.from('tour_instances').update({ status: 'available' }).eq('id', instanceId);
+
+    expect(cancelled.cancellation_reason).toBe('other');
+    expect((await readInstance(db, instanceId)).cancellation_reason).toBeNull();
+  });
+});
+
 describe('keep_departure', () => {
+  it('mantenerla y el proceso del mínimo a la vez: gana uno solo', async () => {
+    const instanceId = await createInstance(db, await tour(4), IN_WINDOW_MS);
+
+    const [kept, resolved] = await Promise.all([
+      db.rpc('keep_departure', { p_instance_id: instanceId, p_actor_id: staffId }),
+      db.rpc('resolve_immediate_minimum', { p_instance_id: instanceId }),
+    ]);
+
+    // El segundo encuentra la salida ya decidida: mantenida (already_resolved) o cancelada por el
+    // proceso (already_cancelled).
+    const outcomes: string[] = [String(kept.data), String(resolved.data)];
+    expect(
+      outcomes.filter((o) => o === 'already_resolved' || o === 'already_cancelled'),
+    ).toHaveLength(1);
+    const instance = await readInstance(db, instanceId);
+    expect(['staff_confirmed', 'auto_cancelled']).toContain(instance.minimum_resolution);
+  });
+
   it('la resuelve como confirmada por el staff y el proceso ya no la toca', async () => {
     const instanceId = await createInstance(db, await tour(4), IN_WINDOW_MS);
 

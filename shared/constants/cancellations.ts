@@ -91,4 +91,6 @@ export type CancellationReasonValue = (typeof CancellationReason)[keyof typeof C
 export const CancelBookingOutcome = {
   Cancelled: 'cancelled',
   AlreadyCancelled: 'already_cancelled',
+  /** Salida cancelada por clima, seguridad o fuerza mayor: la decide el equipo (spec 0035). */
+  UnderReview: 'under_review',
 } as const;

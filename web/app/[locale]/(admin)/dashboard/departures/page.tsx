@@ -72,6 +72,7 @@ export default async function SalidasPage() {
                     <CancelDepartureDialog
                       instanceId={dep.id}
                       canCancelForMinimum={dep.minimum.canCancelForMinimum}
+                      minimumResolved={dep.minimum.resolved}
                     />
                   </td>
                 </tr>

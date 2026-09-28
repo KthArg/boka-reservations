@@ -546,7 +546,9 @@
     "under-review-reason-weather": "the weather",
     "under-review-reason-safety": "safety reasons",
     "under-review-reason-other": "an operator reason",
-    "error-under-review": "We are reviewing your booking: we will write to you with our decision."
+    "error-under-review": "We are reviewing your booking: we will write to you with our decision.",
+    "under-review-reason-force_majeure": "force majeure",
+    "status-under-review": "Under review"
   },
   "reports": {
     "nav-label": "Reports",
@@ -663,7 +665,7 @@
     "transfer-reference": "Receipt",
     "transfer-paid-on": "Payment date",
     "transfer-submit": "Record transfer",
-    "transfer-done": "Refunded by {channel}.",
+    "transfer-done": "Refunded by {channel}: {amount}.",
     "error-operation_unauthorized": "You are not allowed to do this.",
     "error-operation_invalid": "Check the details and try again.",
     "error-operation_write_failed": "Could not save. Try again.",
@@ -680,6 +682,15 @@
     "review-reason-minimum": "the minimum",
     "review-reason-weather": "the weather",
     "review-reason-safety": "safety",
-    "review-reason-other": "another reason"
+    "review-reason-other": "another reason",
+    "reason-force_majeure": "Force majeure",
+    "review-reason-force_majeure": "force majeure",
+    "reason-minimum-resolved": "This departure is already resolved for the minimum (kept or reached). Choose another reason.",
+    "error-operation_other_refund_active": "This booking has another refund in progress. Check it before transferring.",
+    "transfer-amount": "Amount transferred",
+    "transfer-currency": "Currency",
+    "currency-USD": "US dollars (USD)",
+    "currency-CRC": "Colones (CRC)",
+    "transfer-amount-hint": "In dollars, exactly the refunded amount ({amount}). In colones, what you transferred at the day's exchange rate."
   }
 }

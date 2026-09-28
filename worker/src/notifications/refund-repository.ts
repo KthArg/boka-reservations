@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TransferChannel } from './types.js';
 
 // Último reembolso de una reserva, para los correos de cancelación, reembolso y transferencia.
 
@@ -7,14 +8,14 @@ export type LatestRefund = {
   currency: string;
   status: string;
   /** Canal de la devolución por transferencia (spec 0035); null si fue a la tarjeta. */
-  transferChannel: 'sinpe_movil' | 'bank_transfer' | null;
+  transferChannel: TransferChannel | null;
 };
 
 type RefundRow = {
   amount_cents: number;
   currency: string;
   status: string;
-  transfer_channel: 'sinpe_movil' | 'bank_transfer' | null;
+  transfer_channel: TransferChannel | null;
 };
 
 /** Último reembolso de una reserva (cualquier estado). null si no hay. */

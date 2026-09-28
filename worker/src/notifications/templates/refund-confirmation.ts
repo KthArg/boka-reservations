@@ -1,4 +1,4 @@
-import type { EmailLocale, RenderedEmail } from '../types.js';
+import type { EmailLocale, RenderedEmail, TransferChannel } from '../types.js';
 import { escapeHtml, formatMoney } from './format.js';
 import { wrapHtml } from './layout.js';
 
@@ -10,8 +10,6 @@ export type RefundConfirmationProps = {
   /** Devolución por transferencia o SINPE Móvil (spec 0035); null si fue a la tarjeta. */
   transferChannel: TransferChannel | null;
 };
-
-export type TransferChannel = 'sinpe_movil' | 'bank_transfer';
 
 const COPY = {
   es: {

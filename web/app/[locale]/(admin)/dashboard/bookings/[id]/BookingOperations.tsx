@@ -3,6 +3,7 @@ import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import type { AdminBookingDetail } from '@/lib/booking/admin-types';
 import { listRescheduleTargets } from '@/lib/operations/repository';
 import { BookingStatus } from '@shared/constants/enums';
+import { DepartureCancellationReason } from '@shared/constants/operations';
 import { ReviewDecision } from './ReviewDecision';
 import { RescheduleForm } from './RescheduleForm';
 import styles from '../bookings.module.css';
@@ -30,7 +31,9 @@ export async function BookingOperations({ booking }: { booking: AdminBookingDeta
           <h2 className={styles.sectionTitle}>{t('review-title')}</h2>
           <p className={styles.reviewNotice}>
             {t('review-intro', {
-              reason: t(`review-reason-${booking.cancellationReason ?? 'other'}`),
+              reason: t(
+                `review-reason-${booking.cancellationReason ?? DepartureCancellationReason.Other}`,
+              ),
             })}
           </p>
           <ReviewDecision bookingId={booking.id} />

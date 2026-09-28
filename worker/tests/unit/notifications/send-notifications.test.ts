@@ -63,7 +63,7 @@ vi.mock('../../../src/notifications/booking-token.js', () => ({
   issueBookingToken: vi.fn().mockResolvedValue('tok-test'),
 }));
 
-import { sendNotifications } from '../../../src/jobs/send-notifications.js';
+import { idempotencyKeyFor, sendNotifications } from '../../../src/jobs/send-notifications.js';
 import { EmailPermanentError, EmailTransientError } from '../../../src/notifications/types.js';
 
 // Relativo a "ahora" (siempre > la ventana stale de 1h de prepareBookingEmail). Un literal
@@ -79,6 +79,7 @@ const notif = {
   locale: 'es' as const,
   attempts: 0,
   scheduled_for: '2026-05-29T12:00:00.000Z',
+  generation: 0,
 };
 
 const bookingConfirmed = {
@@ -134,7 +135,12 @@ describe('sendNotifications', () => {
     adapterSend.mockResolvedValue({ providerMessageId: 'msg-123' });
     await sendNotifications();
     expect(adapterSend).toHaveBeenCalledTimes(1);
-    expect(markSent).toHaveBeenCalledWith(expect.anything(), 'notif-1', 'mailpit', 'msg-123');
+    expect(markSent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 'notif-1' }),
+      'mailpit',
+      'msg-123',
+    );
     expect(markFailed).not.toHaveBeenCalled();
     expect(cancelNotification).not.toHaveBeenCalled();
   });
@@ -189,7 +195,7 @@ describe('sendNotifications', () => {
     await sendNotifications();
     expect(markFailed).toHaveBeenCalledWith(
       expect.anything(),
-      'notif-1',
+      expect.objectContaining({ id: 'notif-1' }),
       'mailpit',
       1,
       expect.stringContaining('400 bad'),
@@ -224,7 +230,12 @@ describe('sendNotifications', () => {
     );
     // …y la segunda se procesó y despachó igual.
     expect(adapterSend).toHaveBeenCalledTimes(1);
-    expect(markSent).toHaveBeenCalledWith(expect.anything(), 'notif-2', 'mailpit', 'msg-2');
+    expect(markSent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 'notif-2' }),
+      'mailpit',
+      'msg-2',
+    );
   });
 
   it('markSent fallido tras enviar (spec 0028): NO reintenta el envío en el mismo ciclo', async () => {
@@ -238,5 +249,12 @@ describe('sendNotifications', () => {
     expect(adapterSend).toHaveBeenCalledTimes(1);
     expect(handleTransient).not.toHaveBeenCalled();
     expect(markFailed).not.toHaveBeenCalled();
+  });
+});
+
+describe('idempotencyKeyFor (spec 0035)', () => {
+  it('usa el id en la primera generación y le suma la generación al reencolar', () => {
+    expect(idempotencyKeyFor({ ...notif, generation: 0 } as never)).toBe(notif.id);
+    expect(idempotencyKeyFor({ ...notif, generation: 2 } as never)).toBe(`${notif.id}:2`);
   });
 });

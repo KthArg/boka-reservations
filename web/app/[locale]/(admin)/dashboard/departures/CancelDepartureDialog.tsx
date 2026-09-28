@@ -15,12 +15,15 @@ type Props = {
   instanceId: string;
   /** Faltan más de 24 horas y la salida no está resuelta: se puede cancelar por mínimo. */
   canCancelForMinimum: boolean;
+  /** Ya se resolvió por mínimo (mantenida o alcanzada): el motivo no aplica aunque falte tiempo. */
+  minimumResolved: boolean;
 };
 
 const REASONS: readonly DepartureCancellationReasonValue[] = [
   DepartureCancellationReason.Minimum,
   DepartureCancellationReason.Weather,
   DepartureCancellationReason.Safety,
+  DepartureCancellationReason.ForceMajeure,
   DepartureCancellationReason.Other,
 ];
 
@@ -29,7 +32,7 @@ const REASONS: readonly DepartureCancellationReasonValue[] = [
  * otra causa, el 100 % al instante; por clima o seguridad, cada reserva queda en revisión. Cada
  * opción lo dice antes de confirmar.
  */
-export function CancelDepartureDialog({ instanceId, canCancelForMinimum }: Props) {
+export function CancelDepartureDialog({ instanceId, canCancelForMinimum, minimumResolved }: Props) {
   const t = useTranslations('operations');
   const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -39,7 +42,7 @@ export function CancelDepartureDialog({ instanceId, canCancelForMinimum }: Props
 
   function detail(value: DepartureCancellationReasonValue): string {
     if (value === DepartureCancellationReason.Minimum && !canCancelForMinimum) {
-      return t('reason-minimum-too-late');
+      return t(minimumResolved ? 'reason-minimum-resolved' : 'reason-minimum-too-late');
     }
     return t(REVIEW_REASONS.includes(value) ? 'reason-hint-review' : 'reason-hint-refund');
   }

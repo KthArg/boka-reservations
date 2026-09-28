@@ -5,6 +5,7 @@ import { validateBookingToken } from '@/lib/booking/access-token';
 import { getBookingView } from '@/lib/booking/cancel';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { BookingStatus } from '@shared/constants/enums';
+import { DepartureCancellationReason } from '@shared/constants/operations';
 import styles from './booking.module.css';
 
 type Props = { params: Promise<{ locale: string; token: string }> };
@@ -46,13 +47,17 @@ export default async function BookingViewPage({ params }: Props) {
           <dt className={styles.metaLabel}>{t('people')}</dt>
           <dd className={styles.metaValue}>{people}</dd>
           <dt className={styles.metaLabel}>{t('status')}</dt>
-          <dd className={styles.metaValue}>{t(`status-${view.status}`)}</dd>
+          <dd className={styles.metaValue}>
+            {view.underReview ? t('status-under-review') : t(`status-${view.status}`)}
+          </dd>
         </dl>
 
         {view.underReview ? (
           <p className={styles.muted}>
             {t('under-review', {
-              reason: t(`under-review-reason-${view.cancellationReason ?? 'other'}`),
+              reason: t(
+                `under-review-reason-${view.cancellationReason ?? DepartureCancellationReason.Other}`,
+              ),
             })}
           </p>
         ) : null}

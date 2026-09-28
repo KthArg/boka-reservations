@@ -5,7 +5,7 @@ import { formatDateTime, formatMoney } from './format.js';
 // Aviso de salida cancelada por el operador (spec 0035). Nombra el motivo y dice qué pasa con la
 // plata: reembolso del 100 %, reserva en revisión (clima o seguridad) o nada que devolver.
 
-export type DepartureReason = 'minimum' | 'weather' | 'safety' | 'other';
+export type DepartureReason = 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other';
 
 export type DepartureOutcome =
   | { kind: 'refund'; amountCents: number; currency: string }
@@ -29,6 +29,7 @@ const COPY = {
       minimum: 'La salida no alcanzó el mínimo de participantes, así que tuvimos que cancelarla.',
       weather: 'Tuvimos que cancelar la salida por las condiciones del clima.',
       safety: 'Tuvimos que cancelar la salida por razones de seguridad.',
+      force_majeure: 'Tuvimos que cancelar la salida por una causa de fuerza mayor.',
       other: 'Tuvimos que cancelar la salida.',
     },
     refund: (amount: string) =>
@@ -49,6 +50,7 @@ const COPY = {
         'This departure did not reach the minimum number of participants, so we had to cancel it.',
       weather: 'We had to cancel the departure because of the weather conditions.',
       safety: 'We had to cancel the departure for safety reasons.',
+      force_majeure: 'We had to cancel the departure due to force majeure.',
       other: 'We had to cancel the departure.',
     },
     refund: (amount: string) =>

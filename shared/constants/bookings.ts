@@ -37,6 +37,9 @@ export const OPERATOR_UTC_OFFSET_HOURS = -6;
 /** Centavos por unidad de moneda (para mostrar montos en unidad mayor). */
 export const CENTS_PER_UNIT = 100;
 
+/** Ruta del listado y detalle de reservas del panel, que revalidan las acciones. */
+export const BOOKINGS_ADMIN_PATH = '/dashboard/bookings';
+
 /** Minutos que dura un hold: espejo del DEFAULT de tour_holds.expires_at (…011). */
 export const HOLD_TTL_MINUTES = 15;
 

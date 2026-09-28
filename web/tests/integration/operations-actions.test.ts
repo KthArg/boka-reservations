@@ -162,7 +162,11 @@ describe('transferencias', () => {
     const refund = (await refundsOf(db, bookingId))[0]!;
     await db
       .from('refunds')
-      .update({ status: RefundStatus.Failed, failure_reason: 'card_declined' })
+      .update({
+        status: RefundStatus.Failed,
+        failure_reason: 'card_declined',
+        external_refund_id: `re_${crypto.randomUUID()}`,
+      })
       .eq('id', refund.id);
     return { bookingId, refundId: refund.id };
   }
@@ -188,6 +192,8 @@ describe('transferencias', () => {
         channel: TransferChannel.BankTransfer,
         reference: 'TRF-778899',
         paidOn: today,
+        amount: '90.00',
+        currency: 'USD',
       }),
     );
 
@@ -208,6 +214,8 @@ describe('transferencias', () => {
         channel: TransferChannel.SinpeMovil,
         reference: 'SINPE-1',
         paidOn: '2999-01-01',
+        amount: '45000',
+        currency: 'CRC',
       }),
     );
 

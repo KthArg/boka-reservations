@@ -74,8 +74,14 @@ function reschedule(bookingId: string, targetId: string) {
   });
 }
 
-/** Reembolso fallido sin id externo, como lo deja el worker cuando OnvoPay lo rechaza. */
-async function failedRefund(failureReason = 'card_declined') {
+/**
+ * Reembolso fallido como lo deja el worker cuando OnvoPay lo rechaza de forma definitiva: con id
+ * externo y el motivo del proveedor. `externalId: null` simula un POST que falló sin id.
+ */
+async function failedRefund(
+  failureReason = 'card_declined',
+  externalId: string | null = `re_${crypto.randomUUID()}`,
+) {
   const t = await tour();
   const instanceId = await createInstance(db, t, 3 * DAY_MS);
   const bookingId = await createPaidBooking(db, instanceId);
@@ -90,7 +96,11 @@ async function failedRefund(failureReason = 'card_declined') {
   const refund = (await refundsOf(db, bookingId))[0]!;
   await db
     .from('refunds')
-    .update({ status: RefundStatus.Failed, failure_reason: failureReason })
+    .update({
+      status: RefundStatus.Failed,
+      failure_reason: failureReason,
+      external_refund_id: externalId,
+    })
     .eq('id', refund.id);
   return { bookingId, refundId: refund.id };
 }
@@ -150,20 +160,6 @@ describe('decisiones sobre reservas en revisión', () => {
 
     expect(data).toBe(ReviewDecisionOutcome.NotUnderReview);
     expect((await readBooking(db, bookingId)).status).toBe(BookingStatus.Confirmed);
-  });
-
-  it('la base no deja cancelar una reserva en revisión por otro camino', async () => {
-    const { bookingId } = await reviewedBooking();
-
-    const { error } = await db.rpc('cancel_booking', {
-      p_booking_id: bookingId,
-      p_actor_type: 'staff',
-      p_refund_amount_cents: 0,
-      p_reason: 'customer_request',
-      p_fee_cents: 0,
-    });
-
-    expect(error?.message).toContain('bookings_operator_review_check');
   });
 });
 
@@ -298,6 +294,20 @@ describe('punto de encuentro fijo', () => {
   });
 });
 
+function settle(refundId: string, overrides: Record<string, unknown> = {}) {
+  return db.rpc('settle_refund_transfer', {
+    p_refund_id: refundId,
+    p_actor_id: staffId,
+    p_channel: TransferChannel.SinpeMovil,
+    p_reference: 'SINPE-123456',
+    // Un minuto antes: el reloj de los tests puede ir unos segundos adelante del de la base.
+    p_paid_at: new Date(Date.now() - 60_000).toISOString(),
+    p_amount_cents: BOOKING_TOTAL,
+    p_currency: 'USD',
+    ...overrides,
+  } as never);
+}
+
 describe('devolución por transferencia', () => {
   it('pedida y registrada, deja la reserva reembolsada y avisa al turista', async () => {
     // Arrange
@@ -308,13 +318,7 @@ describe('devolución por transferencia', () => {
       p_refund_id: refundId,
       p_actor_id: staffId,
     });
-    const settled = await db.rpc('settle_refund_transfer', {
-      p_refund_id: refundId,
-      p_actor_id: staffId,
-      p_channel: TransferChannel.SinpeMovil,
-      p_reference: 'SINPE-123456',
-      p_paid_at: new Date(Date.now() - HOUR_MS).toISOString(),
-    });
+    const settled = await settle(refundId);
 
     // Assert
     expect(requested.data).toBe(TransferRequestOutcome.Requested);
@@ -332,7 +336,31 @@ describe('devolución por transferencia', () => {
     expect(notices[NotificationKind.RefundConfirmation]).toBe(NotificationStatus.Pending);
   });
 
-  it.each(['processing-stale', 'ambiguous-timeout'])(
+  it('en colones guarda lo que se transfirió', async () => {
+    const { refundId } = await failedRefund();
+    await db.rpc('request_refund_transfer', { p_refund_id: refundId, p_actor_id: staffId });
+
+    const { data } = await settle(refundId, { p_amount_cents: 4_650_000, p_currency: 'CRC' });
+
+    expect(data).toBe(TransferSettleOutcome.Settled);
+    const { data: row } = await db
+      .from('refunds')
+      .select('transfer_amount_cents, transfer_currency')
+      .eq('id', refundId)
+      .single();
+    expect(row).toEqual({ transfer_amount_cents: 4_650_000, transfer_currency: 'CRC' });
+  });
+
+  it('en dólares exige exactamente lo reembolsado', async () => {
+    const { refundId } = await failedRefund();
+    await db.rpc('request_refund_transfer', { p_refund_id: refundId, p_actor_id: staffId });
+
+    const { error } = await settle(refundId, { p_amount_cents: BOOKING_TOTAL - 1 });
+
+    expect(error?.message).toContain('INVALID_AMOUNT');
+  });
+
+  it.each(['processing-stale', 'ambiguous-timeout', 'processing-timeout'])(
     'no se pide si el resultado en OnvoPay es desconocido (%s)',
     async (reason) => {
       const { refundId } = await failedRefund(reason);
@@ -346,12 +374,8 @@ describe('devolución por transferencia', () => {
     },
   );
 
-  it('no se pide si OnvoPay tiene el reembolso', async () => {
-    const { refundId } = await failedRefund();
-    await db
-      .from('refunds')
-      .update({ external_refund_id: `re_${crypto.randomUUID()}` })
-      .eq('id', refundId);
+  it('no se pide si el POST falló sin id: OnvoPay pudo haberlo creado', async () => {
+    const { refundId } = await failedRefund('onvopay createRefund 502: bad gateway', null);
 
     const { data } = await db.rpc('request_refund_transfer', {
       p_refund_id: refundId,
@@ -361,26 +385,128 @@ describe('devolución por transferencia', () => {
     expect(data).toBe(TransferRequestOutcome.ProviderMaySettle);
   });
 
+  it('se pide si OnvoPay no encontró el pago, aunque no haya id', async () => {
+    const { refundId } = await failedRefund('payment-intent-missing', null);
+
+    const { data } = await db.rpc('request_refund_transfer', {
+      p_refund_id: refundId,
+      p_actor_id: staffId,
+    });
+
+    expect(data).toBe(TransferRequestOutcome.Requested);
+  });
+
+  it('no se pide sobre un reembolso que no falló', async () => {
+    const { refundId } = await failedRefund();
+    await db.from('refunds').update({ status: RefundStatus.Pending }).eq('id', refundId);
+
+    const { data } = await db.rpc('request_refund_transfer', {
+      p_refund_id: refundId,
+      p_actor_id: staffId,
+    });
+
+    expect(data).toBe(TransferRequestOutcome.NotFailed);
+  });
+
   it('no se registra sin haberla pedido, ni con fecha futura', async () => {
     const { refundId } = await failedRefund();
 
-    const notRequested = await db.rpc('settle_refund_transfer', {
-      p_refund_id: refundId,
-      p_actor_id: staffId,
-      p_channel: TransferChannel.BankTransfer,
-      p_reference: 'TRF-1',
-      p_paid_at: new Date().toISOString(),
-    });
+    const notRequested = await settle(refundId);
     await db.rpc('request_refund_transfer', { p_refund_id: refundId, p_actor_id: staffId });
-    const future = await db.rpc('settle_refund_transfer', {
-      p_refund_id: refundId,
-      p_actor_id: staffId,
-      p_channel: TransferChannel.BankTransfer,
-      p_reference: 'TRF-1',
+    const future = await settle(refundId, {
       p_paid_at: new Date(Date.now() + DAY_MS).toISOString(),
     });
 
     expect(notRequested.data).toBe(TransferSettleOutcome.NotAwaitingTransfer);
     expect(future.error?.message).toContain('INVALID_PAID_AT');
+  });
+
+  it('registrarla dos veces a la vez la asienta una sola vez', async () => {
+    const { bookingId, refundId } = await failedRefund();
+    await db.rpc('request_refund_transfer', { p_refund_id: refundId, p_actor_id: staffId });
+
+    const results = await Promise.all([settle(refundId), settle(refundId)]);
+
+    expect(results.map((r) => r.data).sort()).toEqual([
+      TransferSettleOutcome.NotAwaitingTransfer,
+      TransferSettleOutcome.Settled,
+    ]);
+    const { count } = await db
+      .from('audit_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('entity_id', bookingId)
+      .eq('action', 'refund.succeeded');
+    expect(count).toBe(1);
+  });
+});
+
+describe('concurrencia', () => {
+  it('dos cambios de fecha por el último cupo: entra uno solo', async () => {
+    const t = await tour();
+    const target = await createInstance(db, t, 6 * DAY_MS, 2);
+    const first = await createPaidBooking(db, await createInstance(db, t, 3 * DAY_MS));
+    const second = await createPaidBooking(db, await createInstance(db, t, 4 * DAY_MS));
+
+    const results = await Promise.all([reschedule(first, target), reschedule(second, target)]);
+
+    expect(results.map((r) => r.data).sort()).toEqual([
+      RescheduleOutcome.NoCapacity,
+      RescheduleOutcome.Rescheduled,
+    ]);
+    expect((await readInstance(db, target)).capacity_reserved).toBe(BOOKING_SEATS);
+  });
+});
+
+describe('reprogramar un aviso', () => {
+  it('un segundo cambio de fecha vuelve a encolar el aviso con otra generación', async () => {
+    const t = await tour();
+    const bookingId = await createPaidBooking(db, await createInstance(db, t, 3 * DAY_MS));
+    await reschedule(bookingId, await createInstance(db, t, 5 * DAY_MS));
+    await db
+      .from('notifications')
+      .update({ status: NotificationStatus.Sent })
+      .eq('booking_id', bookingId)
+      .eq('kind', NotificationKind.BookingRescheduled);
+
+    await reschedule(bookingId, await createInstance(db, t, 7 * DAY_MS));
+
+    const { data } = await db
+      .from('notifications')
+      .select('status, generation')
+      .eq('booking_id', bookingId)
+      .eq('kind', NotificationKind.BookingRescheduled)
+      .single();
+    expect(data).toEqual({ status: NotificationStatus.Pending, generation: 1 });
+  });
+});
+
+describe('reschedule_booking — otros resultados', () => {
+  it('rechaza una reserva que no está confirmada y una salida de origen ya empezada', async () => {
+    const t = await tour();
+    const target = await createInstance(db, t, 6 * DAY_MS);
+    const cancelled = await createPaidBooking(db, await createInstance(db, t, 3 * DAY_MS));
+    await db.from('bookings').update({ status: BookingStatus.Cancelled }).eq('id', cancelled);
+    const started = await createPaidBooking(db, await createInstance(db, t, -HOUR_MS));
+
+    expect((await reschedule(cancelled, target)).data).toBe(RescheduleOutcome.NotConfirmed);
+    expect((await reschedule(started, target)).data).toBe(RescheduleOutcome.SourceStarted);
+  });
+});
+
+describe('cancel_booking sobre una reserva en revisión', () => {
+  it('devuelve under_review sin tocar nada', async () => {
+    const { bookingId } = await reviewedBooking();
+
+    const { data, error } = await db.rpc('cancel_booking', {
+      p_booking_id: bookingId,
+      p_actor_type: 'tourist',
+      p_refund_amount_cents: 0,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
+    });
+
+    expect(error).toBeNull();
+    expect(data).toBe('under_review');
+    expect((await readBooking(db, bookingId)).status).toBe(BookingStatus.Confirmed);
   });
 });

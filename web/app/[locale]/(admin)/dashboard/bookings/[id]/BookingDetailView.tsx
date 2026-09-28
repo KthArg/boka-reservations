@@ -68,7 +68,7 @@ export async function BookingDetailView({ booking, isAdmin }: Props) {
       </div>
 
       <BookingOperations booking={booking} />
-      <RefundSection booking={booking} />
+      <RefundSection booking={booking} locale={locale} />
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('detail-notifications')}</h2>

@@ -70,9 +70,11 @@ export async function listRescheduleTargets(
     .gt('starts_at', now.toISOString())
     .order('starts_at', { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    startsAt: r.starts_at,
-    seatsLeft: r.capacity_total - r.capacity_reserved,
-  }));
+  return (data ?? [])
+    .map((r) => ({
+      id: r.id,
+      startsAt: r.starts_at,
+      seatsLeft: r.capacity_total - r.capacity_reserved,
+    }))
+    .filter((target) => target.seatsLeft > 0);
 }

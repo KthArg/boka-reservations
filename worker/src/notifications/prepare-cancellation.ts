@@ -12,7 +12,9 @@ import { renderOverbookedRefunded } from './templates/overbooked-refunded.js';
 
 // El link "ver mi reserva" del email de cancelación debe seguir vivo aunque el
 // tour ya haya pasado (a diferencia del de confirmación, que expira al inicio).
-const POST_CANCELLATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+export const POST_CANCELLATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+/** Motivos de cancelación de salida que dejan la reserva en revisión (espejo de shared). */
+const REVIEW_REASONS: readonly string[] = ['weather', 'safety', 'force_majeure'];
 /** Listado público de tours: el cierre invita a reservar otra fecha. */
 const TOURS_PATH_SEGMENT = 'tours';
 
@@ -43,6 +45,7 @@ export async function prepareCancellationEmail(
       refundAmountCents: refund?.amountCents ?? 0,
       currency: refund?.currency ?? booking.currency,
       noCharge: charge.deferred && !charge.charged,
+      reviewClosed: REVIEW_REASONS.includes(booking.tour_instance.cancellation_reason ?? ''),
       bookingUrl: url,
     },
     notif.locale,

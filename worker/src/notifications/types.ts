@@ -19,6 +19,9 @@ export type NotificationKind =
   | 'booking_rescheduled'
   | 'refund_transfer_request';
 
+/** Canal de una devolución por transferencia (spec 0035). Espejo de refunds.transfer_channel. */
+export type TransferChannel = 'sinpe_movil' | 'bank_transfer';
+
 export const GUIDE_ASSIGNMENT_KIND: NotificationKind = 'guide_assignment';
 export const CANCELLATION_CONFIRMATION_KIND: NotificationKind = 'cancellation_confirmation';
 export const REFUND_CONFIRMATION_KIND: NotificationKind = 'refund_confirmation';
