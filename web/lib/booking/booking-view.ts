@@ -32,13 +32,17 @@ export type BookingView = {
   canUpdateCard: boolean;
   /** Cobro esperando la autenticación 3DS del turista, con el plazo vigente. */
   awaitingAuthentication: boolean;
+  /** Salida cancelada por clima o seguridad: la reserva espera la decisión del equipo (spec 0035). */
+  underReview: boolean;
+  /** Motivo de cancelación de la salida, si se canceló. */
+  cancellationReason: string | null;
 };
 
 const VIEW_SELECT = `
   id, customer_name, status, total_amount_cents, currency, terms_version,
   charge_started_at, charge_attempts, awaiting_action_until, recovery_deadline,
-  tickets_adult, tickets_child, tickets_student,
-  tour_instances!inner ( starts_at, tours!inner ( name_es, name_en ) )
+  tickets_adult, tickets_child, tickets_student, operator_review_required_at,
+  tour_instances!inner ( starts_at, cancellation_reason, tours!inner ( name_es, name_en ) )
 `;
 
 interface RawView {
@@ -55,15 +59,19 @@ interface RawView {
   tickets_adult: number;
   tickets_child: number;
   tickets_student: number;
+  operator_review_required_at: string | null;
   tour_instances: {
     starts_at: string;
+    cancellation_reason: string | null;
     tours: { name_es: string; name_en: string } | null;
   } | null;
 }
 
 /** Reembolso que vería el turista al cancelar ahora. Solo una reserva confirmada tiene cobro. */
 function customerRefundPreview(r: RawView, startsAt: string, now: Date): RefundEligibility {
-  if (r.status !== BookingStatus.Confirmed) return NO_REFUND;
+  if (r.status !== BookingStatus.Confirmed || r.operator_review_required_at !== null) {
+    return NO_REFUND;
+  }
   return computeRefund({
     startsAt: new Date(startsAt),
     totalAmountCents: r.total_amount_cents,
@@ -94,6 +102,8 @@ function toView(r: RawView, now: Date): BookingView {
     canUpdateCard: r.charge_attempts > 0 && isCardUpdateOpen(r.status, r.recovery_deadline, now),
     awaitingAuthentication:
       inFlight && isAwaitingAuthentication(r.status, r.awaiting_action_until, now),
+    underReview: r.operator_review_required_at !== null,
+    cancellationReason: r.tour_instances?.cancellation_reason ?? null,
   };
 }
 

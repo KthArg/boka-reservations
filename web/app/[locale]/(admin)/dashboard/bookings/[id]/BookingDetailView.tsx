@@ -1,11 +1,11 @@
 import { getTranslations, getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
-import { RefundStatus } from '@shared/constants/refunds';
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
 import type { AdminBookingDetail } from '@/lib/booking/admin-types';
-import { RetryRefundButton } from '../RetryRefundButton';
 import { BookingDetailActions } from './BookingDetailActions';
+import { BookingOperations } from './BookingOperations';
+import { RefundSection } from './RefundSection';
 import styles from '../bookings.module.css';
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -67,20 +67,8 @@ export async function BookingDetailView({ booking, isAdmin }: Props) {
         <Row label={t('detail-created')} value={`${created.date} ${created.time}`} />
       </div>
 
-      {booking.refund ? (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t('detail-refund')}</h2>
-          <div className={styles.refundRow}>
-            <span>{t(`refund-status-${booking.refund.status}`)}</span>
-            {booking.refund.status === RefundStatus.Failed ? (
-              <RetryRefundButton refundId={booking.refund.id} />
-            ) : null}
-          </div>
-          {booking.refund.failureReason ? (
-            <p className={styles.empty}>{booking.refund.failureReason}</p>
-          ) : null}
-        </section>
-      ) : null}
+      <BookingOperations booking={booking} />
+      <RefundSection booking={booking} locale={locale} />
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('detail-notifications')}</h2>

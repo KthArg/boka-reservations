@@ -1,10 +1,12 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { BookingStatus, InstanceStatus, UserRole } from '@shared/constants/enums';
+import { minimumView } from '@/lib/operations/minimum';
 import { DepartureChargeState, type AssignableGuide, type Departure } from './types';
 
 type RawBooking = {
   status: string;
+  payment_method_id: string | null;
   authorized_at: string | null;
   cancel_claimed_at: string | null;
   tickets_adult: number;
@@ -18,6 +20,7 @@ type RawDeparture = {
   id: string;
   starts_at: string;
   capacity_total: number;
+  capacity_reserved: number;
   minimum_charge_triggered_at: string | null;
   minimum_charge_closed_at: string | null;
   minimum_resolved_at: string | null;
@@ -33,13 +36,14 @@ type RawDeparture = {
 // desambiguar el embed con el hint de la FK, si no PostgREST falla con
 // "more than one relationship was found".
 const DEPARTURES_SELECT = `
-  id, starts_at, capacity_total,
+  id, starts_at, capacity_total, capacity_reserved,
   minimum_charge_triggered_at, minimum_charge_closed_at, minimum_resolved_at,
   minimum_resolution, staff_decision_required_at, min_participants_at_trigger,
   tours!inner ( name_es, min_participants ),
   tour_instance_guides ( users!guide_id ( id, full_name ) ),
   bookings (
-    status, authorized_at, cancel_claimed_at, tickets_adult, tickets_child, tickets_student
+    status, payment_method_id, authorized_at, cancel_claimed_at,
+    tickets_adult, tickets_child, tickets_student
   )
 `;
 
@@ -47,6 +51,17 @@ function confirmedTickets(bookings: RawBooking[] | null): number {
   return (bookings ?? [])
     .filter((b) => b.status === BookingStatus.Confirmed)
     .reduce((s, b) => s + ticketsOf(b), 0);
+}
+
+const DEFERRED_LIVE_STATUSES: readonly string[] = [
+  BookingStatus.PendingMinimum,
+  BookingStatus.PendingPayment,
+  BookingStatus.Confirmed,
+];
+
+/** Reserva viva del cobro diferido: la salida la decide el motor del spec 0033. */
+function isDeferredLive(b: RawBooking): boolean {
+  return b.payment_method_id !== null && DEFERRED_LIVE_STATUSES.includes(b.status);
 }
 
 function ticketsOf(b: RawBooking): number {
@@ -104,6 +119,14 @@ function toDeparture(r: RawDeparture, now: Date): Departure {
     confirmedTickets: confirmedTickets(r.bookings),
     assignedGuide: toGuide(r.tour_instance_guides?.[0]?.users ?? null),
     charge: toCharge(r, now),
+    minimum: minimumView({
+      startsAt: r.starts_at,
+      minParticipants: r.tours?.min_participants ?? 1,
+      seats: r.capacity_reserved,
+      resolvedAt: r.minimum_resolved_at,
+      deferredFlow: (r.bookings ?? []).some(isDeferredLive),
+      now,
+    }),
   };
 }
 

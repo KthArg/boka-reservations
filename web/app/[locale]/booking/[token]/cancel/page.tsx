@@ -37,9 +37,11 @@ export default async function BookingCancelPage({ params }: Props) {
   const unpaid = view.status === BookingStatus.PendingMinimum;
   const notice = view.chargeInFlight
     ? t('error-charge-in-flight')
-    : view.status !== BookingStatus.Confirmed && !unpaid
-      ? t('already')
-      : null;
+    : view.underReview
+      ? t('error-under-review')
+      : view.status !== BookingStatus.Confirmed && !unpaid
+        ? t('already')
+        : null;
   if (notice) {
     return (
       <BookingNotice

@@ -3,11 +3,23 @@
 - **Estado**: approved
 - **Autor**: Claude (con decisiones del usuario del 2026-09-27)
 - **Creado**: 2026-09-27
-- **Última actualización**: 2026-09-27
+- **Última actualización**: 2026-09-27 (revisiones del PR #85)
 - **Rama**: feat/0035-operacion-de-los-terminos
 - **PR**: (cuando aplique)
 
 Aprobación: el usuario pidió el 2026-09-27 que la plataforma funcione hoy como dicen los términos del spec 0034 y tomó las decisiones de la sección 1. Revisado por spec-reviewer el mismo día; los hallazgos críticos están resueltos en este texto.
+
+**Actualización 2026-09-27 (revisiones del PR #85).** Cambios sobre el texto aprobado, sin tocar objetivos ni alcance:
+
+- **Devolución por transferencia**: se habilita con el rechazo definitivo de OnvoPay (reembolso `failed` **con** `external_refund_id` y un motivo que no sea de resultado desconocido), o cuando OnvoPay no encontró el pago (`payment-intent-missing`). El texto anterior pedía "sin `external_refund_id`", que dejaba sin salida justo el caso de la cláusula 8 (la tarjeta no acepta el reembolso) y habilitaba fallos del POST cuyo resultado es desconocido.
+- **Monto y moneda de la transferencia**: se registran (`transfer_amount_cents`, `transfer_currency` USD o CRC). En la moneda del cobro, exactamente lo reembolsado; en colones, lo transferido al tipo de cambio del día.
+- **Pagos en curso del widget**: `cancel_departure` ya no los cancela. Quedan para el reconciliador, y si el pago se acredita, `confirm_booking` ve la salida cancelada y lo reembolsa entero. Cancelarlos sin preguntarle a OnvoPay podía dejar un pago acreditado sin reserva ni reembolso.
+- **Fuerza mayor** es un motivo de revisión propio (`force_majeure`), como dicen los términos.
+- **Margen de 10 minutos** sobre las 24 h: la ventana del proceso es de 24 h 10 min a 25 h, y el staff no cancela por mínimo con 24 h 10 min o menos.
+- **Avisos repetidos**: `notifications.generation` sube al reencolar un aviso; el worker la usa en la clave de idempotencia del proveedor y como guarda al marcar el envío.
+- **`cancel_booking`** bloquea la salida antes que la reserva (mismo orden que las funciones nuevas) y devuelve `under_review` para una reserva en revisión.
+- **Motivo de cancelación en todos los caminos**: un trigger lo completa (`minimum` u `other`) cuando otra función cancela la salida, y lo limpia si vuelve a estar disponible.
+- **Cierre sin reembolso tras revisión**: el correo de cancelación tiene una variante propia que nombra la cláusula 7, no la política de cancelación del turista.
 
 ## 1. Contexto y motivación
 

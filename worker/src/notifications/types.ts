@@ -14,7 +14,13 @@ export type NotificationKind =
   | 'charge_failed_action_required_1'
   | 'charge_failed_action_required_2'
   | 'charge_failed_action_required_3'
-  | 'charge_requires_action';
+  | 'charge_requires_action'
+  | 'departure_cancelled'
+  | 'booking_rescheduled'
+  | 'refund_transfer_request';
+
+/** Canal de una devolución por transferencia (spec 0035). Espejo de refunds.transfer_channel. */
+export type TransferChannel = 'sinpe_movil' | 'bank_transfer';
 
 export const GUIDE_ASSIGNMENT_KIND: NotificationKind = 'guide_assignment';
 export const CANCELLATION_CONFIRMATION_KIND: NotificationKind = 'cancellation_confirmation';
@@ -37,6 +43,8 @@ export type EmailSendInput = {
   html: string;
   text: string;
   idempotencyKey: string;
+  /** Correo de contacto del operador (spec 0035): la respuesta del turista le llega a él. */
+  replyTo?: string;
 };
 
 export type EmailSendResult = {

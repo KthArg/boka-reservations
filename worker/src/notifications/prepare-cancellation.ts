@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NotificationRow } from './repository.js';
 import type { PreparedEmail } from './types.js';
-import { loadBookingForNotification, loadLatestRefund } from './repository.js';
+import { loadBookingForNotification } from './repository.js';
+import { loadLatestRefund } from './refund-repository.js';
 import { loadChargeSummary, wasAuthorized } from './deferred-repository.js';
 import { bookingViewUrl, localizedTourName } from './prepare.js';
 import { renderCancellationConfirmation } from './templates/cancellation-confirmation.js';
@@ -11,7 +12,9 @@ import { renderOverbookedRefunded } from './templates/overbooked-refunded.js';
 
 // El link "ver mi reserva" del email de cancelación debe seguir vivo aunque el
 // tour ya haya pasado (a diferencia del de confirmación, que expira al inicio).
-const POST_CANCELLATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+export const POST_CANCELLATION_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+/** Motivos de cancelación de salida que dejan la reserva en revisión (espejo de shared). */
+const REVIEW_REASONS: readonly string[] = ['weather', 'safety', 'force_majeure'];
 /** Listado público de tours: el cierre invita a reservar otra fecha. */
 const TOURS_PATH_SEGMENT = 'tours';
 
@@ -42,6 +45,7 @@ export async function prepareCancellationEmail(
       refundAmountCents: refund?.amountCents ?? 0,
       currency: refund?.currency ?? booking.currency,
       noCharge: charge.deferred && !charge.charged,
+      reviewClosed: REVIEW_REASONS.includes(booking.tour_instance.cancellation_reason ?? ''),
       bookingUrl: url,
     },
     notif.locale,
@@ -69,6 +73,7 @@ export async function prepareRefundEmail(
       tourName: localizedTourName(booking, notif.locale),
       refundAmountCents: refund.amountCents,
       currency: refund.currency,
+      transferChannel: refund.transferChannel,
     },
     notif.locale,
   );

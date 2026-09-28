@@ -96,7 +96,7 @@ async function processOne(
     audience: notif.guide_id ? FooterAudience.Guide : FooterAudience.Customer,
     appUrl: env.APP_URL,
   });
-  await deliver(db, adapter, notif, email);
+  await deliver(db, adapter, notif, email, operator.contactEmail.trim() || undefined);
 }
 
 /**
@@ -114,11 +114,21 @@ async function postponeUnsupported(db: SupabaseClient, notif: NotificationRow): 
   });
 }
 
+/**
+ * La clave de idempotencia del proveedor: el id, más la generación si el aviso se volvió a
+ * encolar. Con el id solo, Resend devolvería el envío anterior (o un 409) y el aviso nuevo no
+ * saldría (spec 0035).
+ */
+export function idempotencyKeyFor(notif: NotificationRow): string {
+  return notif.generation > 0 ? `${notif.id}:${notif.generation}` : notif.id;
+}
+
 async function deliver(
   db: SupabaseClient,
   adapter: EmailAdapter,
   notif: NotificationRow,
   email: RenderedEmail,
+  replyTo: string | undefined,
 ): Promise<void> {
   let messageId: string;
   try {
@@ -127,12 +137,13 @@ async function deliver(
       subject: email.subject,
       html: email.html,
       text: email.text,
-      idempotencyKey: notif.id,
+      idempotencyKey: idempotencyKeyFor(notif),
+      replyTo,
     });
     messageId = result.providerMessageId;
   } catch (err) {
     if (err instanceof EmailPermanentError) {
-      await markFailed(db, notif.id, adapter.provider, notif.attempts + 1, err.message);
+      await markFailed(db, notif, adapter.provider, notif.attempts + 1, err.message);
       return;
     }
     if (err instanceof EmailTransientError) {
@@ -146,7 +157,7 @@ async function deliver(
   // duplicado); se alerta y la fila queda pending. El Idempotency-Key de Resend acota
   // el reenvío del próximo ciclo (spec 0028; con mailpit —solo dev— puede duplicar).
   try {
-    await markSent(db, notif.id, adapter.provider, messageId);
+    await markSent(db, notif, adapter.provider, messageId);
   } catch (err) {
     Sentry.withScope((scope) => {
       scope.setLevel('error');

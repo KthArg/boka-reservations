@@ -50,13 +50,17 @@ export async function retryRefund(refundId: string): Promise<RetryRefundResult> 
     ? { status: RefundStatus.Processing, failure_reason: null }
     : { status: RefundStatus.Pending, failure_reason: null, attempts: 0 };
 
-  const { error } = await db
+  const { data: updated, error } = await db
     .from('refunds')
     .update(target)
     .eq('id', refundId)
-    .eq('status', RefundStatus.Failed);
+    .eq('status', RefundStatus.Failed)
+    .select('id');
 
   if (error) return { ok: false, error: RefundRetryError.WriteFailed };
+  // Otra acción ganó la carrera (un reintento o la devolución por transferencia, spec 0035): no
+  // se audita un reintento que no ocurrió.
+  if (updated.length === 0) return { ok: false, error: RefundRetryError.NotFailed };
 
   await writeAuditLog(db, {
     actorType: actorTypeForRole(user.userRole),

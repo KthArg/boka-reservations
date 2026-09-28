@@ -27,6 +27,7 @@ type Outcome =
 const ERROR_KEYS: Partial<Record<CancellationError, string>> = {
   [CancellationError.ChargeInFlight]: 'error-charge-in-flight',
   [CancellationError.StateChanged]: 'error-state-changed',
+  [CancellationError.UnderReview]: 'error-under-review',
 };
 
 export function CancelConfirm({ token, currency, unpaid, expected }: Props) {

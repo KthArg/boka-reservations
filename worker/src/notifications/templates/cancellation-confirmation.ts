@@ -11,6 +11,11 @@ export type CancellationConfirmationProps = {
   currency: string;
   /** Reserva del cobro diferido que nunca se cobró (spec 0029 §5.8): no hay nada que reembolsar. */
   noCharge: boolean;
+  /**
+   * La salida se canceló por clima, seguridad o fuerza mayor y el equipo la cerró sin reembolso
+   * (spec 0035; términos, cláusula 7). No es la política de cancelación del turista.
+   */
+  reviewClosed: boolean;
   bookingUrl: string;
 };
 
@@ -24,6 +29,8 @@ const COPY = {
     refund: (amount: string) =>
       `Te reembolsaremos ${amount}. Lo vas a ver acreditado en los próximos días hábiles.`,
     noRefund: 'Según la política de cancelación, esta cancelación no tiene reembolso.',
+    reviewClosed:
+      'Revisamos tu reserva después de cancelar la salida y, como prevén los términos para el clima, la seguridad y la fuerza mayor, se cierra sin reembolso.',
     noCharge: 'No se hizo ningún cobro a tu tarjeta, así que no hay nada que reembolsar.',
     cta: 'Ver mi reserva',
     farewell: 'Gracias por avisarnos.',
@@ -37,6 +44,8 @@ const COPY = {
     refund: (amount: string) =>
       `We will refund ${amount}. You should see it credited within the next business days.`,
     noRefund: 'Per the cancellation policy, this cancellation has no refund.',
+    reviewClosed:
+      'We reviewed your booking after cancelling the departure and, as the terms provide for weather, safety and force majeure, it is closed with no refund.',
     noCharge: 'Your card was never charged, so there is nothing to refund.',
     cta: 'View my booking',
     farewell: 'Thanks for letting us know.',
@@ -45,7 +54,10 @@ const COPY = {
 
 function refundLineFor(props: CancellationConfirmationProps, locale: EmailLocale): string {
   const t = COPY[locale];
-  if (!props.hasRefund) return props.noCharge ? t.noCharge : t.noRefund;
+  if (!props.hasRefund) {
+    if (props.reviewClosed) return t.reviewClosed;
+    return props.noCharge ? t.noCharge : t.noRefund;
+  }
   return t.refund(formatMoney(props.refundAmountCents, props.currency, locale));
 }
 

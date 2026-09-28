@@ -10,6 +10,7 @@ const cancelBase = {
   refundAmountCents: 9000,
   currency: 'USD',
   noCharge: false,
+  reviewClosed: false,
   bookingUrl: 'http://localhost:3000/es/booking/tok',
 };
 
@@ -46,6 +47,7 @@ describe('renderRefundConfirmation', () => {
         tourName: 'Cerro Chompipe',
         refundAmountCents: 9000,
         currency: 'USD',
+        transferChannel: null,
       },
       'es',
     );

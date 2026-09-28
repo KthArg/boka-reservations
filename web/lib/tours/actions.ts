@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/server';
 import { UserRole } from '@shared/constants/enums';
-import { TourActionError } from '@shared/constants/tours';
+import { MEETING_POINT_LOCKED, TourActionError } from '@shared/constants/tours';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { TourFormSchema } from './types';
 import type { ActionResult } from './types';
@@ -130,7 +130,16 @@ export async function updateTour(
     .update(mapTourColumns(tourFields))
     .eq('id', id);
 
-  if (tourError) return { success: false, errors: { _form: [TourActionError.UpdateFailed] } };
+  if (tourError) {
+    // Quien ya reservó conserva el punto de encuentro que aceptó (spec 0035).
+    const locked = tourError.message.includes(MEETING_POINT_LOCKED);
+    return {
+      success: false,
+      errors: {
+        _form: [locked ? TourActionError.MeetingPointLocked : TourActionError.UpdateFailed],
+      },
+    };
+  }
 
   const pricingError = await reconcileRows(
     supabase,

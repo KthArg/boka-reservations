@@ -9,6 +9,11 @@ import {
   prepareRefundEmail,
 } from './prepare-cancellation.js';
 import {
+  prepareDepartureNoticeEmail,
+  prepareRescheduledEmail,
+  prepareTransferRequestEmail,
+} from './prepare-operations.js';
+import {
   prepareChargeActionEmail,
   prepareRequiresActionEmail,
   prepareReservedEmail,
@@ -37,6 +42,9 @@ const PREPARERS: Record<NotificationKind, Preparer | null> = {
   charge_failed_action_required_3: prepareChargeActionEmail,
   charge_requires_action: prepareRequiresActionEmail,
   departure_cancelled_minimum: prepareDepartureCancelledEmail,
+  departure_cancelled: prepareDepartureNoticeEmail,
+  booking_rescheduled: prepareRescheduledEmail,
+  refund_transfer_request: prepareTransferRequestEmail,
 };
 
 /** Preparador del kind, o null si este worker todavía no sabe enviarlo. */

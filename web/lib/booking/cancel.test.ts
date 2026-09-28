@@ -30,6 +30,7 @@ function row(overrides: Record<string, unknown> = {}) {
     tickets_adult: 1,
     tickets_child: 0,
     tickets_student: 0,
+    operator_review_required_at: null as string | null,
     tour_instances: { starts_at: IN_TWO_DAYS, tours: { name_es: 'T', name_en: 'T' } },
     ...overrides,
   };
@@ -149,5 +150,14 @@ describe('getBookingView', () => {
   it('no calcula reembolso para una reserva que no está confirmada', async () => {
     const view = await getBookingView(fakeDb(row({ status: 'cancelled' })), 'booking-1', NOW);
     expect(view?.refund).toEqual({ eligible: false, amountCents: 0, feeCents: 0 });
+  });
+});
+
+describe('cancelBooking — reserva en revisión (spec 0035)', () => {
+  it('no la cancela: la decide el equipo', async () => {
+    const db = fakeDb(row({ operator_review_required_at: NOW.toISOString() }));
+    const result = await cancelBooking(db, PARAMS, NOW);
+    expect(result).toEqual({ ok: false, error: CancellationError.UnderReview });
+    expect((db as { rpc: ReturnType<typeof vi.fn> }).rpc).not.toHaveBeenCalled();
   });
 });

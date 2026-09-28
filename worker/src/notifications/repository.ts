@@ -7,7 +7,7 @@ const BATCH_SIZE = 20;
 
 /** Columnas de BookingRow; los emails del cobro diferido le suman las suyas. */
 export const BOOKING_NOTIFICATION_SELECT =
-  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, terms_version, consent_version, no_show_tolerance_minutes, tour_instance:tour_instances!inner(starts_at, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
+  'id, customer_name, customer_email, tickets_adult, tickets_child, tickets_student, total_amount_cents, currency, status, terms_version, consent_version, no_show_tolerance_minutes, operator_review_required_at, tour_instance:tour_instances!inner(starts_at, cancellation_reason, tour:tours!inner(name_es, name_en, meeting_point_es, meeting_point_en))';
 
 export type NotificationRow = {
   id: string;
@@ -19,13 +19,15 @@ export type NotificationRow = {
   locale: EmailLocale;
   attempts: number;
   scheduled_for: string;
+  /** Sube cada vez que el aviso se vuelve a encolar sobre la misma fila (spec 0035, …049). */
+  generation: number;
 };
 
 export async function fetchPending(db: SupabaseClient): Promise<NotificationRow[]> {
   const { data, error } = await db
     .from('notifications')
     .select(
-      'id, booking_id, tour_instance_id, guide_id, kind, recipient_email, locale, attempts, scheduled_for',
+      'id, booking_id, tour_instance_id, guide_id, kind, recipient_email, locale, attempts, scheduled_for, generation',
     )
     .eq('status', 'pending')
     .lte('scheduled_for', new Date().toISOString())
@@ -48,25 +50,6 @@ export async function loadBookingForNotification(
 
   if (error) throw new Error(`load booking: ${error.message}`);
   return (data as unknown as BookingRow | null) ?? null;
-}
-
-export type LatestRefund = { amountCents: number; currency: string };
-
-/** Último reembolso de una reserva (cualquier estado). null si no hay. */
-export async function loadLatestRefund(
-  db: SupabaseClient,
-  bookingId: string,
-): Promise<LatestRefund | null> {
-  const { data, error } = await db
-    .from('refunds')
-    .select('amount_cents, currency')
-    .eq('booking_id', bookingId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle<{ amount_cents: number; currency: string }>();
-
-  if (error) throw new Error(`load refund: ${error.message}`);
-  return data ? { amountCents: data.amount_cents, currency: data.currency } : null;
 }
 
 // Todas las escrituras verifican `error` y lanzan (spec 0028): supabase-js no lanza,
@@ -98,9 +81,11 @@ export async function postponeNotification(
   if (error) throw new Error(`postpone notification: ${error.message}`);
 }
 
+// Las escrituras de resultado se guardan por generación: si el aviso se volvió a encolar mientras
+// se enviaba la versión anterior, el resultado viejo no pisa el pendiente nuevo.
 export async function markSent(
   db: SupabaseClient,
-  id: string,
+  notif: NotificationRow,
   provider: string,
   messageId: string,
 ): Promise<void> {
@@ -112,13 +97,14 @@ export async function markSent(
       provider_message_id: messageId,
       sent_at: new Date().toISOString(),
     })
-    .eq('id', id);
+    .eq('id', notif.id)
+    .eq('generation', notif.generation);
   if (error) throw new Error(`mark sent: ${error.message}`);
 }
 
 export async function markFailed(
   db: SupabaseClient,
-  id: string,
+  notif: NotificationRow,
   provider: string,
   attempts: number,
   lastError: string,
@@ -126,7 +112,8 @@ export async function markFailed(
   const { error } = await db
     .from('notifications')
     .update({ status: 'failed', provider, attempts, last_error: lastError })
-    .eq('id', id);
+    .eq('id', notif.id)
+    .eq('generation', notif.generation);
   if (error) throw new Error(`mark failed: ${error.message}`);
 }
 
@@ -138,7 +125,7 @@ export async function handleTransient(
 ): Promise<void> {
   const nextAttempts = notif.attempts + 1;
   if (isTerminalAfter(nextAttempts)) {
-    await markFailed(db, notif.id, provider, nextAttempts, lastError);
+    await markFailed(db, notif, provider, nextAttempts, lastError);
     return;
   }
   const { error } = await db
@@ -149,6 +136,7 @@ export async function handleTransient(
       provider,
       last_error: lastError,
     })
-    .eq('id', notif.id);
+    .eq('id', notif.id)
+    .eq('generation', notif.generation);
   if (error) throw new Error(`handle transient: ${error.message}`);
 }

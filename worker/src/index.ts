@@ -10,6 +10,7 @@ import { applyRetention } from './jobs/apply-retention.js';
 import { watchCharges } from './jobs/watch-charges.js';
 import { chargeDepartures } from './jobs/charge-departures.js';
 import { closePaymentIntents } from './jobs/close-payment-intents.js';
+import { resolveMinimum } from './jobs/resolve-minimum.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -89,3 +90,6 @@ schedule('watch-charges', watchCharges, ONE_MINUTE_MS);
 schedule('charge-departures', chargeDepartures, ONE_MINUTE_MS);
 // close-payment-intents: al inicio y luego cada 5 minutos (barrido de intents y customers, spec 0029)
 schedule('close-payment-intents', closePaymentIntents, FIVE_MINUTES_MS);
+// Spec 0035: cierre por mínimo del cobro inmediato, con 24 h de aviso. Fuera del flag del cobro
+// diferido: es lo que prometen los términos para toda salida.
+schedule('resolve-minimum', resolveMinimum, FIVE_MINUTES_MS);
