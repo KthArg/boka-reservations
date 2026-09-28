@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isTourImageUrl } from './cover-image';
 import { TourDifficulty, TicketType } from '@shared/constants/enums';
 import {
   CHARGE_LEAD_HOURS_MAX,
@@ -83,7 +84,15 @@ export const TourFormSchema = z
         .nullable()
         .default(null),
     ),
-    cover_image_url: z.preprocess(preprocess, z.string().url().nullable().optional()),
+    // Solo archivos del bucket propio (spec 0036): otra URL le daría la IP del visitante a un tercero.
+    cover_image_url: z.preprocess(
+      preprocess,
+      z
+        .string()
+        .refine((url) => isTourImageUrl(url), { message: TourActionError.CoverImageInvalid })
+        .nullable()
+        .optional(),
+    ),
     pricing: z.array(PricingRowSchema),
     schedules: z.array(ScheduleRowSchema),
   })

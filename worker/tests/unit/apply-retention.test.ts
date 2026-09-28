@@ -36,6 +36,12 @@ describe('computeRetentionCutoffs', () => {
     expect(computeRetentionCutoffs(now).holdCutoff).toBe(expected);
   });
 
+  it('registro de la venta = 5 años antes de now (spec 0036)', () => {
+    const expected = new Date(now);
+    expected.setFullYear(expected.getFullYear() - 5);
+    expect(computeRetentionCutoffs(now).financialRecordCutoff).toBe(expected.toISOString());
+  });
+
   it('todos los cutoffs quedan en el pasado respecto de now', () => {
     const cutoffs = computeRetentionCutoffs(now);
     const values = [
@@ -45,6 +51,7 @@ describe('computeRetentionCutoffs', () => {
       cutoffs.notificationCutoff,
       cutoffs.webhookEventCutoff,
       cutoffs.holdCutoff,
+      cutoffs.financialRecordCutoff,
     ];
     for (const value of values) {
       expect(new Date(value).getTime()).toBeLessThan(now.getTime());

@@ -78,6 +78,8 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
   },
   cancel_booking_for_departure: { p_booking_id: ZERO_UUID, p_resolution: 'auto_cancelled' },
   resolve_departure_minimum: { p_instance_id: ZERO_UUID, p_resolution: 'auto_cancelled' },
+  // Spec 0036: borra el registro de la venta a los 5 años.
+  purge_financial_records: { p_cutoff: '2000-01-01T00:00:00Z' },
   // Spec 0035: cancelan salidas, reembolsan, mueven reservas y dan por pagadas transferencias.
   cancel_departure: { p_instance_id: ZERO_UUID, p_reason: 'minimum' },
   resolve_immediate_minimum: { p_instance_id: ZERO_UUID },

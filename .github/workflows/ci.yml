@@ -129,6 +129,7 @@ jobs:
             echo "ONVOPAY_WEBHOOK_SECRET=ci-webhook-secret"
             echo "NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY=onvo_test_pk_ci"
             echo "INVITE_SIGNING_SECRET=ci-invite-signing-secret"
+            echo "IDENTIFIER_HASH_SECRET=ci-identifier-hash-secret-at-least-32-chars"
           } >> "$GITHUB_ENV"
 
       - name: Tests de integración (web)

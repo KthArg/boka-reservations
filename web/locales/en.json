@@ -130,7 +130,8 @@
       "tour_archive_failed": "The operation could not be completed. Try again.",
       "tour_child_ages_required": "The tour has a child price: enter the child ticket ages.",
       "tour_child_ages_invalid": "The minimum child age cannot be greater than the maximum.",
-      "tour_meeting_point_locked": "The meeting point cannot change: there are confirmed bookings on upcoming departures. If it must move, cancel those departures or move the bookings to another date first."
+      "tour_meeting_point_locked": "The meeting point cannot change: there are confirmed bookings on upcoming departures. If it must move, cancel those departures or move the bookings to another date first.",
+      "tour_cover_image_invalid": "The photo must be uploaded from this form."
     },
     "tour-not-found": "Tour not found.",
     "confirm-archive": "Are you sure? The tour will no longer be visible.",
@@ -142,7 +143,13 @@
     "field-requirements-en": "Age, fitness or other requirements (English)",
     "field-child-age-min": "Child ticket: minimum age",
     "field-child-age-max": "Child ticket: maximum age",
-    "hint-child-ages": "Required if the tour has a child price. Up to 17 years old."
+    "hint-child-ages": "Required if the tour has a child price. Up to 17 years old.",
+    "image-hint": "JPG, PNG or WebP up to 5 MB. It is stored in our own storage.",
+    "image-uploading": "Uploading the photo…",
+    "image-remove": "Remove the photo",
+    "image-error-type": "The photo must be JPG, PNG or WebP.",
+    "image-error-size": "The photo cannot be larger than 5 MB.",
+    "image-error-upload": "Could not upload the photo. Try again."
   },
   "checkout": {
     "title": "Complete your booking",
@@ -692,5 +699,33 @@
     "currency-USD": "US dollars (USD)",
     "currency-CRC": "Colones (CRC)",
     "transfer-amount-hint": "In dollars, exactly the refunded amount ({amount}). In colones, what you transferred at the day's exchange rate."
+  },
+  "privacy": {
+    "nav-label": "Privacy",
+    "page-title": "Personal data requests",
+    "page-intro": "When someone asks to erase their data, look them up by email. Paid bookings are anonymized: the sale record is kept without data that identifies them, as the privacy notice says. Bookings that were never paid are deleted. You have 5 business days to answer. To correct a name or an email, use the booking detail.",
+    "email-label": "Person's email",
+    "search": "Search",
+    "preview-empty": "There are no bookings with that email. There is nothing to erase.",
+    "preview-total": "There {total, plural, one {is # booking} other {are # bookings}} with that email:",
+    "preview-what-happens": "Erasing anonymizes paid or refunded bookings and deletes the ones never paid. It cannot be undone.",
+    "preview-upcoming": "{count, plural, one {One booking is} other {# bookings are}} for tours that have not happened yet: they are anonymized anyway and the person stops receiving notices.",
+    "preview-pending-refund": "There is money pending to be returned to this person. Finish the refund before erasing their data, or they would lose the notice about their money.",
+    "erase": "Erase the data",
+    "erase-ask": "Erase the data of {email}? This cannot be undone.",
+    "erase-done": "Done: {anonymized, plural, one {# booking anonymized} other {# bookings anonymized}} and {deleted, plural, one {# deleted} other {# deleted}}. It was logged.",
+    "error-unauthorized": "Only an administrator can do this.",
+    "error-invalid-email": "That email is not valid.",
+    "error-pending-refund": "There is an unfinished refund: nothing was erased.",
+    "error-error-generic": "Could not complete. Try again.",
+    "contact-title": "Contact details",
+    "contact-name": "Name",
+    "contact-email": "Email",
+    "contact-submit": "Correct",
+    "contact-saved": "Details corrected. Pending notices go to the new email.",
+    "contact-error-unauthorized": "Only an administrator can correct these details.",
+    "contact-error-invalid": "Check the name and the email.",
+    "contact-error-not-found": "This booking no longer has data to correct.",
+    "contact-error-error-generic": "Could not save. Try again."
   }
 }

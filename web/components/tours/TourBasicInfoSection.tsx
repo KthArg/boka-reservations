@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { TourDifficulty } from '@shared/constants/enums';
 import type { TourBasicValues, FieldErrors } from '@/lib/tours/types';
+import { TourImageUpload } from './TourImageUpload';
 import { TourField } from './TourField';
 import styles from './TourForm.module.css';
 
@@ -139,9 +140,7 @@ export default function TourBasicInfoSection({ values, onChange, errors }: Props
           onChange={(v) => onChange('slug', v)}
           errors={errors.slug}
         />
-        <TourField
-          label={t('field-cover-image')}
-          name="cover_image_url"
+        <TourImageUpload
           value={values.cover_image_url}
           onChange={(v) => onChange('cover_image_url', v)}
           errors={errors.cover_image_url}

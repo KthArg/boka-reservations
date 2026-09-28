@@ -17,6 +17,8 @@ export async function applyRetention(): Promise<void> {
 
   const steps: Array<{ fn: string; args: Record<string, unknown> }> = [
     { fn: 'anonymize_bookings_past_retention', args: { p_cutoff: cutoffs.piiCutoff } },
+    // spec 0036: después de anonimizar; solo borra registros ya anonimizados y sin plata pendiente.
+    { fn: 'purge_financial_records', args: { p_cutoff: cutoffs.financialRecordCutoff } },
     { fn: 'purge_unpaid_bookings', args: { p_cutoff: cutoffs.unpaidCutoff } },
     // spec 0031 (§5.2): DESPUÉS de purge_unpaid_bookings, para que los holds que esa purga deja
     // sin reserva en la misma corrida puedan borrarse.
@@ -30,7 +32,7 @@ export async function applyRetention(): Promise<void> {
   const failures: string[] = [];
   for (const step of steps) {
     const { data, error } = (await db.rpc(step.fn, step.args)) as {
-      data: number | null;
+      data: unknown;
       error: { message: string } | null;
     };
     if (error) {
@@ -38,7 +40,7 @@ export async function applyRetention(): Promise<void> {
       failures.push(`${step.fn}: ${error.message}`);
       continue;
     }
-    console.log(`[apply-retention] ${step.fn} — affected ${data ?? 0}`);
+    console.log(`[apply-retention] ${step.fn} — affected ${JSON.stringify(data ?? 0)}`);
   }
 
   if (failures.length > 0) {

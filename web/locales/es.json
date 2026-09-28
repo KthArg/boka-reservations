@@ -130,7 +130,8 @@
       "tour_archive_failed": "No se pudo completar la operación. Intentá de nuevo.",
       "tour_child_ages_required": "El tour tiene precio de niño: indicá las edades del tiquete de niño.",
       "tour_child_ages_invalid": "La edad mínima del tiquete de niño no puede ser mayor que la máxima.",
-      "tour_meeting_point_locked": "El punto de encuentro no se puede cambiar: hay reservas confirmadas en salidas futuras. Si hace falta moverlo, cancelá esas salidas o cambiá las reservas de fecha primero."
+      "tour_meeting_point_locked": "El punto de encuentro no se puede cambiar: hay reservas confirmadas en salidas futuras. Si hace falta moverlo, cancelá esas salidas o cambiá las reservas de fecha primero.",
+      "tour_cover_image_invalid": "La foto tiene que subirse desde este formulario."
     },
     "tour-not-found": "Tour no encontrado.",
     "confirm-archive": "¿Estás seguro? El tour dejará de estar visible.",
@@ -142,7 +143,13 @@
     "field-requirements-en": "Requisitos de edad, condición física u otros (inglés)",
     "field-child-age-min": "Tiquete de niño: edad mínima",
     "field-child-age-max": "Tiquete de niño: edad máxima",
-    "hint-child-ages": "Obligatorias si el tour tiene precio de niño. Hasta 17 años."
+    "hint-child-ages": "Obligatorias si el tour tiene precio de niño. Hasta 17 años.",
+    "image-hint": "JPG, PNG o WebP de hasta 5 MB. Se guarda en el almacenamiento propio.",
+    "image-uploading": "Subiendo la foto…",
+    "image-remove": "Quitar la foto",
+    "image-error-type": "La foto tiene que ser JPG, PNG o WebP.",
+    "image-error-size": "La foto no puede pesar más de 5 MB.",
+    "image-error-upload": "No se pudo subir la foto. Intentá de nuevo."
   },
   "checkout": {
     "title": "Completar reserva",
@@ -692,5 +699,33 @@
     "currency-USD": "Dólares (USD)",
     "currency-CRC": "Colones (CRC)",
     "transfer-amount-hint": "En dólares, exactamente lo reembolsado ({amount}). En colones, lo que transferiste al tipo de cambio del día."
+  },
+  "privacy": {
+    "nav-label": "Privacidad",
+    "page-title": "Pedidos de datos personales",
+    "page-intro": "Cuando una persona pide borrar sus datos, buscala por su correo. Las reservas pagadas se anonimizan: el registro de la venta se conserva sin datos que la identifiquen, como dice el aviso de privacidad. Las que nunca se pagaron se borran. Tenés 5 días hábiles para responder. Para corregir un nombre o un correo, usá el detalle de la reserva.",
+    "email-label": "Correo de la persona",
+    "search": "Buscar",
+    "preview-empty": "No hay reservas con ese correo. No hay nada que borrar.",
+    "preview-total": "Hay {total, plural, one {# reserva} other {# reservas}} con ese correo:",
+    "preview-what-happens": "Al borrar, las reservas pagadas o reembolsadas se anonimizan y las que nunca se pagaron se borran. No se puede deshacer.",
+    "preview-upcoming": "{count, plural, one {Una reserva es} other {# reservas son}} de tours que todavía no ocurrieron: se anonimizan igual y la persona deja de recibir avisos.",
+    "preview-pending-refund": "Hay dinero pendiente de devolverle a esta persona. Terminá el reembolso antes de borrar sus datos: si no, perdería el aviso de su dinero.",
+    "erase": "Borrar los datos",
+    "erase-ask": "¿Borrar los datos de {email}? No se puede deshacer.",
+    "erase-done": "Listo: {anonymized, plural, one {# reserva anonimizada} other {# reservas anonimizadas}} y {deleted, plural, one {# borrada} other {# borradas}}. Quedó registrado.",
+    "error-unauthorized": "Solo un administrador puede hacer esto.",
+    "error-invalid-email": "Ese correo no es válido.",
+    "error-pending-refund": "Hay un reembolso sin terminar: no se borró nada.",
+    "error-error-generic": "No se pudo completar. Intentá de nuevo.",
+    "contact-title": "Datos de contacto",
+    "contact-name": "Nombre",
+    "contact-email": "Correo",
+    "contact-submit": "Corregir",
+    "contact-saved": "Datos corregidos. Los avisos pendientes van al correo nuevo.",
+    "contact-error-unauthorized": "Solo un administrador puede corregir estos datos.",
+    "contact-error-invalid": "Revisá el nombre y el correo.",
+    "contact-error-not-found": "Esta reserva ya no tiene datos que corregir.",
+    "contact-error-error-generic": "No se pudo guardar. Intentá de nuevo."
   }
 }

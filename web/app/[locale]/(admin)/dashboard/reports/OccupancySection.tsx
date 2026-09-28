@@ -2,7 +2,11 @@ import { getTranslations } from 'next-intl/server';
 import { reportTourName, noShowRate, formatRatioPct, type OccupancyRow } from '@/lib/reports/types';
 import styles from './reports.module.css';
 
-type Props = { rows: OccupancyRow[]; locale: string; exportHref: string };
+type Props = {
+  rows: OccupancyRow[];
+  locale: string; /** null: quien mira no es admin y no puede exportar (spec 0036). */
+  exportHref: string | null;
+};
 
 export async function OccupancySection({ rows, locale, exportHref }: Props) {
   const t = await getTranslations('reports');
@@ -11,9 +15,11 @@ export async function OccupancySection({ rows, locale, exportHref }: Props) {
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>{t('occupancy-title')}</h2>
-        <a className={styles.secondaryBtn} href={exportHref}>
-          {t('export-csv')}
-        </a>
+        {exportHref ? (
+          <a className={styles.secondaryBtn} href={exportHref}>
+            {t('export-csv')}
+          </a>
+        ) : null}
       </div>
       {rows.length === 0 ? (
         <p className={styles.empty}>{t('empty')}</p>

@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: Props) {
     redirect(`/${locale}/login`);
   }
 
-  const [tAuth, tTours, tBookings, tGuides, tUsers, tReports, tCommon, tSettings] =
+  const [tAuth, tTours, tBookings, tGuides, tUsers, tReports, tCommon, tSettings, tPrivacy] =
     await Promise.all([
       getTranslations('auth'),
       getTranslations('tours'),
@@ -28,6 +28,7 @@ export default async function AdminLayout({ children }: Props) {
       getTranslations('reports'),
       getTranslations('common'),
       getTranslations('settings'),
+      getTranslations('privacy'),
     ]);
   const user = await getCurrentUser();
 
@@ -52,6 +53,8 @@ export default async function AdminLayout({ children }: Props) {
         icon: 'settings',
         primary: false,
       },
+      // Spec 0036: pedidos de datos personales (borrado a pedido).
+      { href: '/dashboard/privacy', label: tPrivacy('nav-label'), icon: 'privacy', primary: false },
     );
   }
 

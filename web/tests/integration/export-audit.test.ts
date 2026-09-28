@@ -14,10 +14,14 @@ if (!SERVICE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing — load .e
 const admin = createClient<Database>(SUPABASE_URL, SERVICE_KEY);
 
 // Holder hoisted para inyectar el id del admin real (FK audit_logs.actor_id → users).
-const h = vi.hoisted(() => ({ adminUserId: '' }));
+const h = vi.hoisted(() => ({ adminUserId: '', isAdmin: true }));
 
+// Spec 0036: exportar es solo para admin; el staff recibe el rechazo de requireRole.
 vi.mock('@/lib/auth/server', () => ({
-  requireAnyRole: vi.fn(async () => ({ id: h.adminUserId, userRole: 'admin' })),
+  requireRole: vi.fn(async () => {
+    if (!h.isAdmin) throw new Error('UNAUTHORIZED');
+    return { id: h.adminUserId, userRole: 'admin' };
+  }),
 }));
 // No tocar la DB de reservas reales para armar el CSV; el conteo (0) basta para el audit.
 vi.mock('@/lib/booking/export-repository', () => ({
@@ -61,5 +65,18 @@ describe('export de reservas — auditoría PRIV-05', () => {
     expect(row.actor_type).toBe('admin');
     expect(row.entity_type).toBe('export');
     expect(row.metadata).toMatchObject({ from, to, count: 0 });
+  });
+});
+
+describe('export de reservas — solo admin (spec 0036)', () => {
+  it('rechaza al staff sin generar el archivo', async () => {
+    h.isAdmin = false;
+    const res = await GET(
+      new Request(
+        'http://localhost/es/dashboard/bookings/export?dateFrom=2026-01-01&dateTo=2026-01-31',
+      ),
+    );
+    h.isAdmin = true;
+    expect(res.status).toBe(401);
   });
 });

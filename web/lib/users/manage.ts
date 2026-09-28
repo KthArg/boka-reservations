@@ -56,11 +56,37 @@ export async function setUserActive(
     });
     if (error) return { ok: false, error: UserManagementError.WriteFailed };
     if (!deactivated) return { ok: false, error: UserManagementError.LastAdmin };
+    await setSessionsBlocked(db, target.role, id, true);
     return { ok: true };
   }
 
   const { error } = await db.from('users').update({ active }).eq('id', id);
-  return error ? { ok: false, error: UserManagementError.WriteFailed } : { ok: true };
+  if (error) return { ok: false, error: UserManagementError.WriteFailed };
+  await setSessionsBlocked(db, target.role, id, false);
+  return { ok: true };
+}
+
+/** Bloqueo indefinido en Supabase Auth: sin él, la sesión abierta seguiría renovándose. */
+const BLOCKED_BAN_DURATION = '876000h';
+const UNBLOCKED_BAN_DURATION = 'none';
+
+/**
+ * Corta las sesiones de un usuario desactivado (spec 0036): el bloqueo en Auth impide renovar el
+ * token y volver a entrar. El hook del token (…050) ya le niega el token nuevo; esto cierra la
+ * puerta también en Auth. Los guías no tienen cuenta de Auth: entran por enlace.
+ */
+async function setSessionsBlocked(
+  db: ReturnType<typeof createSupabaseServiceClient>,
+  role: string,
+  id: string,
+  blocked: boolean,
+): Promise<void> {
+  if (!LOGIN_ROLES.includes(role as UserRole)) return;
+  const { error } = await db.auth.admin.updateUserById(id, {
+    ban_duration: blocked ? BLOCKED_BAN_DURATION : UNBLOCKED_BAN_DURATION,
+  });
+  if (error)
+    console.error('[users] no se pudo actualizar el bloqueo de sesión:', error.message, id);
 }
 
 /** Reenvía la invitación a un admin/staff que aún no fijó contraseña. */

@@ -1,15 +1,26 @@
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 
 const KEY_SEPARATOR = ':';
 
+/** Solo fuera de producción: en producción el secreto es obligatorio (web/lib/env.ts). */
+const DEVELOPMENT_SECRET = 'boka-development-identifier-hash-secret';
+
+function identifierSecret(): string {
+  const secret = process.env.IDENTIFIER_HASH_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') throw new Error('IDENTIFIER_HASH_SECRET ausente');
+  return DEVELOPMENT_SECRET;
+}
+
 /**
- * Hashea una identidad (email, IP) para la clave del rate limit, así no se guarda PII en
- * claro en el store. SHA-256 hex: no necesita ser anti-forgery (la clave la arma el
- * server), sólo opacar el identificador en reposo. Se normaliza (trim + lowercase) para
+ * Huella de una identidad (email, IP) para la clave del rate limit (spec 0036). HMAC-SHA256 con
+ * un secreto propio: la misma identidad da la misma clave, pero sin el secreto no se puede
+ * recalcular. Un SHA-256 sin clave se revierte probando valores (hay 2³² IPv4), y el aviso de
+ * privacidad promete que la IP se guarda en forma cifrada. Se normaliza (trim + lowercase) para
  * que `Foo@x.com` y `foo@x.com` caigan en la misma clave.
  */
 export function hashIdentifier(value: string): string {
-  return createHash('sha256').update(value.trim().toLowerCase()).digest('hex');
+  return createHmac('sha256', identifierSecret()).update(value.trim().toLowerCase()).digest('hex');
 }
 
 /** Construye la clave del store: `<prefijo>:<identidad-hasheada>`. */

@@ -25,11 +25,12 @@ Los borradores legales para la abogada y el operador están fuera del repo, en `
 
 ## Orden de despliegue
 
-1. **Código en `dev`.** Mergear el PR del spec 0031 y después el del 0032 (la rama del 0032 está apilada sobre la del 0031).
-2. **Base de datos, antes de promover.** Desde `dev`, `npx supabase db push` contra el proyecto linkeado (`zkuoegsjxjgvzkwkqpdr`): aplica la `…045` y la `…046`. Tienen que estar antes del código, porque el merge a `main` despliega solo la web (Vercel) y el worker (Railway), y ese código llama a la firma nueva de `cancel_booking` y lee columnas nuevas. Verificar con `npx supabase migration list --linked`. Antes del push, respaldo manual (`supabase db dump`, con Docker corriendo) si el proyecto todavía no está en Pro.
+1. **Código en `dev`.** Mergear en orden los PR apilados: #84 (spec 0034), #85 (spec 0035) y el del spec 0036.
+2. **Base de datos, antes de promover.** Respaldo manual si el proyecto no está en Pro (`supabase db dump`, con Docker corriendo). Después, desde `dev`, `npx supabase db push` contra el proyecto linkeado (`zkuoegsjxjgvzkwkqpdr`): aplica la `…048`, la `…049` y la `…050`. Tienen que estar antes del código. La `…050` crea el bucket `tour-images` de Storage. Verificar con `npx supabase migration list --linked`.
 3. **Promover** `dev → main` con **merge commit** (nunca squash).
 4. **Variables.** Además de las tablas del runbook:
    - Web: `DEFERRED_CHARGE_ENABLED=false` (explícito, aunque es el default).
+   - Web: `IDENTIFIER_HASH_SECRET` (spec 0036), 32 caracteres o más (`openssl rand -base64 36`). **Sin ella la web no arranca en producción.**
    - Worker: `DEFERRED_CHARGE_ENABLED=false` y `RELEASE_AUTHORIZATIONS_ONLY=false` (spec 0033). Los dos flags del cobro diferido, el de la web y el del worker, se prenden y se apagan juntos: la web encendida con el worker apagado deja reservas que nunca se cobran.
    - Web y worker: no setear `ONVOPAY_API_BASE_URL` ni `NEXT_PUBLIC_ONVOPAY_API_BASE_URL`; el default es la API de producción.
    - Web: `RESEND_API_KEY` **ya no se exige** (se quitó del schema en el spec 0028). El runbook todavía dice lo contrario.
