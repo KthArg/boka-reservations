@@ -1,3 +1,4 @@
+import { routing } from '@/i18n/routing';
 import type { LegalDocumentFactory } from './types';
 import { termsEs } from './terms/2026-09-27.es';
 import { termsEn } from './terms/2026-09-27.en';
@@ -16,7 +17,7 @@ export const LegalText = {
 
 export type LegalTextValue = (typeof LegalText)[keyof typeof LegalText];
 
-type LegalLocale = 'es' | 'en';
+type LegalLocale = (typeof routing.locales)[number];
 
 type Versions = Readonly<Record<string, Readonly<Record<LegalLocale, LegalDocumentFactory>>>>;
 
@@ -47,7 +48,9 @@ export function legalDocumentFor(
   version: string,
   locale: string,
 ): LegalDocumentFactory | null {
-  const byLocale = REGISTRY[text][version];
-  if (!byLocale) return null;
-  return byLocale[locale === 'en' ? 'en' : 'es'];
+  // La versión llega de la URL: solo claves propias del registro, nunca las heredadas del objeto.
+  if (!Object.hasOwn(REGISTRY[text], version)) return null;
+  const byLocale = REGISTRY[text][version]!;
+  const known = routing.locales.find((l) => l === locale);
+  return byLocale[known ?? routing.defaultLocale];
 }

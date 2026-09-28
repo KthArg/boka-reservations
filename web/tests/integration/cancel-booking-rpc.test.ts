@@ -7,8 +7,6 @@ import { AuditActorType } from '@shared/constants/audit';
 import { BookingStatus } from '@shared/constants/enums';
 import { bookingStatus, cleanupSeeds, seed } from './cancellation-fixtures';
 
-const CHECK_VIOLATION = '23514';
-
 const TOTAL = 9000;
 const FEE = 446;
 
@@ -50,6 +48,15 @@ describe('cancel_booking — validaciones', () => {
     ['INVALID_FEE', 'comisión negativa', CancellationReason.CustomerRequest, TOTAL, -1],
     ['INVALID_FEE', 'comisión nula', CancellationReason.CustomerRequest, TOTAL, null],
     ['INVALID_FEE', 'operador con comisión', CancellationReason.OperatorDecision, TOTAL - FEE, FEE],
+    // Spec 0034: reembolsos completos. La comisión se rechaza siempre, también para el turista.
+    ['INVALID_FEE', 'turista con comisión', CancellationReason.CustomerRequest, TOTAL - FEE, FEE],
+    [
+      'INVALID_REFUND_AMOUNT',
+      'turista con monto parcial',
+      CancellationReason.CustomerRequest,
+      TOTAL - FEE,
+      0,
+    ],
     [
       'INVALID_REFUND_AMOUNT',
       'operador con monto parcial',
@@ -60,10 +67,10 @@ describe('cancel_booking — validaciones', () => {
     ['INVALID_REFUND_AMOUNT', 'operador sin monto', CancellationReason.OperatorDecision, 0, 0],
     [
       'INVALID_REFUND_AMOUNT',
-      'monto + comisión sobre el total',
+      'monto sobre el total',
       CancellationReason.CustomerRequest,
-      TOTAL,
-      FEE,
+      TOTAL + 1,
+      0,
     ],
     ['INVALID_REFUND_AMOUNT', 'monto negativo', CancellationReason.CustomerRequest, -1, 0],
   ])('rechaza con %s (%s) sin cancelar', async (code, _case, reason, refund, fee) => {
@@ -80,27 +87,29 @@ describe('cancel_booking — validaciones', () => {
 });
 
 describe('cancel_booking — resultados', () => {
-  // Spec 0034: los reembolsos son siempre completos. La base rechaza un reembolso con comisión
-  // aunque un llamador la pase, y la transacción entera se deshace.
-  it('rechaza un reembolso con comisión y deja la reserva como estaba', async () => {
+  it('el turista con 24 h o más recibe el total, sin comisión', async () => {
     // Arrange
     const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
     // Act
-    const { error } = await cancel(bookingId, CancellationReason.CustomerRequest, TOTAL - FEE, FEE);
+    const { data } = await cancel(bookingId, CancellationReason.CustomerRequest, TOTAL, 0);
 
     // Assert
-    expect(error?.code).toBe(CHECK_VIOLATION);
-    expect(error?.message).toContain('refunds_no_processing_fee_check');
-    expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Confirmed);
+    expect(data).toBe(CancelBookingOutcome.Cancelled);
+    const { data: refund } = await admin
+      .from('refunds')
+      .select('amount_cents, processing_fee_cents')
+      .eq('booking_id', bookingId)
+      .single();
+    expect(refund).toEqual({ amount_cents: TOTAL, processing_fee_cents: 0 });
   });
 
-  it('sin monto a reembolsar (la comisión cubre el total) no encola reembolso', async () => {
+  it('sin monto a reembolsar (menos de 24 h) no encola reembolso', async () => {
     // Arrange
     const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
     // Act
-    const { data } = await cancel(bookingId, CancellationReason.CustomerRequest, 0, TOTAL);
+    const { data } = await cancel(bookingId, CancellationReason.CustomerRequest, 0, 0);
 
     // Assert
     expect(data).toBe(CancelBookingOutcome.Cancelled);
@@ -108,12 +117,12 @@ describe('cancel_booking — resultados', () => {
     expect(refunds).toEqual([]);
   });
 
-  it('recorta la comisión guardada si el tope por lo cobrado recorta el monto', async () => {
+  it('capa el reembolso a lo efectivamente cobrado', async () => {
     // Arrange: se cobró menos que el total (caso teórico: lo impide el guard de payment_mismatch).
     const { bookingId } = await seed(admin, { hoursAhead: 48, paymentAmountCents: 8000 });
 
     // Act
-    await cancel(bookingId, CancellationReason.CustomerRequest, TOTAL - FEE, FEE);
+    await cancel(bookingId, CancellationReason.CustomerRequest, TOTAL, 0);
 
     // Assert
     const { data: refund } = await admin

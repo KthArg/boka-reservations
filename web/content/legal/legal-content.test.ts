@@ -51,6 +51,13 @@ describe('registro de versiones', () => {
     expect(legalDocumentFor(LegalText.Terms, '2020-01-01', 'es')).toBeNull();
   });
 
+  it.each(['constructor', 'toString', '__proto__'])(
+    'la versión %s, que llega de la URL, no tiene documento',
+    (version) => {
+      expect(legalDocumentFor(LegalText.Terms, version, 'es')).toBeNull();
+    },
+  );
+
   it('un idioma desconocido cae en la versión en español, que es la que prevalece', () => {
     const factory = legalDocumentFor(LegalText.Terms, TERMS_VERSION, 'fr');
     expect(factory?.(OPERATOR).title).toBe('Términos y condiciones de reserva');

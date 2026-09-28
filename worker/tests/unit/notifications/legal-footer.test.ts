@@ -5,6 +5,7 @@ import {
   withLegalFooter,
 } from '../../../src/notifications/templates/legal-footer.js';
 import { LEGAL_FOOTER_MARKER, wrapHtml } from '../../../src/notifications/templates/layout.js';
+import { renderBookingLegal } from '../../../src/notifications/templates/booking-legal.js';
 import { vatIncludedCents } from '../../../src/notifications/templates/format.js';
 import { vatIncludedCents as sharedVatIncludedCents } from '../../../../shared/constants/policies.js';
 import type { OperatorIdentity } from '../../../src/notifications/operator.js';
@@ -75,4 +76,24 @@ describe('vatIncludedCents del worker', () => {
       expect(vatIncludedCents(cents)).toBe(sharedVatIncludedCents(cents));
     },
   );
+});
+
+describe('renderBookingLegal — versiones aceptadas', () => {
+  const input = {
+    appUrl: 'https://example.com',
+    termsVersion: '2026-09-27',
+    privacyVersion: '2026-09-27',
+    toleranceMinutes: 15,
+  };
+
+  it('enlaza las versiones publicadas', () => {
+    const { text } = renderBookingLegal(input, 'es');
+    expect(text.join('\n')).toContain('https://example.com/es/terms/2026-09-27');
+  });
+
+  it('no enlaza una versión que no tiene página publicada', () => {
+    const { html, text } = renderBookingLegal({ ...input, termsVersion: '2026-09-23' }, 'es');
+    expect(html).not.toContain('/terms/');
+    expect(text.join('\n')).not.toContain('Aceptaste');
+  });
 });

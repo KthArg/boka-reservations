@@ -1,8 +1,7 @@
-// Compuertas de venta del spec 0034: datos del operador completos y tour con la información que
-// promete la cláusula 3 de los términos.
+// Compuerta de venta por tour (spec 0034): la información que promete la cláusula 3 de los
+// términos.
 import { describe, expect, it } from 'vitest';
 import { isTourBookable } from './tour-bookable';
-import { isOperatorIdentityComplete, type OperatorIdentity } from '@/lib/operator/types';
 
 const TOUR = {
   excludes_es: 'Transporte',
@@ -32,37 +31,5 @@ describe('isTourBookable', () => {
     const noAges = { ...TOUR, child_age_min: null, child_age_max: null };
     expect(isTourBookable(noAges, [ADULT])).toBe(true);
     expect(isTourBookable(noAges, [ADULT, CHILD])).toBe(false);
-  });
-});
-
-const OPERATOR: OperatorIdentity = {
-  legalName: 'Boka Verde Tours S.A.',
-  taxId: '3-101-123456',
-  address: 'San José',
-  brand: 'Boka Verde',
-  contactEmail: 'hola@bokaverde.cr',
-  privacyEmail: 'privacidad@bokaverde.cr',
-  phone: '+506 2222-2222',
-  hours: 'de lunes a viernes',
-  ictDeclaration: '',
-  hasLiabilityPolicy: false,
-};
-
-describe('isOperatorIdentityComplete', () => {
-  it('acepta la identidad completa sin declaratoria del ICT, que es opcional', () => {
-    expect(isOperatorIdentityComplete(OPERATOR)).toBe(true);
-  });
-
-  it.each([
-    'legalName',
-    'taxId',
-    'address',
-    'brand',
-    'contactEmail',
-    'privacyEmail',
-    'phone',
-    'hours',
-  ] as const)('rechaza la identidad sin %s', (field) => {
-    expect(isOperatorIdentityComplete({ ...OPERATOR, [field]: ' ' })).toBe(false);
   });
 });

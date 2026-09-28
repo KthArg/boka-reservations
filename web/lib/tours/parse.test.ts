@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ChargeTiming } from '@shared/constants/tours';
+import { ChargeTiming, TourActionError } from '@shared/constants/tours';
 import { parseTourFields } from './parse';
 import { TourFormSchema } from './types';
 
@@ -139,5 +139,35 @@ describe('TourFormSchema — charge_timing y charge_lead_hours', () => {
 
     // Assert
     expect(result.success).toBe(false);
+  });
+});
+
+describe('TourFormSchema — información publicada (spec 0034)', () => {
+  function issuesFor(fields: Record<string, string>): string[] {
+    const result = TourFormSchema.safeParse(parseTourFields(formWith(fields)));
+    return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  }
+
+  it.each(['excludes_es', 'excludes_en', 'requirements_es', 'requirements_en'])(
+    'rechaza %s vacío',
+    (field) => {
+      expect(issuesFor({ ...VALID_FIELDS, [field]: '  ' })).not.toEqual([]);
+    },
+  );
+
+  it('rechaza una sola de las dos edades del tiquete de niño', () => {
+    expect(issuesFor({ ...VALID_FIELDS, child_age_min: '6', child_age_max: '' })).toContain(
+      TourActionError.ChildAgesRequired,
+    );
+  });
+
+  it('rechaza edades invertidas', () => {
+    expect(issuesFor({ ...VALID_FIELDS, child_age_min: '12', child_age_max: '6' })).toContain(
+      TourActionError.ChildAgesInvalid,
+    );
+  });
+
+  it('acepta las dos edades en orden', () => {
+    expect(issuesFor({ ...VALID_FIELDS, child_age_min: '3', child_age_max: '11' })).toEqual([]);
   });
 });

@@ -47,6 +47,7 @@ const PARAMS = {
   bookingId: 'booking-1',
   actorType: AuditActorType.Tourist,
   reason: CancellationReason.CustomerRequest,
+  expected: { status: 'confirmed', refundAmountCents: 9000 },
 };
 
 describe('cancelBooking — spec 0032', () => {
@@ -84,6 +85,7 @@ describe('cancelBooking — restricción de admin en el borde exacto', () => {
     actorType: AuditActorType.Staff,
     reason: CancellationReason.OperatorDecision,
     isAdmin: false,
+    expected: { status: 'confirmed', refundAmountCents: 9000 },
   };
 
   it('con la salida empezando justo ahora, un staff no reembolsa el total', async () => {
@@ -108,6 +110,13 @@ describe('cancelBooking — restricción de admin en el borde exacto', () => {
 });
 
 describe('cancelBooking — lo que vio quien cancela', () => {
+  it('no cancela una reserva cobrada sin el monto que vio quien cancela', async () => {
+    const db = fakeDb(row());
+    const result = await cancelBooking(db, { ...PARAMS, expected: undefined }, NOW);
+    expect(result).toEqual({ ok: false, error: CancellationError.StateChanged });
+    expect((db as { rpc: ReturnType<typeof vi.fn> }).rpc).not.toHaveBeenCalled();
+  });
+
   it('no cancela si el estado cambió', async () => {
     const db = fakeDb(row());
     const expected = { status: 'pending_minimum', refundAmountCents: 0 };

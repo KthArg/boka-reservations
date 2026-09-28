@@ -128,6 +128,11 @@ export async function completeDeferredCheckoutAction(
   if (!parsed.success) return GENERIC;
   const input = parseCheckoutInput(fieldGetter(parsed.data.fields));
   if (!input) return GENERIC;
+  // Otra vez las compuertas: entre el paso 1 y este el admin pudo cerrar la venta o vaciar la
+  // información del tour, y este paso es el que crea la reserva.
+  if (!(await isSalesEnabled()) || !(await isInstanceSellable(input.instanceId))) {
+    return { error: CheckoutErrorKey.SalesNotEnabled };
+  }
 
   // La cookie HttpOnly del paso 1 prueba que este navegador es el dueño del hold.
   const sessionToken = (await cookies()).get(HOLD_SESSION_COOKIE)?.value;

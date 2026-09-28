@@ -91,6 +91,11 @@ export const TourFormSchema = z
     message: 'La capacidad máxima debe ser mayor o igual al mínimo de participantes',
     path: ['max_capacity'],
   })
+  // Las dos edades o ninguna (tours_child_ages_check, …048).
+  .refine((d) => (d.child_age_min === null) === (d.child_age_max === null), {
+    message: TourActionError.ChildAgesRequired,
+    path: ['child_age_min'],
+  })
   // Con tiquete de niño, los términos remiten a las edades publicadas en la página del tour.
   .refine(
     (d) =>

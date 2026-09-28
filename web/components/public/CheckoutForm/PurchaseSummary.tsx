@@ -1,8 +1,8 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { vatIncludedCents } from '@shared/constants/policies';
-import { CENTS_PER_UNIT } from '@shared/constants/bookings';
+import { formatAmountCents } from '@/lib/format/money';
 import type { TicketCounts } from './CheckoutDetailsFields';
 import styles from './CheckoutForm.module.css';
 
@@ -18,13 +18,17 @@ export type PurchaseSummaryInfo = {
   toleranceMinutes: number;
 };
 
+const TICKET_KEYS = [
+  ['adult', 'summary-ticket-adult'],
+  ['child', 'summary-ticket-child'],
+  ['student', 'summary-ticket-student'],
+] as const;
+
 type Props = {
   info: PurchaseSummaryInfo;
   quantities: TicketCounts;
   totalCents: number;
 };
-
-const usd = (cents: number) => (cents / CENTS_PER_UNIT).toFixed(2);
 
 /**
  * Resumen antes de pagar (textos aprobados §3.1; términos, cláusulas 4 y 5): tour, fecha, punto
@@ -33,6 +37,12 @@ const usd = (cents: number) => (cents / CENTS_PER_UNIT).toFixed(2);
  */
 export function PurchaseSummary({ info, quantities, totalCents }: Props) {
   const t = useTranslations('checkout');
+  const locale = useLocale();
+  const usd = (cents: number) => formatAmountCents(cents, locale);
+  // Solo los tipos comprados: "2 adultos, 1 niño", sin "0 estudiantes".
+  const tickets = TICKET_KEYS.filter(([type]) => quantities[type] > 0)
+    .map(([type, key]) => t(key, { count: quantities[type] }))
+    .join(', ');
 
   return (
     <section className={styles.section} aria-labelledby="purchase-summary-title">
@@ -46,7 +56,7 @@ export function PurchaseSummary({ info, quantities, totalCents }: Props) {
           meetingPoint: info.meetingPoint,
         })}
       </p>
-      <p className={styles.summaryLine}>{t('summary-tickets', quantities)}</p>
+      <p className={styles.summaryLine}>{tickets}</p>
       <p className={styles.summaryLine}>
         <strong>
           {t('summary-total', {

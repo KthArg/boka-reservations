@@ -353,7 +353,10 @@ describe('completeDeferredCheckoutAction — rechazos', () => {
     const result = await completeDeferredCheckoutAction({ ...base, ...change, fields } as never);
 
     // Assert
-    expect(['error-generic', 'hold-expired']).toContain((result as { error: string }).error);
+    // Una salida desconocida la corta antes la compuerta de venta (spec 0034).
+    expect(['error-generic', 'hold-expired', 'sales-not-enabled']).toContain(
+      (result as { error: string }).error,
+    );
     expect(provider.getPaymentMethod).not.toHaveBeenCalled();
     expect(await bookingsForHold(started.holdId)).toBe(0);
   });

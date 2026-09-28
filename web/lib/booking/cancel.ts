@@ -80,8 +80,9 @@ export async function cancelBooking(
     reason,
     now,
   });
-  // Se cruzó el borde de 24 h desde que se mostró el monto.
-  if (params.expected && params.expected.refundAmountCents !== refund.amountCents) {
+  // Una reserva cobrada solo se cancela contra el monto que vio quien cancela: sin él no hay
+  // forma de saber si se cruzó el borde de 24 h.
+  if (!params.expected || params.expected.refundAmountCents !== refund.amountCents) {
     return STATE_CHANGED;
   }
 

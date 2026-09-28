@@ -51,3 +51,43 @@ Rama: feat/0034-terminos-definitivos
 - Spec 0037: factura electrónica ante Hacienda.
 - Cargar los datos reales del operador en producción antes de abrir ventas
   (`docs/lanzamiento-checklist.md`).
+
+## 2026-09-27 — Correcciones de las revisiones
+
+Revisiones de db-schema-guardian, payment-flow-auditor y code-reviewer sobre el PR #84.
+
+**Hecho**:
+
+- Los términos nombran el botón real del correo: "Ver mi reserva" / "View my booking".
+- `cancel_booking` (reemplazada en `…048`, misma firma): comisión siempre 0 (`INVALID_FEE`) y
+  la cancelación del turista reembolsa el total o nada (`INVALID_REFUND_AMOUNT`).
+- El trigger de la tolerancia falla (`BUSINESS_SETTINGS_MISSING`) si no existe la fila de
+  configuración, en lugar de dejar la reserva sin tolerancia.
+- Compuertas que fallan cerradas: la identidad ilegible no da un 500 sino "venta cerrada"; el
+  precio de niño se lee con su propio manejo de error; el paso 2 del cobro diferido vuelve a
+  verificar las compuertas antes de crear la reserva.
+- `computeRefund` lanza ante una fecha inválida (antes devolvía el total).
+- Cancelar desde el panel una reserva cobrada exige el monto que mostró el diálogo.
+- Plantillas del worker sin la línea de comisión; el correo de confirmación solo enlaza versiones
+  legales publicadas (espejo de versiones en `booking-legal.ts`).
+- Acción de identidad del operador: aborta si no puede leer el valor anterior (lo necesita la
+  auditoría); test de integración nuevo (`operator-settings-action.test.ts`).
+- Formulario de tours: las dos edades o ninguna, igual que el CHECK.
+- Montos del checkout con el separador del idioma; minutos del apartado desde
+  `HOLD_TTL_MINUTES`; tiquetes en plural y sin tipos en cero.
+- Impresión sin la cabecera del sitio; excepción de `max-lines` acotada a los textos legales;
+  el registro legal ignora claves heredadas en la versión que llega por URL.
+
+**Decisiones**:
+
+- **Textos legales como datos `.ts`, no componentes TSX** (el spec §5 hablaba de
+  `<texto>/<versión>/{es,en}.tsx`): un documento es una lista de secciones y bloques que arma
+  una sola vista, con los datos del operador como parámetro. Así el test de contenido recorre
+  todas las versiones buscando marcadores, y la vista impresa y la web son la misma.
+
+**Pendiente**:
+
+- Borrar la firma vieja de 4 parámetros de `cancel_booking` (`…042`): anotado en "Después del
+  lanzamiento" del checklist.
+- La factura electrónica que prometen los términos se emite a mano hasta el spec 0037
+  (checklist de lanzamiento).

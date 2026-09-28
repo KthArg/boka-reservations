@@ -89,3 +89,16 @@ describe('versiones de términos', () => {
     expect(TERMS_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
+
+describe('computeRefund — fecha inválida', () => {
+  it('lanza en lugar de devolver el total', () => {
+    expect(() =>
+      computeRefund({
+        startsAt: new Date(''),
+        totalAmountCents: TOTAL,
+        reason: CancellationReason.CustomerRequest,
+        now,
+      }),
+    ).toThrow();
+  });
+});

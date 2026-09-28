@@ -68,5 +68,8 @@ export function computeRefund({
   if (reason === CancellationReason.OperatorDecision) return full;
 
   const leadMs = startsAt.getTime() - now.getTime();
+  // Una fecha inválida no puede terminar en un reembolso: NaN < ventana da false y devolvería el
+  // total.
+  if (Number.isNaN(leadMs)) throw new Error('computeRefund: fecha de inicio inválida');
   return leadMs < CANCELLATION_WINDOW_MS ? NO_REFUND : full;
 }

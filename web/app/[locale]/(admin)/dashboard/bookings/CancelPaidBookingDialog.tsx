@@ -16,9 +16,8 @@ export type ReasonPreview = { amountCents: number; amount: string | null };
 
 type Props = {
   bookingId: string;
-  /** `null`: la vista previa no se pudo calcular y la opción queda deshabilitada. */
-  customer: ReasonPreview | null;
-  operator: ReasonPreview | null;
+  customer: ReasonPreview;
+  operator: ReasonPreview;
   /** Staff sobre una salida que ya empezó: solo un admin reembolsa el total (spec 0032). */
   operatorAllowed: boolean;
 };
@@ -32,9 +31,9 @@ const ERROR_KEYS: Partial<Record<CancellationError, string>> = {
 };
 
 /**
- * Cancelación de una reserva cobrada desde el panel (spec 0032): el staff elige si cancela a
- * pedido del cliente (se descuenta la comisión si corresponde) o por decisión del operador
- * (reembolso total). Sin opción preseleccionada; confirmar queda deshabilitado hasta elegir. El
+ * Cancelación de una reserva cobrada desde el panel (specs 0032 y 0034): el staff elige si cancela
+ * a pedido del cliente (el total con 24 h o más, nada con menos) o por decisión del operador
+ * (siempre el total). Sin opción preseleccionada; confirmar queda deshabilitado hasta elegir. El
  * servidor rechaza si el monto mostrado ya no es el que corresponde.
  */
 export function CancelPaidBookingDialog(props: Props) {
@@ -54,16 +53,15 @@ export function CancelPaidBookingDialog(props: Props) {
     },
   ];
 
-  function detail(preview: ReasonPreview | null, allowed: boolean): string {
+  function detail(preview: ReasonPreview, allowed: boolean): string {
     if (!allowed) return t('cancel-option-admin-only');
-    if (!preview) return t('cancel-error');
     if (!preview.amount) return t('cancel-option-no-refund');
     return t('cancel-option-refund', { amount: preview.amount });
   }
 
   function confirm() {
     const chosen = options.find((option) => option.value === reason);
-    if (!chosen?.preview) return;
+    if (!chosen) return;
     const expectedCents = chosen.preview.amountCents;
     startTransition(async () => {
       const result = await cancelByStaff(props.bookingId, chosen.value, expectedCents);
@@ -102,7 +100,7 @@ export function CancelPaidBookingDialog(props: Props) {
                 name="cancel-reason"
                 value={option.value}
                 checked={reason === option.value}
-                disabled={!option.allowed || !option.preview}
+                disabled={!option.allowed}
                 onChange={() => setReason(option.value)}
               />
               <span>

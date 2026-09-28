@@ -5,6 +5,14 @@ import { escapeHtml } from './format.js';
 // y que no se comparta, la política de cancelación, la tolerancia de llegada tarde y las
 // versiones aceptadas con enlace a cada una. La cláusula 2 de los términos promete ese enlace.
 
+// Espejo de las versiones publicadas en web/content/legal/registry.ts (el worker no importa
+// @shared ni la web en runtime). Una versión que no está acá no tiene página: el correo no la
+// enlaza, para no mandar al turista a un 404 ni mostrarle un marcador de borrador.
+const PUBLISHED_TERMS_VERSIONS: readonly string[] = ['2026-09-27'];
+const PUBLISHED_PRIVACY_VERSIONS: readonly string[] = ['2026-09-27'];
+const TERMS_SEGMENT = 'terms';
+const PRIVACY_SEGMENT = 'privacy';
+
 export type BookingLegalInput = {
   appUrl: string;
   termsVersion: string | null;
@@ -60,9 +68,14 @@ export function renderBookingLegal(
     text.push('', t.tolerance(input.toleranceMinutes));
   }
 
-  if (input.termsVersion && input.privacyVersion) {
-    const termsUrl = versionUrl(input, locale, 'terms', input.termsVersion);
-    const privacyUrl = versionUrl(input, locale, 'privacy', input.privacyVersion);
+  if (
+    input.termsVersion &&
+    input.privacyVersion &&
+    PUBLISHED_TERMS_VERSIONS.includes(input.termsVersion) &&
+    PUBLISHED_PRIVACY_VERSIONS.includes(input.privacyVersion)
+  ) {
+    const termsUrl = versionUrl(input, locale, TERMS_SEGMENT, input.termsVersion);
+    const privacyUrl = versionUrl(input, locale, PRIVACY_SEGMENT, input.privacyVersion);
     html.push(
       paragraph(
         `${t.accepted} <a href="${escapeHtml(termsUrl)}">${escapeHtml(t.terms(input.termsVersion))}</a> ${t.and} <a href="${escapeHtml(privacyUrl)}">${escapeHtml(t.privacy(input.privacyVersion))}</a>.`,

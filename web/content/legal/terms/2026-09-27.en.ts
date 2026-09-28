@@ -111,7 +111,7 @@ export const termsEn: LegalDocumentFactory = (op) => ({
           'If you do not show up, or arrive after the late-arrival tolerance shown in the purchase summary and in your confirmation email without letting us know: it counts as a no-show and there is no refund.',
         ),
         p(
-          'Hours are counted in Costa Rica time. You can cancel at any time from the "Manage my booking" link in the confirmation email; before confirming the cancellation, the system shows you the amount that will be refunded.',
+          'Hours are counted in Costa Rica time. You can cancel at any time from the "View my booking" button in the confirmation email; before confirming the cancellation, the system shows you the amount that will be refunded.',
         ),
         p(
           `If you prefer to change the date instead of cancelling, write to us at ${op.contactEmail} at least 24 hours in advance. We move your booking to another departure of the same tour with available seats, at no cost, and confirm the new date by email.`,

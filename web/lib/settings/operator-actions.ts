@@ -16,6 +16,9 @@ import { BUSINESS_SETTINGS_ID, SettingsActionError } from '@shared/constants/set
 import { OPERATOR_TEXT_FIELDS, OperatorSettingsFormSchema } from './operator-types';
 import type { SettingsFormResult } from './types';
 
+/** Valor que manda un checkbox marcado en un FormData. */
+const CHECKBOX_ON = 'on';
+
 const OPERATOR_COLUMNS = [
   ...OPERATOR_TEXT_FIELDS,
   'operator_has_liability_policy',
@@ -40,7 +43,7 @@ export async function updateOperatorSettings(
   );
   const parsed = OperatorSettingsFormSchema.safeParse({
     ...raw,
-    operator_has_liability_policy: formData.get('operator_has_liability_policy') === 'on',
+    operator_has_liability_policy: formData.get('operator_has_liability_policy') === CHECKBOX_ON,
     no_show_tolerance_minutes: formData.get('no_show_tolerance_minutes'),
   });
   if (!parsed.success) {
@@ -54,11 +57,20 @@ export async function updateOperatorSettings(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data: before } = await supabase
+  // El valor anterior es lo que la auditoría tiene que conservar: sin él no se guarda nada.
+  const { data: before, error: readError } = await supabase
     .from('business_settings')
     .select(OPERATOR_COLUMNS.join(', '))
     .eq('id', BUSINESS_SETTINGS_ID)
     .single();
+  if (readError) {
+    console.error(
+      '[settings] no se pudo leer la identidad del operador:',
+      readError.code,
+      admin.id,
+    );
+    return { success: false, error: SettingsActionError.UpdateFailed };
+  }
 
   const { data, error } = await supabase
     .from('business_settings')
@@ -81,7 +93,7 @@ export async function updateOperatorSettings(
     action: AuditAction.OperatorSettingsUpdated,
     entityType: AuditEntityType.BusinessSettings,
     entityId: BUSINESS_SETTINGS_AUDIT_ENTITY_ID,
-    metadata: { before: before ?? null, after: parsed.data },
+    metadata: { before, after: parsed.data },
   });
 
   // Cambian el pie, los términos y el resumen de compra: se revalida todo el sitio.

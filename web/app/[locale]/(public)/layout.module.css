@@ -92,3 +92,10 @@
     padding: var(--space-xl) var(--space-md);
   }
 }
+
+/* Los textos legales se imprimen o se guardan en PDF sin la navegación del sitio (spec 0034). */
+@media print {
+  .header {
+    display: none;
+  }
+}

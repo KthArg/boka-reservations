@@ -108,7 +108,7 @@ export const termsEs: LegalDocumentFactory = (op) => ({
           'Si no se presenta, o llega después de la tolerancia de llegada tarde indicada en el resumen de compra y en su correo de confirmación sin avisarnos: se considera no presentación y no hay reembolso.',
         ),
         p(
-          'Las horas se cuentan en hora de Costa Rica. Puede cancelar en cualquier momento desde el enlace "Gestionar mi reserva" del correo de confirmación; antes de confirmar la cancelación, el sistema le muestra el monto que se le devolverá.',
+          'Las horas se cuentan en hora de Costa Rica. Puede cancelar en cualquier momento desde el botón "Ver mi reserva" del correo de confirmación; antes de confirmar la cancelación, el sistema le muestra el monto que se le devolverá.',
         ),
         p(
           `Si prefiere cambiar la fecha en lugar de cancelar, escríbanos a ${op.contactEmail} con al menos 24 horas de anticipación. Pasamos su reserva a otra salida del mismo tour con cupos disponibles, sin costo, y le confirmamos la fecha nueva por correo.`,

@@ -49,7 +49,7 @@ const eslintConfig = defineConfig([
   {
     // Locales i18n, tipos y textos legales versionados (spec 0034): datos puros, excluir límite de
     // líneas. Partir un documento legal en pedazos de 150 líneas lo haría más difícil de revisar.
-    files: ['locales/**', 'types/**', 'content/**'],
+    files: ['locales/**', 'types/**', 'content/legal/terms/**', 'content/legal/privacy/**'],
     rules: {
       'max-lines': 'off',
     },
