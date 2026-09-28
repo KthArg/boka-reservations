@@ -8,7 +8,32 @@ export enum RefundStatus {
   Succeeded = 'succeeded',
   /** OnvoPay rechazó o se agotaron los reintentos (retry manual). */
   Failed = 'failed',
+  /** La tarjeta no lo aceptó: se devuelve por transferencia o SINPE Móvil (spec 0035). */
+  AwaitingTransfer = 'awaiting_transfer',
 }
+
+/** Cómo se devolvió el dinero (spec 0035). */
+export const RefundMethod = {
+  Card: 'card',
+  Transfer: 'transfer',
+} as const;
+
+/** Canal de una devolución por transferencia (spec 0035). */
+export const TransferChannel = {
+  SinpeMovil: 'sinpe_movil',
+  BankTransfer: 'bank_transfer',
+} as const;
+
+export type TransferChannelValue = (typeof TransferChannel)[keyof typeof TransferChannel];
+
+/** Moneda en que se hizo la transferencia: la del cobro, o colones por SINPE Móvil. */
+export const TransferCurrency = {
+  Usd: 'USD',
+  Crc: 'CRC',
+} as const;
+
+/** Largo máximo del comprobante de una transferencia. */
+export const TRANSFER_REFERENCE_MAX_LENGTH = 100;
 
 /** Motivo enviado a OnvoPay al crear el reembolso. */
 export const REFUND_REASON_REQUESTED = 'requested_by_customer';
@@ -31,3 +56,16 @@ export const REFUND_MANUAL_CHECK_REASONS: readonly string[] = [
   'processing-stale',
   'ambiguous-timeout',
 ];
+
+/**
+ * Motivos con que OnvoPay todavía puede acreditar el reembolso a la tarjeta (spec 0035): los de
+ * verificación manual y el timeout de la consulta. Espeja la lista de request_refund_transfer
+ * (…049): con uno de estos, devolver por transferencia pagaría dos veces.
+ */
+export const REFUND_UNSETTLED_REASONS: readonly string[] = [
+  ...REFUND_MANUAL_CHECK_REASONS,
+  'processing-timeout',
+];
+
+/** OnvoPay no encontró el pago: no pudo crear el reembolso, aunque la fila no tenga id externo. */
+export const REFUND_PAYMENT_MISSING_REASON = 'payment-intent-missing';

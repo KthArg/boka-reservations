@@ -13,6 +13,12 @@ const confirmationProps = {
   totalAmountCents: 15_000,
   currency: 'USD',
   bookingUrl: 'https://example.com/es/reserva/abc',
+  legal: {
+    appUrl: 'https://example.com',
+    termsVersion: '2026-09-27',
+    privacyVersion: '2026-09-27',
+    toleranceMinutes: 15,
+  },
 };
 
 const reminderProps = {
@@ -57,6 +63,39 @@ describe('renderBookingConfirmation', () => {
   it('formatea monto con la moneda recibida', () => {
     const out = renderBookingConfirmation(confirmationProps, 'es');
     expect(out.text).toMatch(/150[.,]00/);
+  });
+
+  // Spec 0034: lo que la cláusula 2 de los términos y los textos aprobados prometen del correo.
+  it('desglosa el IVA incluido del total', () => {
+    const out = renderBookingConfirmation(confirmationProps, 'es');
+    // 15 000 × 13 / 113 = 1725,66…
+    expect(out.text).toMatch(/IVA incluido: .*17[.,]26/);
+  });
+
+  it('enlaza las versiones aceptadas de los términos y del aviso de privacidad', () => {
+    const out = renderBookingConfirmation(confirmationProps, 'es');
+    expect(out.html).toContain('https://example.com/es/terms/2026-09-27');
+    expect(out.html).toContain('https://example.com/es/privacy/2026-09-27');
+    expect(out.text).toContain('Términos y condiciones (versión 2026-09-27)');
+  });
+
+  it('incluye la política de cancelación, la tolerancia y el aviso de no compartir el enlace', () => {
+    const out = renderBookingConfirmation(confirmationProps, 'es');
+    expect(out.text).toContain('24 horas o más');
+    expect(out.text).toContain('Tolerancia de llegada tarde: 15 minutos');
+    expect(out.text).toContain('No lo compartas');
+  });
+
+  it('omite versiones y tolerancia en una reserva anterior a los términos', () => {
+    const out = renderBookingConfirmation(
+      {
+        ...confirmationProps,
+        legal: { ...confirmationProps.legal, termsVersion: null, toleranceMinutes: null },
+      },
+      'es',
+    );
+    expect(out.text).not.toContain('versión');
+    expect(out.text).not.toContain('Tolerancia');
   });
 });
 

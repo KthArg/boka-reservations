@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireAnyRole } from '@/lib/auth/server';
-import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
+import { requireRole } from '@/lib/auth/server';
+import { UserRole } from '@shared/constants/enums';
 import { ReportKind, REPORT_UNKNOWN_ERROR } from '@shared/constants/reports';
 import { validateReportRange, type ReportRange } from '@/lib/reports/range';
 import { getRevenueReport, getOccupancyReport, getRefundsSummary } from '@/lib/reports/queries';
@@ -26,7 +26,8 @@ async function buildCsv(
 }
 
 export async function GET(request: Request, { params }: RouteContext): Promise<NextResponse> {
-  const user = await requireAnyRole(ADMIN_PANEL_ROLES).catch(() => null);
+  const user = await requireRole(UserRole.Admin).catch(() => null);
+  // Spec 0036: exportar datos de clientes es solo para admin (aviso de privacidad, P4 y P8).
   if (!user) return new NextResponse('Unauthorized', { status: 401 });
 
   const { locale } = await params;

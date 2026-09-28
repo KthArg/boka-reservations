@@ -6,6 +6,7 @@ import type { PublicPricing } from '@/lib/public/tours';
 import { startDeferredCheckoutAction } from '@/lib/booking/deferred-checkout-action';
 import { calculateTotalCents } from '@/lib/booking/pricing-math';
 import { CheckoutDetailsFields, type TicketCounts } from './CheckoutDetailsFields';
+import type { PurchaseSummaryInfo } from './PurchaseSummary';
 import { CardDetailsForm } from './CardDetailsForm';
 import styles from './CheckoutForm.module.css';
 import deferredStyles from './DeferredCheckout.module.css';
@@ -13,6 +14,7 @@ import deferredStyles from './DeferredCheckout.module.css';
 type Props = {
   instanceId: string;
   pricing: PublicPricing[];
+  summary: PurchaseSummaryInfo;
 };
 
 const INITIAL_QUANTITIES: TicketCounts = { adult: 1, child: 0, student: 0 };
@@ -36,6 +38,7 @@ export function DeferredCheckoutForm(props: Props) {
 function DeferredCheckoutSteps({
   instanceId,
   pricing,
+  summary,
   onRestart,
 }: Props & { onRestart: () => void }) {
   const t = useTranslations('checkout');
@@ -53,6 +56,7 @@ function DeferredCheckoutSteps({
     <form action={action} className={styles.form}>
       <input type="hidden" name="instance_id" value={instanceId} />
       <CheckoutDetailsFields
+        summary={summary}
         pricing={pricing}
         quantities={quantities}
         onQuantitiesChange={setQuantities}

@@ -1,11 +1,12 @@
 import { getTranslations, getLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
-import { RefundStatus } from '@shared/constants/refunds';
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
 import type { AdminBookingDetail } from '@/lib/booking/admin-types';
-import { RetryRefundButton } from '../RetryRefundButton';
 import { BookingDetailActions } from './BookingDetailActions';
+import { BookingOperations } from './BookingOperations';
+import { RefundSection } from './RefundSection';
+import { ContactCorrectionForm } from './ContactCorrectionForm';
 import styles from '../bookings.module.css';
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -20,7 +21,11 @@ function Row({ label, value }: { label: string; value: string }) {
 type Props = { booking: AdminBookingDetail; isAdmin: boolean };
 
 export async function BookingDetailView({ booking, isAdmin }: Props) {
-  const [t, locale] = await Promise.all([getTranslations('bookings'), getLocale()]);
+  const [t, tPrivacy, locale] = await Promise.all([
+    getTranslations('bookings'),
+    getTranslations('privacy'),
+    getLocale(),
+  ]);
   const start = formatOperatorDateTime(booking.startsAt);
   const checkIn = formatOperatorDateTime(booking.checkedInAt ?? '');
   const created = formatOperatorDateTime(booking.createdAt);
@@ -67,20 +72,18 @@ export async function BookingDetailView({ booking, isAdmin }: Props) {
         <Row label={t('detail-created')} value={`${created.date} ${created.time}`} />
       </div>
 
-      {booking.refund ? (
+      {isAdmin ? (
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t('detail-refund')}</h2>
-          <div className={styles.refundRow}>
-            <span>{t(`refund-status-${booking.refund.status}`)}</span>
-            {booking.refund.status === RefundStatus.Failed ? (
-              <RetryRefundButton refundId={booking.refund.id} />
-            ) : null}
-          </div>
-          {booking.refund.failureReason ? (
-            <p className={styles.empty}>{booking.refund.failureReason}</p>
-          ) : null}
+          <h2 className={styles.sectionTitle}>{tPrivacy('contact-title')}</h2>
+          <ContactCorrectionForm
+            bookingId={booking.id}
+            name={booking.customerName}
+            email={booking.customerEmail}
+          />
         </section>
       ) : null}
+      <BookingOperations booking={booking} />
+      <RefundSection booking={booking} locale={locale} />
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('detail-notifications')}</h2>

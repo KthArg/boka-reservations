@@ -32,10 +32,17 @@ export type Database = {
           external_refund_id: string | null;
           amount_cents: number;
           currency: string;
-          status: 'pending' | 'processing' | 'succeeded' | 'failed';
+          status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'awaiting_transfer';
           reason: string | null;
           failure_reason: string | null;
           processing_fee_cents: number;
+          method: 'card' | 'transfer';
+          transfer_channel: 'sinpe_movil' | 'bank_transfer' | null;
+          transfer_reference: string | null;
+          transfer_amount_cents: number | null;
+          transfer_currency: 'USD' | 'CRC' | null;
+          transfer_requested_at: string | null;
+          transfer_paid_at: string | null;
           attempts: number;
           created_at: string;
           updated_at: string;
@@ -47,10 +54,17 @@ export type Database = {
           external_refund_id?: string | null;
           amount_cents: number;
           currency?: string;
-          status?: 'pending' | 'processing' | 'succeeded' | 'failed';
+          status?: 'pending' | 'processing' | 'succeeded' | 'failed' | 'awaiting_transfer';
           reason?: string | null;
           failure_reason?: string | null;
           processing_fee_cents?: number;
+          method?: 'card' | 'transfer';
+          transfer_channel?: 'sinpe_movil' | 'bank_transfer' | null;
+          transfer_reference?: string | null;
+          transfer_amount_cents?: number | null;
+          transfer_currency?: 'USD' | 'CRC' | null;
+          transfer_requested_at?: string | null;
+          transfer_paid_at?: string | null;
           attempts?: number;
           created_at?: string;
           updated_at?: string;
@@ -62,10 +76,17 @@ export type Database = {
           external_refund_id?: string | null;
           amount_cents?: number;
           currency?: string;
-          status?: 'pending' | 'processing' | 'succeeded' | 'failed';
+          status?: 'pending' | 'processing' | 'succeeded' | 'failed' | 'awaiting_transfer';
           reason?: string | null;
           failure_reason?: string | null;
           processing_fee_cents?: number;
+          method?: 'card' | 'transfer';
+          transfer_channel?: 'sinpe_movil' | 'bank_transfer' | null;
+          transfer_reference?: string | null;
+          transfer_amount_cents?: number | null;
+          transfer_currency?: 'USD' | 'CRC' | null;
+          transfer_requested_at?: string | null;
+          transfer_paid_at?: string | null;
           attempts?: number;
           created_at?: string;
           updated_at?: string;
@@ -213,6 +234,12 @@ export type Database = {
           meeting_point_en: string;
           includes_es: string;
           includes_en: string;
+          excludes_es: string;
+          excludes_en: string;
+          requirements_es: string;
+          requirements_en: string;
+          child_age_min: number | null;
+          child_age_max: number | null;
           min_participants: number;
           auto_cancel_below_minimum: boolean;
           charge_timing: 'on_minimum' | 'before_departure';
@@ -236,6 +263,12 @@ export type Database = {
           meeting_point_en: string;
           includes_es: string;
           includes_en: string;
+          excludes_es?: string;
+          excludes_en?: string;
+          requirements_es?: string;
+          requirements_en?: string;
+          child_age_min?: number | null;
+          child_age_max?: number | null;
           min_participants?: number;
           auto_cancel_below_minimum?: boolean;
           charge_timing?: 'on_minimum' | 'before_departure';
@@ -259,6 +292,12 @@ export type Database = {
           meeting_point_en?: string;
           includes_es?: string;
           includes_en?: string;
+          excludes_es?: string;
+          excludes_en?: string;
+          requirements_es?: string;
+          requirements_en?: string;
+          child_age_min?: number | null;
+          child_age_max?: number | null;
           min_participants?: number;
           auto_cancel_below_minimum?: boolean;
           charge_timing?: 'on_minimum' | 'before_departure';
@@ -380,6 +419,7 @@ export type Database = {
           staff_decision_required_at: string | null;
           minimum_resolved_at: string | null;
           minimum_resolved_by: string | null;
+          cancellation_reason: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
           minimum_resolution:
             | 'reached'
             | 'staff_confirmed'
@@ -405,6 +445,7 @@ export type Database = {
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
+          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
           minimum_resolution?:
             | 'reached'
             | 'staff_confirmed'
@@ -430,6 +471,7 @@ export type Database = {
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
+          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
           minimum_resolution?:
             | 'reached'
             | 'staff_confirmed'
@@ -552,6 +594,8 @@ export type Database = {
           authorized_at: string | null;
           cancel_claimed_at: string | null;
           capture_started_at: string | null;
+          no_show_tolerance_minutes: number | null;
+          operator_review_required_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -597,6 +641,8 @@ export type Database = {
           authorized_at?: string | null;
           cancel_claimed_at?: string | null;
           capture_started_at?: string | null;
+          no_show_tolerance_minutes?: number | null;
+          operator_review_required_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -642,6 +688,8 @@ export type Database = {
           authorized_at?: string | null;
           cancel_claimed_at?: string | null;
           capture_started_at?: string | null;
+          no_show_tolerance_minutes?: number | null;
+          operator_review_required_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -729,11 +777,15 @@ export type Database = {
             | 'charge_failed_action_required_1'
             | 'charge_failed_action_required_2'
             | 'charge_failed_action_required_3'
-            | 'charge_requires_action';
+            | 'charge_requires_action'
+            | 'departure_cancelled'
+            | 'booking_rescheduled'
+            | 'refund_transfer_request';
           channel: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
           status: 'pending' | 'sent' | 'failed' | 'cancelled';
+          generation: number;
           scheduled_for: string;
           attempts: number;
           provider: string | null;
@@ -761,11 +813,15 @@ export type Database = {
             | 'charge_failed_action_required_1'
             | 'charge_failed_action_required_2'
             | 'charge_failed_action_required_3'
-            | 'charge_requires_action';
+            | 'charge_requires_action'
+            | 'departure_cancelled'
+            | 'booking_rescheduled'
+            | 'refund_transfer_request';
           channel?: 'email';
           recipient_email: string;
           locale: 'es' | 'en';
           status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          generation?: number;
           scheduled_for: string;
           attempts?: number;
           provider?: string | null;
@@ -793,11 +849,15 @@ export type Database = {
             | 'charge_failed_action_required_1'
             | 'charge_failed_action_required_2'
             | 'charge_failed_action_required_3'
-            | 'charge_requires_action';
+            | 'charge_requires_action'
+            | 'departure_cancelled'
+            | 'booking_rescheduled'
+            | 'refund_transfer_request';
           channel?: 'email';
           recipient_email?: string;
           locale?: 'es' | 'en';
           status?: 'pending' | 'sent' | 'failed' | 'cancelled';
+          generation?: number;
           scheduled_for?: string;
           attempts?: number;
           provider?: string | null;
@@ -837,6 +897,17 @@ export type Database = {
           id: number;
           minimum_decision_window_hours: number;
           default_charge_lead_hours: number;
+          operator_legal_name: string;
+          operator_tax_id: string;
+          operator_address: string;
+          operator_brand: string;
+          operator_contact_email: string;
+          operator_privacy_email: string;
+          operator_phone: string;
+          operator_hours: string;
+          operator_ict_declaration: string;
+          operator_has_liability_policy: boolean;
+          no_show_tolerance_minutes: number;
           updated_at: string;
           updated_by: string | null;
         };
@@ -844,6 +915,17 @@ export type Database = {
           id?: number;
           minimum_decision_window_hours?: number;
           default_charge_lead_hours?: number;
+          operator_legal_name?: string;
+          operator_tax_id?: string;
+          operator_address?: string;
+          operator_brand?: string;
+          operator_contact_email?: string;
+          operator_privacy_email?: string;
+          operator_phone?: string;
+          operator_hours?: string;
+          operator_ict_declaration?: string;
+          operator_has_liability_policy?: boolean;
+          no_show_tolerance_minutes?: number;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -851,6 +933,17 @@ export type Database = {
           id?: number;
           minimum_decision_window_hours?: number;
           default_charge_lead_hours?: number;
+          operator_legal_name?: string;
+          operator_tax_id?: string;
+          operator_address?: string;
+          operator_brand?: string;
+          operator_contact_email?: string;
+          operator_privacy_email?: string;
+          operator_phone?: string;
+          operator_hours?: string;
+          operator_ict_declaration?: string;
+          operator_has_liability_policy?: boolean;
+          no_show_tolerance_minutes?: number;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -1088,6 +1181,72 @@ export type Database = {
         };
         Returns: 'resolved' | 'already_resolved' | 'invalid_resolution' | 'capture_in_progress';
       };
+      cancel_departure: {
+        Args: {
+          p_instance_id: string;
+          p_reason: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other';
+          p_actor_id?: string | null;
+        };
+        Returns:
+          | 'cancelled'
+          | 'already_cancelled'
+          | 'already_started'
+          | 'already_resolved'
+          | 'minimum_too_late'
+          | 'capture_in_progress';
+      };
+      resolve_immediate_minimum: {
+        Args: { p_instance_id: string };
+        Returns:
+          | 'reached'
+          | 'cancelled'
+          | 'already_resolved'
+          | 'not_due'
+          | 'deferred_flow'
+          | 'already_cancelled'
+          | 'already_started'
+          | 'minimum_too_late'
+          | 'capture_in_progress';
+      };
+      keep_departure: {
+        Args: { p_instance_id: string; p_actor_id: string };
+        Returns: 'resolved' | 'already_resolved' | 'already_cancelled' | 'deferred_flow';
+      };
+      refund_reviewed_booking: {
+        Args: { p_booking_id: string; p_actor_id: string };
+        Returns: 'refunded' | 'not_under_review';
+      };
+      close_reviewed_booking_without_refund: {
+        Args: { p_booking_id: string; p_actor_id: string };
+        Returns: 'closed' | 'not_under_review';
+      };
+      reschedule_booking: {
+        Args: { p_booking_id: string; p_target_instance_id: string; p_actor_id: string };
+        Returns:
+          | 'rescheduled'
+          | 'not_confirmed'
+          | 'same_instance'
+          | 'source_started'
+          | 'different_tour'
+          | 'target_unavailable'
+          | 'no_capacity';
+      };
+      request_refund_transfer: {
+        Args: { p_refund_id: string; p_actor_id: string };
+        Returns: 'requested' | 'not_failed' | 'provider_may_settle' | 'other_refund_active';
+      };
+      settle_refund_transfer: {
+        Args: {
+          p_refund_id: string;
+          p_actor_id: string;
+          p_channel: 'sinpe_movil' | 'bank_transfer';
+          p_reference: string;
+          p_paid_at: string;
+          p_amount_cents: number;
+          p_currency: 'USD' | 'CRC';
+        };
+        Returns: 'settled' | 'not_awaiting_transfer';
+      };
       cancel_unpaid_booking: {
         Args: {
           p_booking_id: string;
@@ -1149,7 +1308,7 @@ export type Database = {
               p_fee_cents: number;
               p_actor_id?: string;
             };
-            Returns: 'cancelled' | 'already_cancelled';
+            Returns: 'cancelled' | 'already_cancelled' | 'under_review';
           };
       flag_payment_mismatch: {
         Args: {
@@ -1179,6 +1338,10 @@ export type Database = {
       anonymize_bookings_past_retention: {
         Args: { p_cutoff: string };
         Returns: number;
+      };
+      purge_financial_records: {
+        Args: { p_cutoff: string };
+        Returns: { bookings_count: number; payments_count: number; refunds_count: number }[];
       };
       purge_unpaid_bookings: {
         Args: { p_cutoff: string };

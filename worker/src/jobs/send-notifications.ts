@@ -3,6 +3,8 @@ import * as Sentry from '@sentry/node';
 import { env } from '../env.js';
 import { getEmailAdapter } from '../notifications/adapters/index.js';
 import { preparerFor } from '../notifications/dispatch.js';
+import { loadOperatorIdentity, type OperatorIdentity } from '../notifications/operator.js';
+import { FooterAudience, withLegalFooter } from '../notifications/templates/legal-footer.js';
 import {
   cancelNotification,
   fetchPending,
@@ -49,13 +51,15 @@ async function runCycle(): Promise<void> {
   if (pending.length === 0) return;
 
   const adapter = getEmailAdapter();
+  // Una lectura por ciclo: el pie legal de todos los correos lleva la identidad del operador.
+  const operator = await loadOperatorIdentity(db);
   for (const notif of pending) {
     // Aislamiento por ítem / anti poison-pill (spec 0028): un throw inesperado (p. ej.
     // en prepare*) se registra como fallo transitorio de ESA notificación (attempts +
     // reprogramación con backoff) y el resto del lote continúa. Antes, una fila
     // envenenada reaparecía al frente de la cola cada minuto y bloqueaba TODO.
     try {
-      await processOne(db, adapter, notif);
+      await processOne(db, adapter, notif, operator);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown';
       console.error('[send-notifications] error en notificación', notif.id, message);
@@ -73,6 +77,7 @@ async function processOne(
   db: SupabaseClient,
   adapter: EmailAdapter,
   notif: NotificationRow,
+  operator: OperatorIdentity,
 ): Promise<void> {
   const prepare = preparerFor(notif.kind);
   if (!prepare) {
@@ -85,7 +90,13 @@ async function processOne(
     await cancelNotification(db, notif.id, prepared.reason);
     return;
   }
-  await deliver(db, adapter, notif, prepared.email);
+  const email = withLegalFooter(prepared.email, {
+    operator,
+    locale: notif.locale,
+    audience: notif.guide_id ? FooterAudience.Guide : FooterAudience.Customer,
+    appUrl: env.APP_URL,
+  });
+  await deliver(db, adapter, notif, email, operator.contactEmail.trim() || undefined);
 }
 
 /**
@@ -103,11 +114,21 @@ async function postponeUnsupported(db: SupabaseClient, notif: NotificationRow): 
   });
 }
 
+/**
+ * La clave de idempotencia del proveedor: el id, más la generación si el aviso se volvió a
+ * encolar. Con el id solo, Resend devolvería el envío anterior (o un 409) y el aviso nuevo no
+ * saldría (spec 0035).
+ */
+export function idempotencyKeyFor(notif: NotificationRow): string {
+  return notif.generation > 0 ? `${notif.id}:${notif.generation}` : notif.id;
+}
+
 async function deliver(
   db: SupabaseClient,
   adapter: EmailAdapter,
   notif: NotificationRow,
   email: RenderedEmail,
+  replyTo: string | undefined,
 ): Promise<void> {
   let messageId: string;
   try {
@@ -116,12 +137,13 @@ async function deliver(
       subject: email.subject,
       html: email.html,
       text: email.text,
-      idempotencyKey: notif.id,
+      idempotencyKey: idempotencyKeyFor(notif),
+      replyTo,
     });
     messageId = result.providerMessageId;
   } catch (err) {
     if (err instanceof EmailPermanentError) {
-      await markFailed(db, notif.id, adapter.provider, notif.attempts + 1, err.message);
+      await markFailed(db, notif, adapter.provider, notif.attempts + 1, err.message);
       return;
     }
     if (err instanceof EmailTransientError) {
@@ -135,7 +157,7 @@ async function deliver(
   // duplicado); se alerta y la fila queda pending. El Idempotency-Key de Resend acota
   // el reenvío del próximo ciclo (spec 0028; con mailpit —solo dev— puede duplicar).
   try {
-    await markSent(db, notif.id, adapter.provider, messageId);
+    await markSent(db, notif, adapter.provider, messageId);
   } catch (err) {
     Sentry.withScope((scope) => {
       scope.setLevel('error');

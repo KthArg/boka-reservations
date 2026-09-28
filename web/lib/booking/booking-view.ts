@@ -4,7 +4,6 @@ import type { Database } from '@/types/database';
 import { BookingStatus } from '@shared/constants/enums';
 import { CancellationReason } from '@shared/constants/cancellations';
 import { computeRefund, NO_REFUND, type RefundEligibility } from '@shared/constants/policies';
-import { captureAlert } from './sentry-alert';
 import { isAwaitingAuthentication, isCardUpdateOpen } from './deferred-booking-rules';
 
 // Vista de una reserva para las páginas del turista (ver y cancelar) y para cancelBooking.
@@ -23,7 +22,7 @@ export type BookingView = {
   ticketsStudent: number;
   totalAmountCents: number;
   currency: string;
-  /** `bookings.terms_version`: decide si el reembolso descuenta la comisión (spec 0032). */
+  /** `bookings.terms_version`: la versión de los términos que aceptó el turista. */
   termsVersion: string | null;
   /** Reembolso que correspondería si el turista cancelara ahora (solo reservas confirmadas). */
   refund: RefundEligibility;
@@ -33,13 +32,17 @@ export type BookingView = {
   canUpdateCard: boolean;
   /** Cobro esperando la autenticación 3DS del turista, con el plazo vigente. */
   awaitingAuthentication: boolean;
+  /** Salida cancelada por clima o seguridad: la reserva espera la decisión del equipo (spec 0035). */
+  underReview: boolean;
+  /** Motivo de cancelación de la salida, si se canceló. */
+  cancellationReason: string | null;
 };
 
 const VIEW_SELECT = `
   id, customer_name, status, total_amount_cents, currency, terms_version,
   charge_started_at, charge_attempts, awaiting_action_until, recovery_deadline,
-  tickets_adult, tickets_child, tickets_student,
-  tour_instances!inner ( starts_at, tours!inner ( name_es, name_en ) )
+  tickets_adult, tickets_child, tickets_student, operator_review_required_at,
+  tour_instances!inner ( starts_at, cancellation_reason, tours!inner ( name_es, name_en ) )
 `;
 
 interface RawView {
@@ -56,35 +59,25 @@ interface RawView {
   tickets_adult: number;
   tickets_child: number;
   tickets_student: number;
+  operator_review_required_at: string | null;
   tour_instances: {
     starts_at: string;
+    cancellation_reason: string | null;
     tours: { name_es: string; name_en: string } | null;
   } | null;
 }
 
-/**
- * Reembolso que vería el turista al cancelar ahora. Solo una reserva confirmada tiene cobro que
- * reembolsar. Un error de configuración de la comisión no tira la página: se reporta y se muestra
- * sin reembolso; la cancelación en sí lo vuelve a calcular y falla sin aplicar nada.
- */
+/** Reembolso que vería el turista al cancelar ahora. Solo una reserva confirmada tiene cobro. */
 function customerRefundPreview(r: RawView, startsAt: string, now: Date): RefundEligibility {
-  if (r.status !== BookingStatus.Confirmed) return NO_REFUND;
-  try {
-    return computeRefund({
-      startsAt: new Date(startsAt),
-      totalAmountCents: r.total_amount_cents,
-      currency: r.currency,
-      termsVersion: r.terms_version,
-      reason: CancellationReason.CustomerRequest,
-      now,
-    });
-  } catch (err) {
-    captureAlert('[cancel] no se pudo calcular el reembolso', 'refund-preview-failed', {
-      bookingId: r.id,
-      error: err instanceof Error ? err.message : 'unknown',
-    });
+  if (r.status !== BookingStatus.Confirmed || r.operator_review_required_at !== null) {
     return NO_REFUND;
   }
+  return computeRefund({
+    startsAt: new Date(startsAt),
+    totalAmountCents: r.total_amount_cents,
+    reason: CancellationReason.CustomerRequest,
+    now,
+  });
 }
 
 function toView(r: RawView, now: Date): BookingView {
@@ -109,6 +102,8 @@ function toView(r: RawView, now: Date): BookingView {
     canUpdateCard: r.charge_attempts > 0 && isCardUpdateOpen(r.status, r.recovery_deadline, now),
     awaitingAuthentication:
       inFlight && isAwaitingAuthentication(r.status, r.awaiting_action_until, now),
+    underReview: r.operator_review_required_at !== null,
+    cancellationReason: r.tour_instances?.cancellation_reason ?? null,
   };
 }
 

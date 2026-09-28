@@ -4,12 +4,21 @@ import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { GuideAssigner } from './GuideAssigner';
 import { ChargeStatus } from './ChargeStatus';
 import { DecisionTray } from './DecisionTray';
+import { MinimumTray } from './MinimumTray';
+import { ReviewTray } from './ReviewTray';
+import { CancelDepartureDialog } from './CancelDepartureDialog';
+import { listReviewBookings } from '@/lib/operations/repository';
 import styles from './departures.module.css';
 
 export default async function SalidasPage() {
   const t = await getTranslations('guides');
   const tCharge = await getTranslations('departures');
-  const [departures, guides] = await Promise.all([listUpcomingDepartures(), listGuides()]);
+  const tOps = await getTranslations('operations');
+  const [departures, guides, reviews] = await Promise.all([
+    listUpcomingDepartures(),
+    listGuides(),
+    listReviewBookings(),
+  ]);
 
   return (
     <div className={styles.page}>
@@ -17,6 +26,8 @@ export default async function SalidasPage() {
         <h1 className={styles.title}>{t('departures-title')}</h1>
       </div>
 
+      <ReviewTray bookings={reviews} />
+      <MinimumTray departures={departures} />
       <DecisionTray departures={departures} />
 
       {departures.length === 0 ? (
@@ -30,6 +41,9 @@ export default async function SalidasPage() {
               <th className={styles.th}>{t('col-passengers')}</th>
               <th className={styles.th}>{tCharge('col-charge')}</th>
               <th className={styles.th}>{t('col-guide')}</th>
+              <th className={styles.th}>
+                <span className={styles.srOnly}>{tOps('cancel-departure')}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -52,6 +66,13 @@ export default async function SalidasPage() {
                       instanceId={dep.id}
                       guides={guides}
                       assignedGuideId={dep.assignedGuide?.id ?? null}
+                    />
+                  </td>
+                  <td className={styles.td}>
+                    <CancelDepartureDialog
+                      instanceId={dep.id}
+                      canCancelForMinimum={dep.minimum.canCancelForMinimum}
+                      minimumResolved={dep.minimum.resolved}
                     />
                   </td>
                 </tr>

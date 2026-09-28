@@ -7,7 +7,8 @@ import styles from './bookings.module.css';
 type Props = {
   filters: BookingFilters;
   tours: TourListItem[];
-  exportQuery: string;
+  /** null: quien mira no es admin y no puede exportar (spec 0036). */
+  exportQuery: string | null;
 };
 
 const STATUS_OPTIONS = Object.values(BookingStatus);
@@ -100,7 +101,7 @@ export async function BookingsFilters({ filters, tours, exportQuery }: Props) {
         <button type="submit" className={styles.primaryBtn}>
           {t('filter-apply')}
         </button>
-        {canExport ? (
+        {exportQuery === null ? null : canExport ? (
           <a
             className={styles.secondaryBtn}
             href={`/${locale}/dashboard/bookings/export${exportQuery}`}

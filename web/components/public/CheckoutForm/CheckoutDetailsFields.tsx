@@ -6,11 +6,13 @@ import type { PublicPricing } from '@/lib/public/tours';
 import { MAX_TICKETS_PER_BOOKING } from '@/lib/booking/quantities';
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
 import { ConsentField } from './ConsentField';
+import { PurchaseSummary, type PurchaseSummaryInfo } from './PurchaseSummary';
 import styles from './CheckoutForm.module.css';
 
 export type TicketCounts = { adult: number; child: number; student: number };
 
 type Props = {
+  summary: PurchaseSummaryInfo;
   pricing: PublicPricing[];
   quantities: TicketCounts;
   onQuantitiesChange: (quantities: TicketCounts) => void;
@@ -26,6 +28,7 @@ const TICKET_TYPES = ['adult', 'child', 'student'] as const;
  * tras la action no borre lo escrito cuando la action devuelve un error.
  */
 export function CheckoutDetailsFields({
+  summary,
   pricing,
   quantities,
   onQuantitiesChange,
@@ -73,6 +76,7 @@ export function CheckoutDetailsFields({
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('your-info')}</h2>
+        <p className={styles.fieldNote}>{t('your-info-note')}</p>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="name">
             {t('field-name')}
@@ -103,7 +107,9 @@ export function CheckoutDetailsFields({
         </div>
       </section>
 
-      <ConsentField />
+      <PurchaseSummary info={summary} quantities={quantities} totalCents={totalCents} />
+
+      <ConsentField brand={summary.brand} />
     </>
   );
 }

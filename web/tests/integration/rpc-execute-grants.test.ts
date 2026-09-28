@@ -78,6 +78,29 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
   },
   cancel_booking_for_departure: { p_booking_id: ZERO_UUID, p_resolution: 'auto_cancelled' },
   resolve_departure_minimum: { p_instance_id: ZERO_UUID, p_resolution: 'auto_cancelled' },
+  // Spec 0036: borra el registro de la venta a los 5 años.
+  purge_financial_records: { p_cutoff: '2000-01-01T00:00:00Z' },
+  // Spec 0035: cancelan salidas, reembolsan, mueven reservas y dan por pagadas transferencias.
+  cancel_departure: { p_instance_id: ZERO_UUID, p_reason: 'minimum' },
+  resolve_immediate_minimum: { p_instance_id: ZERO_UUID },
+  keep_departure: { p_instance_id: ZERO_UUID, p_actor_id: ZERO_UUID },
+  refund_reviewed_booking: { p_booking_id: ZERO_UUID, p_actor_id: ZERO_UUID },
+  close_reviewed_booking_without_refund: { p_booking_id: ZERO_UUID, p_actor_id: ZERO_UUID },
+  reschedule_booking: {
+    p_booking_id: ZERO_UUID,
+    p_target_instance_id: ZERO_UUID,
+    p_actor_id: ZERO_UUID,
+  },
+  request_refund_transfer: { p_refund_id: ZERO_UUID, p_actor_id: ZERO_UUID },
+  settle_refund_transfer: {
+    p_refund_id: ZERO_UUID,
+    p_actor_id: ZERO_UUID,
+    p_channel: 'sinpe_movil',
+    p_reference: 'x',
+    p_paid_at: '2000-01-01T00:00:00Z',
+    p_amount_cents: 1,
+    p_currency: 'USD',
+  },
 };
 
 // Lecturas del ciclo del mínimo (spec 0033): no mutan, pero exponen la configuración de cobro y

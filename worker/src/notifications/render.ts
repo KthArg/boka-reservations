@@ -13,8 +13,16 @@ export type BookingRow = {
   total_amount_cents: number;
   currency: string;
   status: string;
+  /** Versiones aceptadas y tolerancia (spec 0034); null en reservas anteriores. */
+  terms_version: string | null;
+  consent_version: string | null;
+  no_show_tolerance_minutes: number | null;
+  /** Salida cancelada por clima o seguridad: la reserva espera la decisión del equipo (spec 0035). */
+  operator_review_required_at: string | null;
   tour_instance: {
     starts_at: string;
+    /** Motivo de cancelación de la salida (spec 0035); null si no se canceló. */
+    cancellation_reason: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
     tour: {
       name_es: string;
       name_en: string;
@@ -29,6 +37,7 @@ export function renderForKind(
   locale: EmailLocale,
   booking: BookingRow,
   bookingUrl: string,
+  appUrl: string,
 ): RenderedEmail {
   const tour = booking.tour_instance.tour;
   const tourName = locale === 'es' ? tour.name_es : tour.name_en;
@@ -47,6 +56,12 @@ export function renderForKind(
         totalAmountCents: booking.total_amount_cents,
         currency: booking.currency,
         bookingUrl,
+        legal: {
+          appUrl,
+          termsVersion: booking.terms_version,
+          privacyVersion: booking.consent_version,
+          toleranceMinutes: booking.no_show_tolerance_minutes,
+        },
       },
       locale,
     );

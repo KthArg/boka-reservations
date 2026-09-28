@@ -139,3 +139,21 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Foto del tour (spec 0036): vista previa del archivo subido al almacenamiento propio. */
+.coverPreview {
+  max-width: 16rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.linkButton {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}

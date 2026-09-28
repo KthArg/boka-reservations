@@ -63,6 +63,11 @@ export async function createDeparture(
         meeting_point_en: 'P',
         includes_es: 'g',
         includes_en: 'g',
+        // Spec 0034: sin esta información el tour no se puede reservar.
+        excludes_es: 'x',
+        excludes_en: 'x',
+        requirements_es: 'r',
+        requirements_en: 'r',
         min_participants: 4,
         max_capacity: 40,
       })

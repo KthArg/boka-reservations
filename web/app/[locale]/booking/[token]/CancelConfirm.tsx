@@ -27,6 +27,7 @@ type Outcome =
 const ERROR_KEYS: Partial<Record<CancellationError, string>> = {
   [CancellationError.ChargeInFlight]: 'error-charge-in-flight',
   [CancellationError.StateChanged]: 'error-state-changed',
+  [CancellationError.UnderReview]: 'error-under-review',
 };
 
 export function CancelConfirm({ token, currency, unpaid, expected }: Props) {
@@ -38,13 +39,10 @@ export function CancelConfirm({ token, currency, unpaid, expected }: Props) {
   function doneMessage(refund: RefundEligibility): string {
     if (unpaid) return t('cancelled-no-charge');
     if (!refund.eligible) return t('cancelled-no-refund');
-    const refunded = t('cancelled-refund', {
+    // El monto aplicado se recalcula al confirmar (spec 0032); desde el 0034 es siempre el total.
+    return t('cancelled-refund', {
       amount: formatMoneyCents(refund.amountCents, currency, locale),
     });
-    // Spec 0032: el monto aplicado se recalcula al confirmar; si hubo descuento, se explica.
-    if (refund.feeCents === 0) return refunded;
-    const fee = t('refund-fee', { fee: formatMoneyCents(refund.feeCents, currency, locale) });
-    return `${refunded} ${fee}`;
   }
 
   if (outcome?.kind === 'done') {

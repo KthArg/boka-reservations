@@ -1,129 +1,75 @@
 /**
  * Políticas de negocio parametrizables. Aislar la regla acá permite cambiarla
- * sin tocar la lógica que la consume (specs 0011 y 0032).
+ * sin tocar la lógica que la consume (specs 0011, 0032 y 0034).
  */
 import { CancellationReason, type CancellationReasonValue } from './cancellations';
-import { Currency } from './enums';
 
 /** Antelación mínima sobre el inicio del tour para tener derecho a reembolso. */
 export const CANCELLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Costo de OnvoPay por cobro con tarjeta (spec 0032). Verificado el 2026-09-23 contra la
- * `balanceTransaction` de un cobro en sandbox y contra la tabla de la cuenta, que el soporte
- * detalló ese día (`docs/onvopay-consulta-reembolsos.md`). Sobre un cobro de US$60:
- *   - comisión (`fee`) US$2,59 = 3,9 % (servicios ONVO 1,65 + adquirencia ONVO 0,3 + adquirencia
- *     procesador 0,2 + emisión 1,75) + US$0,25 fijos (transacción adquirente 0,12 + ONVO 0,13);
- *   - retención de IVA (`vatTax`) US$0,47 = 0,777 % del MONTO de la transacción. El soporte dijo
- *     que era sobre la comisión; la `balanceTransaction` demuestra que no.
- * La página de precios dice US$0,35 de fijo; la cuenta cobra US$0,25.
- * Decisión del usuario (2026-09-23): se descuenta el costo total, retención incluida.
- * Si se suma otro proveedor de pagos, esto pasa a un mapa por proveedor y moneda.
+ * Tarifa del IVA de los tours: la general de la Ley 9635. Verificado el 2026-09-27: los
+ * servicios turísticos pagan el 13 % desde el 1 de julio de 2023, con o sin inscripción en el
+ * ICT, al terminar el transitorio de la Ley 9882. Los precios ya la incluyen.
  */
-export const PROCESSING_FEE_PERCENT_BPS = 390;
-export const PROCESSING_FEE_FIXED_CENTS: Partial<Record<Currency, number>> = {
-  [Currency.USD]: 25,
-};
+export const VAT_RATE_PERCENT = 13;
 
-/** Retención de IVA sobre el monto de la transacción: 0,777 % = 777 por cada 100 000. */
-export const VAT_RETENTION_PER_100K = 777;
+const PERCENT = 100;
 
-/**
- * Primera versión de términos (`TERMS_VERSION`, formato `YYYY-MM-DD`) que contiene la cláusula
- * de reembolso menos comisión. En `null`, la política está inactiva y toda cancelación del
- * cliente con antelación recibe el reembolso total. Se activa en el mismo deploy que publica esos
- * términos (spec 0032 §11).
- */
-export const REFUND_FEE_FROM_TERMS_VERSION: string | null = null;
-
-const BPS_DIVISOR = 10_000;
-const HALF_BPS_DIVISOR = 5_000;
-const VAT_DIVISOR = 100_000;
-const HALF_VAT_DIVISOR = 50_000;
+/** El IVA incluido en un precio final, en centavos, redondeado al centavo más cercano. */
+export function vatIncludedCents(totalCents: number): number {
+  if (!Number.isInteger(totalCents) || totalCents < 0) {
+    throw new RangeError(`Monto inválido para calcular el IVA: ${totalCents}`);
+  }
+  return Math.round((totalCents * VAT_RATE_PERCENT) / (PERCENT + VAT_RATE_PERCENT));
+}
 
 export type RefundEligibility = {
   eligible: boolean;
   amountCents: number;
-  /** Comisión de procesamiento descontada del reembolso (0 si no se descontó). */
+  /**
+   * Siempre 0 desde el spec 0034: los reembolsos son completos. Se conserva porque la función SQL
+   * `cancel_booking` de 6 parámetros (spec 0032) lo recibe y lo valida.
+   */
   feeCents: number;
 };
 
 /** Sin reembolso: fuera de la ventana, reserva sin cobrar o no confirmada. */
 export const NO_REFUND: RefundEligibility = { eligible: false, amountCents: 0, feeCents: 0 };
 
-export class ProcessingFeeNotConfiguredError extends Error {
-  constructor(currency: string) {
-    super(`Sin comisión de procesamiento configurada para ${currency}`);
-    this.name = 'ProcessingFeeNotConfiguredError';
-  }
-}
-
-/**
- * Costo de procesamiento de un cobro, en centavos: comisión más retención de IVA. Solo aritmética
- * entera, con cada componente redondeado al centavo más cercano (mitad hacia arriba), igual que
- * los calcula OnvoPay en su `balanceTransaction`.
- */
-export function computeProcessingFee(totalCents: number, currency: string): number {
-  if (!Number.isInteger(totalCents) || totalCents < 0) {
-    throw new RangeError(`Monto inválido para calcular la comisión: ${totalCents}`);
-  }
-  const fixed = PROCESSING_FEE_FIXED_CENTS[currency as Currency];
-  if (fixed === undefined) throw new ProcessingFeeNotConfiguredError(currency);
-  const percent = Math.floor(
-    (totalCents * PROCESSING_FEE_PERCENT_BPS + HALF_BPS_DIVISOR) / BPS_DIVISOR,
-  );
-  const vatRetention = Math.floor(
-    (totalCents * VAT_RETENTION_PER_100K + HALF_VAT_DIVISOR) / VAT_DIVISOR,
-  );
-  return percent + fixed + vatRetention;
-}
-
 type ComputeRefundInput = {
   startsAt: Date;
   totalAmountCents: number;
-  currency: string;
-  /** `bookings.terms_version`: la versión de términos que aceptó el turista (spec 0031). */
-  termsVersion: string | null;
   reason: CancellationReasonValue;
   now: Date;
-  /** Versión de corte; los tests la inyectan. Por defecto, la configurada. */
-  feeFromTermsVersion?: string | null;
 };
 
 /**
- * Decide si una cancelación de una reserva cobrada tiene derecho a reembolso y por cuánto.
+ * Decide si una cancelación de una reserva cobrada tiene derecho a reembolso y por cuánto
+ * (términos del 2026-09-27, cláusulas 6 y 7):
  *
- * - Por decisión del operador: siempre el total.
- * - A pedido del cliente con menos de `CANCELLATION_WINDOW_MS` de antelación: nada (el borde
- *   exacto cuenta como elegible).
- * - A pedido del cliente con antelación: el total menos la comisión de procesamiento, solo si
- *   aceptó términos que incluyen la cláusula; si no, el total.
+ * - Por decisión del operador: el total.
+ * - A pedido del cliente con 24 horas o más de antelación: el total. El borde exacto cuenta.
+ * - A pedido del cliente con menos: nada. La no presentación es el mismo caso.
  *
- * La comparación de versiones es de strings: funciona porque son fechas `YYYY-MM-DD`.
+ * Nunca se descuenta la comisión del procesador de pagos (decisión del operador, 2026-09-27).
  */
 export function computeRefund({
   startsAt,
   totalAmountCents,
-  currency,
-  termsVersion,
   reason,
   now,
-  feeFromTermsVersion = REFUND_FEE_FROM_TERMS_VERSION,
 }: ComputeRefundInput): RefundEligibility {
-  if (reason === CancellationReason.OperatorDecision) {
-    return { eligible: totalAmountCents > 0, amountCents: totalAmountCents, feeCents: 0 };
-  }
+  const full: RefundEligibility = {
+    eligible: totalAmountCents > 0,
+    amountCents: totalAmountCents,
+    feeCents: 0,
+  };
+  if (reason === CancellationReason.OperatorDecision) return full;
 
   const leadMs = startsAt.getTime() - now.getTime();
-  if (leadMs < CANCELLATION_WINDOW_MS) return NO_REFUND;
-
-  const clauseAccepted =
-    feeFromTermsVersion !== null && termsVersion !== null && termsVersion >= feeFromTermsVersion;
-  if (!clauseAccepted) {
-    return { eligible: totalAmountCents > 0, amountCents: totalAmountCents, feeCents: 0 };
-  }
-
-  const feeCents = Math.min(computeProcessingFee(totalAmountCents, currency), totalAmountCents);
-  const amountCents = totalAmountCents - feeCents;
-  return { eligible: amountCents > 0, amountCents, feeCents };
+  // Una fecha inválida no puede terminar en un reembolso: NaN < ventana da false y devolvería el
+  // total.
+  if (Number.isNaN(leadMs)) throw new Error('computeRefund: fecha de inicio inválida');
+  return leadMs < CANCELLATION_WINDOW_MS ? NO_REFUND : full;
 }

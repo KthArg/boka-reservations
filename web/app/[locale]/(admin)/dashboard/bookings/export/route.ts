@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
-import { requireAnyRole } from '@/lib/auth/server';
+import { requireRole } from '@/lib/auth/server';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
+import { UserRole } from '@shared/constants/enums';
 import { actorTypeForRole } from '@shared/constants/audit';
 import { parseBookingFilters, validateExportRange } from '@/lib/booking/admin-filters';
 import { listBookingsForExport } from '@/lib/booking/export-repository';
 import { bookingsToCsv } from '@/lib/booking/csv';
 
 export async function GET(request: Request): Promise<NextResponse> {
-  const user = await requireAnyRole(ADMIN_PANEL_ROLES).catch(() => null);
+  const user = await requireRole(UserRole.Admin).catch(() => null);
+  // Spec 0036: exportar datos de clientes es solo para admin (aviso de privacidad, P4 y P8).
   if (!user?.userRole) return new NextResponse('Unauthorized', { status: 401 });
 
   const params = Object.fromEntries(new URL(request.url).searchParams);

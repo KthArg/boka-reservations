@@ -1,9 +1,12 @@
 import { z } from 'zod';
+import { isTourImageUrl } from './cover-image';
 import { TourDifficulty, TicketType } from '@shared/constants/enums';
 import {
   CHARGE_LEAD_HOURS_MAX,
   CHARGE_LEAD_HOURS_MIN,
+  CHILD_AGE_MAX,
   ChargeTiming,
+  TourActionError,
 } from '@shared/constants/tours';
 import type { Tables } from '@/types/database';
 
@@ -52,6 +55,19 @@ export const TourFormSchema = z
     meeting_point_en: z.string().min(1),
     includes_es: z.string().min(1),
     includes_en: z.string().min(1),
+    // Spec 0034: lo que la cláusula 3 de los términos promete publicar de cada tour.
+    excludes_es: z.string().trim().min(1),
+    excludes_en: z.string().trim().min(1),
+    requirements_es: z.string().trim().min(1),
+    requirements_en: z.string().trim().min(1),
+    child_age_min: z.preprocess(
+      preprocess,
+      z.coerce.number().int().min(0).max(CHILD_AGE_MAX).nullable(),
+    ),
+    child_age_max: z.preprocess(
+      preprocess,
+      z.coerce.number().int().min(0).max(CHILD_AGE_MAX).nullable(),
+    ),
     min_participants: z.coerce.number().int().min(1),
     max_capacity: z.coerce.number().int().positive(),
     auto_cancel_below_minimum: z.boolean().default(false),
@@ -68,14 +84,39 @@ export const TourFormSchema = z
         .nullable()
         .default(null),
     ),
-    cover_image_url: z.preprocess(preprocess, z.string().url().nullable().optional()),
+    // Solo archivos del bucket propio (spec 0036): otra URL le daría la IP del visitante a un tercero.
+    cover_image_url: z.preprocess(
+      preprocess,
+      z
+        .string()
+        .refine((url) => isTourImageUrl(url), { message: TourActionError.CoverImageInvalid })
+        .nullable()
+        .optional(),
+    ),
     pricing: z.array(PricingRowSchema),
     schedules: z.array(ScheduleRowSchema),
   })
   .refine((d) => d.max_capacity >= d.min_participants, {
     message: 'La capacidad máxima debe ser mayor o igual al mínimo de participantes',
     path: ['max_capacity'],
-  });
+  })
+  // Las dos edades o ninguna (tours_child_ages_check, …048).
+  .refine((d) => (d.child_age_min === null) === (d.child_age_max === null), {
+    message: TourActionError.ChildAgesRequired,
+    path: ['child_age_min'],
+  })
+  // Con tiquete de niño, los términos remiten a las edades publicadas en la página del tour.
+  .refine(
+    (d) =>
+      !d.pricing.some((p) => p.ticket_type === TicketType.Child) ||
+      (d.child_age_min !== null && d.child_age_max !== null),
+    { message: TourActionError.ChildAgesRequired, path: ['child_age_min'] },
+  )
+  .refine(
+    (d) =>
+      d.child_age_min === null || d.child_age_max === null || d.child_age_min <= d.child_age_max,
+    { message: TourActionError.ChildAgesInvalid, path: ['child_age_max'] },
+  );
 
 export type PricingRow = z.infer<typeof PricingRowSchema>;
 export type ScheduleRow = z.infer<typeof ScheduleRowSchema>;

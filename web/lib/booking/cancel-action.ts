@@ -47,8 +47,8 @@ export async function cancelByToken(token: string, expected?: unknown): Promise<
 
 /**
  * Cancela una reserva desde el panel. Solo admin/staff; queda auditado. Para una reserva cobrada,
- * `reason` es obligatorio: decide si el reembolso descuenta la comisión (spec 0032), y
- * `expectedRefundCents` es el monto que mostró el diálogo para ese motivo.
+ * `reason` y `expectedRefundCents` son obligatorios: el motivo decide si el reembolso es el total
+ * o depende de la antelación (spec 0034), y el monto es el que mostró el diálogo.
  */
 export async function cancelByStaff(
   bookingId: string,

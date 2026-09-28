@@ -1,7 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
-import { requireAnyRole } from '@/lib/auth/server';
+import { getSession, requireAnyRole } from '@/lib/auth/server';
 import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
+import { UserRole } from '@shared/constants/enums';
 import { ReportKind } from '@shared/constants/reports';
 import { defaultReportRange, validateReportRange, type ReportRange } from '@/lib/reports/range';
 import { getRevenueReport, getOccupancyReport, getRefundsSummary } from '@/lib/reports/queries';
@@ -31,6 +32,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   }
 
   const t = await getTranslations('reports');
+  const isAdmin = (await getSession())?.userRole === UserRole.Admin;
   const sp = await searchParams;
   const range: ReportRange = sp.from && sp.to ? { from: sp.from, to: sp.to } : defaultReportRange();
   const rangeError = validateReportRange(range.from, range.to);
@@ -49,17 +51,17 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         <RevenueSection
           rows={revenue}
           locale={locale}
-          exportHref={exportHref(locale, ReportKind.Revenue, range)}
+          exportHref={isAdmin ? exportHref(locale, ReportKind.Revenue, range) : null}
         />
         <OccupancySection
           rows={occupancy}
           locale={locale}
-          exportHref={exportHref(locale, ReportKind.Occupancy, range)}
+          exportHref={isAdmin ? exportHref(locale, ReportKind.Occupancy, range) : null}
         />
         <RefundsSection
           summary={refunds}
           locale={locale}
-          exportHref={exportHref(locale, ReportKind.Refunds, range)}
+          exportHref={isAdmin ? exportHref(locale, ReportKind.Refunds, range) : null}
         />
         <TopToursSection revenue={revenue} occupancy={occupancy} locale={locale} />
       </>

@@ -15,6 +15,7 @@ import type {
   TourWithDetails,
 } from '@/lib/tours/types';
 import TourBasicInfoSection from './TourBasicInfoSection';
+import TourPublishedInfoSection from './TourPublishedInfoSection';
 import TourMinimumPolicyField from './TourMinimumPolicyField';
 import TourChargeTimingField from './TourChargeTimingField';
 import PricingEditor from './PricingEditor';
@@ -94,7 +95,6 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
   }));
   const setBasicField = (name: keyof TourBasicValues, value: string) =>
     setBasic((b) => ({ ...b, [name]: value }));
-  const [autoCancel, setAutoCancel] = useState(defaultValues?.auto_cancel_below_minimum ?? false);
   const [chargeTiming, setChargeTiming] = useState<ChargeTiming>(
     defaultValues?.charge_timing ?? ChargeTiming.BeforeDeparture,
   );
@@ -124,7 +124,8 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
       ))}
 
       <TourBasicInfoSection values={basic} onChange={setBasicField} errors={errors} />
-      <TourMinimumPolicyField checked={autoCancel} onChange={setAutoCancel} />
+      <TourPublishedInfoSection defaultValues={defaultValues} errors={errors} />
+      <TourMinimumPolicyField checked={defaultValues?.auto_cancel_below_minimum ?? false} />
       <TourChargeTimingField
         timing={chargeTiming}
         leadHours={chargeLeadHours}

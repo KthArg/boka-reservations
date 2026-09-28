@@ -21,6 +21,11 @@ export enum CancellationError {
    * diferido se completó o se cruzó el borde de 24 h. No se cancela; la UI recarga.
    */
   StateChanged = 'cancellation_state_changed',
+  /**
+   * La salida se canceló por clima o seguridad y la reserva espera la decisión del equipo
+   * (spec 0035): el turista no la cancela por su cuenta.
+   */
+  UnderReview = 'cancellation_under_review',
 }
 
 /** Motivo de cancel_unpaid_booking que queda auditado (spec 0029 §5.8). */
@@ -71,9 +76,9 @@ export enum RefundRetryError {
 }
 
 /**
- * Motivo de la cancelación de una reserva cobrada (spec 0032). Decide si el reembolso descuenta
- * la comisión de procesamiento: solo cuando cancelar es decisión del cliente. `customer_request`
- * coincide con el de `UnpaidCancelReason`.
+ * Motivo de la cancelación de una reserva cobrada (spec 0032). Decide el reembolso (spec 0034):
+ * a pedido del cliente depende de la antelación (el total o nada); por decisión del operador es
+ * siempre el total. `customer_request` coincide con el de `UnpaidCancelReason`.
  */
 export const CancellationReason = {
   CustomerRequest: 'customer_request',
@@ -86,4 +91,6 @@ export type CancellationReasonValue = (typeof CancellationReason)[keyof typeof C
 export const CancelBookingOutcome = {
   Cancelled: 'cancelled',
   AlreadyCancelled: 'already_cancelled',
+  /** Salida cancelada por clima, seguridad o fuerza mayor: la decide el equipo (spec 0035). */
+  UnderReview: 'under_review',
 } as const;

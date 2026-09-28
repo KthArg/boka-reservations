@@ -39,7 +39,7 @@ describe('cancellation flow (server actions, integration)', () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
     const { bookingId, instanceId } = await seed(admin, { hoursAhead: 48, reserved: 3 });
 
-    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest, 9000);
 
     expect(result).toEqual({
       ok: true,
@@ -85,7 +85,7 @@ describe('cancellation flow (server actions, integration)', () => {
     // Total 9000 pero solo se cobraron 8000: el refund debe ser por lo pagado.
     const { bookingId } = await seed(admin, { hoursAhead: 48, paymentAmountCents: 8000 });
 
-    await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
+    await cancelByStaff(bookingId, CancellationReason.CustomerRequest, 9000);
 
     const { data: refund } = await admin
       .from('refunds')
@@ -98,7 +98,7 @@ describe('cancellation flow (server actions, integration)', () => {
   it('audit_logs es append-only: rechaza UPDATE y DELETE', async () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
     const { bookingId } = await seed(admin, { hoursAhead: 48 });
-    await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
+    await cancelByStaff(bookingId, CancellationReason.CustomerRequest, 9000);
 
     const { data: row } = await admin
       .from('audit_logs')
@@ -119,7 +119,7 @@ describe('cancellation flow (server actions, integration)', () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
     const { bookingId } = await seed(admin, { hoursAhead: 12 });
 
-    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest, 0);
 
     expect(result).toEqual({ ok: true, refund: { eligible: false, amountCents: 0, feeCents: 0 } });
     expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Cancelled);
@@ -137,10 +137,11 @@ describe('cancellation flow (server actions, integration)', () => {
     requireAnyRoleMock.mockResolvedValue({ id: staffUserId, userRole: 'staff' });
     const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
-    await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
-    const second = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
+    await cancelByStaff(bookingId, CancellationReason.CustomerRequest, 9000);
+    const second = await cancelByStaff(bookingId, CancellationReason.CustomerRequest, 9000);
 
-    expect(second).toEqual({ ok: false, error: CancellationError.NotCancellable });
+    // El panel manda lo que vio (confirmada); la reserva ya está cancelada.
+    expect(second).toEqual({ ok: false, error: CancellationError.StateChanged });
     const { count } = await admin
       .from('refunds')
       .select('id', { count: 'exact', head: true })
@@ -173,7 +174,7 @@ describe('cancellation flow (server actions, integration)', () => {
     requireAnyRoleMock.mockRejectedValue(new Error('UNAUTHORIZED'));
     const { bookingId } = await seed(admin, { hoursAhead: 48 });
 
-    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest);
+    const result = await cancelByStaff(bookingId, CancellationReason.CustomerRequest, 9000);
 
     expect(result).toEqual({ ok: false, error: CancellationError.Unauthorized });
     expect(await bookingStatus(admin, bookingId)).toBe(BookingStatus.Confirmed);

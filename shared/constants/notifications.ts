@@ -18,6 +18,12 @@ export enum NotificationKind {
   ChargeFailedActionRequired3 = 'charge_failed_action_required_3',
   /** El banco pidió autenticación 3DS: el turista debe completarla (spec 0029). */
   ChargeRequiresAction = 'charge_requires_action',
+  /** El operador canceló la salida: motivo y reembolso, o reserva en revisión (spec 0035). */
+  DepartureCancelled = 'departure_cancelled',
+  /** La reserva pasó a otra salida del mismo tour (spec 0035). */
+  BookingRescheduled = 'booking_rescheduled',
+  /** La tarjeta no aceptó el reembolso: se piden los datos de una cuenta (spec 0035). */
+  RefundTransferRequest = 'refund_transfer_request',
 }
 
 /** Canal de entrega. Hoy solo email; el enum deja lugar a SMS/WhatsApp futuros. */

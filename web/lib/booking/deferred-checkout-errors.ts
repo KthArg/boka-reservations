@@ -13,6 +13,10 @@ export const DeferredCheckoutCode = {
 /** Claves de `checkout` en los diccionarios. */
 export const CheckoutErrorKey = {
   Generic: 'error-generic',
+  /** Faltan datos del operador: la venta en línea no está habilitada (spec 0034). */
+  SalesNotEnabled: 'sales-not-enabled',
+  /** Falta alguna de las dos casillas legales (spec 0034, texto aprobado). */
+  ConsentRequired: 'consent-required',
   NoAvailability: 'no-availability',
   InstancePast: 'instance-past',
   HoldExpired: 'hold-expired',

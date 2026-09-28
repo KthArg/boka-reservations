@@ -4,6 +4,8 @@ import { listTours } from '@/lib/tours/repository';
 import { listBookingsForAdmin } from '@/lib/booking/repository';
 import { parseBookingFilters, filtersToSearchParams } from '@/lib/booking/admin-filters';
 import { ADMIN_BOOKINGS_PAGE_SIZE } from '@shared/constants/bookings';
+import { UserRole } from '@shared/constants/enums';
+import { getSession } from '@/lib/auth/server';
 import { BookingsFilters } from './BookingsFilters';
 import { BookingsTable } from './BookingsTable';
 import { RefreshButton } from './RefreshButton';
@@ -26,7 +28,13 @@ export default async function BookingsPage({ searchParams }: Props) {
   const t = await getTranslations('bookings');
   const filters = parseBookingFilters(normalize(await searchParams));
 
-  const [{ rows, total }, tours] = await Promise.all([listBookingsForAdmin(filters), listTours()]);
+  const [{ rows, total }, tours, session] = await Promise.all([
+    listBookingsForAdmin(filters),
+    listTours(),
+    getSession(),
+  ]);
+  // Spec 0036: solo el admin exporta datos de clientes.
+  const isAdmin = session?.userRole === UserRole.Admin;
 
   const totalPages = Math.max(1, Math.ceil(total / ADMIN_BOOKINGS_PAGE_SIZE));
   const prevHref =
@@ -49,7 +57,7 @@ export default async function BookingsPage({ searchParams }: Props) {
       <BookingsFilters
         filters={filters}
         tours={tours}
-        exportQuery={filtersToSearchParams(filters)}
+        exportQuery={isAdmin ? filtersToSearchParams(filters) : null}
       />
 
       {rows.length === 0 ? (

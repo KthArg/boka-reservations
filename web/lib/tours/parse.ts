@@ -39,6 +39,12 @@ export function parseTourFields(formData: FormData): Record<string, unknown> {
     meeting_point_en: formData.get('meeting_point_en'),
     includes_es: formData.get('includes_es'),
     includes_en: formData.get('includes_en'),
+    excludes_es: formData.get('excludes_es'),
+    excludes_en: formData.get('excludes_en'),
+    requirements_es: formData.get('requirements_es'),
+    requirements_en: formData.get('requirements_en'),
+    child_age_min: formData.get('child_age_min'),
+    child_age_max: formData.get('child_age_max'),
     min_participants: formData.get('min_participants'),
     max_capacity: formData.get('max_capacity'),
     // Checkbox: el navegador solo envía el campo cuando está marcado.

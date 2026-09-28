@@ -1,7 +1,6 @@
-import { getTranslations } from 'next-intl/server';
-import { LegalPage } from '@/components/public/LegalPage/LegalPage';
+import { LegalTextPage } from '@/components/public/LegalPage/LegalTextPage';
+import { LegalText } from '@/content/legal/registry';
 
-export default async function TermsPage() {
-  const t = await getTranslations('legal');
-  return <LegalPage title={t('terms-title')} body={t('terms-body')} backLabel={t('back')} />;
+export default function TermsPage() {
+  return <LegalTextPage text={LegalText.Terms} />;
 }

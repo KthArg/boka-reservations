@@ -15,8 +15,9 @@ const WEBHOOK_EVENT_RETENTION_DAYS = 90;
 // spec 0031 (§5.2): una reserva temporal de cupo terminal y sin reserva asociada sirve solo para
 // investigar un checkout abandonado o un reclamo inmediato de cobro.
 const HOLD_RETENTION_DAYS = 7;
-// FINANCIAL_RECORD_RETENTION_YEARS = 5 queda definida en el spec pero sin job: la purga del
-// registro anonimizado a 5 años está diferida (al lanzar no hay datos cercanos a esa edad).
+// spec 0036: el registro anonimizado de la venta se borra a los 5 años del tour, como promete el
+// aviso de privacidad (P6).
+const FINANCIAL_RECORD_RETENTION_YEARS = 5;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -27,6 +28,13 @@ export interface RetentionCutoffs {
   notificationCutoff: string;
   webhookEventCutoff: string;
   holdCutoff: string;
+  financialRecordCutoff: string;
+}
+
+function yearsBefore(now: Date, years: number): string {
+  const cutoff = new Date(now);
+  cutoff.setUTCFullYear(cutoff.getUTCFullYear() - years);
+  return cutoff.toISOString();
 }
 
 // Calcula los cutoffs (ISO) desde las ventanas. Recibe `now` para poder testearlo.
@@ -44,5 +52,6 @@ export function computeRetentionCutoffs(now: Date = new Date()): RetentionCutoff
       now.getTime() - WEBHOOK_EVENT_RETENTION_DAYS * DAY_MS,
     ).toISOString(),
     holdCutoff: new Date(now.getTime() - HOLD_RETENTION_DAYS * DAY_MS).toISOString(),
+    financialRecordCutoff: yearsBefore(now, FINANCIAL_RECORD_RETENTION_YEARS),
   };
 }

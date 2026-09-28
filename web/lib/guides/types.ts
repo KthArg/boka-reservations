@@ -1,3 +1,5 @@
+import type { MinimumView } from '@/lib/operations/minimum';
+
 /** Idiomas soportados por la app (mismos que next-intl routing). */
 export type Locale = 'es' | 'en';
 
@@ -45,6 +47,8 @@ export type Departure = {
   confirmedTickets: number;
   assignedGuide: AssignableGuide | null;
   charge: DepartureCharge;
+  /** Mínimo del cobro inmediato (spec 0035): bandeja y cancelación por mínimo. */
+  minimum: MinimumView;
 };
 
 /** Resumen de una salida asignada, para la vista pública del guía. */

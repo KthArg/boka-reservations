@@ -37,6 +37,7 @@ export function createResendAdapter(apiKey: string, from: string): EmailAdapter 
             subject: input.subject,
             html: input.html,
             text: input.text,
+            ...(input.replyTo ? { reply_to: input.replyTo } : {}),
           }),
         });
       } catch (err) {

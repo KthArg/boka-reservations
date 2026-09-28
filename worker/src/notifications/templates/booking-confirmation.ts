@@ -1,5 +1,6 @@
 import type { EmailLocale, RenderedEmail } from '../types.js';
-import { escapeHtml, formatDateTime, formatMoney } from './format.js';
+import { escapeHtml, formatDateTime, formatMoney, vatIncludedCents } from './format.js';
+import { renderBookingLegal, type BookingLegalInput } from './booking-legal.js';
 import { wrapHtml } from './layout.js';
 
 export type { RenderedEmail } from '../types.js';
@@ -15,6 +16,8 @@ export type BookingConfirmationProps = {
   totalAmountCents: number;
   currency: string;
   bookingUrl: string;
+  /** Parte legal (spec 0034): versiones aceptadas y tolerancia de la reserva. */
+  legal: BookingLegalInput;
 };
 
 const COPY = {
@@ -27,6 +30,7 @@ const COPY = {
     meetingLabel: 'Punto de encuentro',
     ticketsLabel: 'Tickets',
     totalLabel: 'Total cobrado',
+    vat: (amount: string) => `IVA incluido: ${amount}`,
     cta: 'Ver mi reserva',
     farewell: 'Nos vemos pronto.',
     adult: (n: number) => `${n} adulto(s)`,
@@ -42,6 +46,7 @@ const COPY = {
     meetingLabel: 'Meeting point',
     ticketsLabel: 'Tickets',
     totalLabel: 'Total charged',
+    vat: (amount: string) => `VAT included: ${amount}`,
     cta: 'View my booking',
     farewell: 'See you soon.',
     adult: (n: number) => `${n} adult(s)`,
@@ -67,6 +72,8 @@ export function renderBookingConfirmation(
   const tickets = ticketsLine(props, locale);
   const date = formatDateTime(props.startsAt, locale);
   const total = formatMoney(props.totalAmountCents, props.currency, locale);
+  const vat = t.vat(formatMoney(vatIncludedCents(props.totalAmountCents), props.currency, locale));
+  const legal = renderBookingLegal(props.legal, locale);
 
   const html = wrapHtml(`
     <h1 style="font-size:20px;margin:0 0 16px;">${t.greeting(escapeHtml(props.customerName))}</h1>
@@ -76,11 +83,12 @@ export function renderBookingConfirmation(
       <tr><td style="font-weight:600;">${t.dateLabel}</td><td>${escapeHtml(date)}</td></tr>
       <tr><td style="font-weight:600;">${t.meetingLabel}</td><td>${escapeHtml(props.meetingPoint)}</td></tr>
       <tr><td style="font-weight:600;">${t.ticketsLabel}</td><td>${escapeHtml(tickets)}</td></tr>
-      <tr><td style="font-weight:600;">${t.totalLabel}</td><td>${escapeHtml(total)}</td></tr>
+      <tr><td style="font-weight:600;">${t.totalLabel}</td><td>${escapeHtml(total)} (${escapeHtml(vat)})</td></tr>
     </table>
     <p style="margin:0 0 24px;">
       <a href="${escapeHtml(props.bookingUrl)}" style="display:inline-block;background:#1d9e75;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;">${t.cta}</a>
     </p>
+    ${legal.html}
     <p style="margin:0;color:#555;">${t.farewell}</p>
   `);
 
@@ -93,9 +101,11 @@ export function renderBookingConfirmation(
     `${t.dateLabel}: ${date}`,
     `${t.meetingLabel}: ${props.meetingPoint}`,
     `${t.ticketsLabel}: ${tickets}`,
-    `${t.totalLabel}: ${total}`,
+    `${t.totalLabel}: ${total} (${vat})`,
     '',
     `${t.cta}: ${props.bookingUrl}`,
+    '',
+    ...legal.text,
     '',
     t.farewell,
   ].join('\n');
