@@ -14,7 +14,7 @@ Sin esto no se abre a reservas reales. La lista viva, con responsables, está en
 - Tolerancia de llegada tarde revisada en el panel (15 min por defecto).
 - Persona que atiende solicitudes de datos e incidentes; plan de incidentes aprobado.
 - Aviso y consentimiento para guías y personal: en la plataforma, no en papel.
-- Factura electrónica: proceso de emisión (tiquete y notas de crédito ante Hacienda) — spec 0037, pendiente de redactar.
+- Factura electrónica **manual** (decisión del 2026-09-28): el operador está inscrito como emisor en Hacienda y emite con la herramienta gratuita un tiquete por reserva al confirmarse el pago, y una nota de crédito por cada reembolso. El contador define el código CAByS y la actividad. La automatización por la API de Hacienda queda para el spec 0037.
 - Proveedores en la región que declara el aviso (EE. UU.): Railway, Resend y Sentry; Sentry en plan Developer (retención de 30 días, lo que dice el aviso).
 - Specs 0035 (cierre por mínimo, cambio de fecha, revisión por clima, devolución por transferencia) y 0036 (anonimización y datos según el aviso) mergeados: los términos publicados describen ese comportamiento. `IDENTIFIER_HASH_SECRET` en Vercel (spec 0036).
 - Supabase Pro (copias de seguridad; evita la pausa del plan gratuito) y transferencia del proyecto al cliente.
