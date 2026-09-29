@@ -4,6 +4,7 @@ import { getTourBySlug, getTourPriceList, getUpcomingInstances } from '@/lib/pub
 import { isPublicReadThrottled } from '@/lib/public/read-limit';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isSalesEnabled } from '@/lib/booking/sales-gate';
+import { getBookingCutoffHours } from '@/lib/operator/repository';
 import { PriceList } from '@/components/public/PriceList/PriceList';
 import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/AvailabilityCalendar';
 import { toCalendarDepartures } from '@/lib/public/calendar-departures';
@@ -31,7 +32,7 @@ export default async function TourDetailPage({ params }: Props) {
 
   const [pricing, instances, salesEnabled] = await Promise.all([
     getTourPriceList(tour.id),
-    getUpcomingInstances(tour.id),
+    getBookingCutoffHours().then((hours) => getUpcomingInstances(tour.id, hours)),
     isSalesEnabled(),
   ]);
   // Spec 0034: sin la información que prometen los términos, o sin datos del operador, el tour se

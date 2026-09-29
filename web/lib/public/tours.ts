@@ -95,18 +95,54 @@ export async function getTourPricingForDay(
   return selectPriceForDay(await getTourPriceList(tourId), crDay);
 }
 
-export async function getUpcomingInstances(tourId: string): Promise<PublicInstance[]> {
+const MS_PER_HOUR = 3_600_000;
+
+/**
+ * Salidas que todavía se pueden reservar en línea: disponibles y que empiezan después de la
+ * anticipación mínima (spec 0041; con 0, después de ahora).
+ */
+export async function getUpcomingInstances(
+  tourId: string,
+  cutoffHours: number,
+): Promise<PublicInstance[]> {
   const db = createSupabasePublicClient();
 
-  // starts_at >= ahora (spec 0028, B7): una salida ya pasada que siga `available`
-  // no debe ofrecerse — el checkout la rechazaría (HOLD_INSTANCE_PAST) recién al pagar.
+  // Solo salidas futuras fuera de la anticipación mínima (spec 0028 B7, spec 0041): el checkout
+  // rechazaría las demás recién al pagar.
   const { data } = await db
     .from('tour_instances')
     .select('*')
     .eq('tour_id', tourId)
     .eq('status', InstanceStatus.Available)
-    .gte('starts_at', new Date().toISOString())
+    .gt('starts_at', new Date(Date.now() + cutoffHours * MS_PER_HOUR).toISOString())
     .order('starts_at');
 
   return data ?? [];
+}
+
+/**
+ * Una salida del tour, disponible, que todavía no empezó pero ya está dentro de la anticipación
+ * mínima (spec 0041): la página del checkout muestra el aviso de venta cerrada en vez de 404.
+ */
+export async function isClosedForOnlineBooking(
+  tourId: string,
+  instanceId: string,
+  cutoffHours: number,
+): Promise<boolean> {
+  const db = createSupabasePublicClient();
+  const { data, error } = await db
+    .from('tour_instances')
+    .select('starts_at')
+    .eq('id', instanceId)
+    .eq('tour_id', tourId)
+    .eq('status', InstanceStatus.Available)
+    .maybeSingle();
+  if (error) {
+    console.error('[tours] no se pudo leer la salida del checkout:', error.message);
+    return false;
+  }
+  if (!data) return false;
+  const startsAt = new Date(data.starts_at).getTime();
+  const now = Date.now();
+  return startsAt > now && startsAt <= now + cutoffHours * MS_PER_HOUR;
 }

@@ -25,6 +25,14 @@ export const DEFAULT_CHARGE_LEAD_HOURS_MAX = 720;
 export const NO_SHOW_TOLERANCE_MINUTES_MIN = 0;
 export const NO_SHOW_TOLERANCE_MINUTES_MAX = 120;
 
+/**
+ * Anticipación mínima para reservar en línea: horas antes de la salida en que cierra la venta
+ * (spec 0041). Espejo del CHECK de `business_settings.booking_cutoff_hours`; 0 = hasta la salida.
+ */
+export const BOOKING_CUTOFF_HOURS_MIN = 0;
+export const BOOKING_CUTOFF_HOURS_MAX = 72;
+export const BOOKING_CUTOFF_HOURS_DEFAULT = 3;
+
 /** Largo máximo de cada dato del operador: son textos de una línea para el pie y los términos. */
 export const OPERATOR_FIELD_MAX_LENGTH = 200;
 
@@ -37,4 +45,6 @@ export enum SettingsActionError {
   /** Algún dato del operador no es válido (correo mal escrito, texto demasiado largo). */
   OperatorInvalid = 'settings_operator_invalid',
   ToleranceOutOfRange = 'settings_tolerance_out_of_range',
+  /** Anticipación mínima fuera de rango (spec 0041). */
+  CutoffOutOfRange = 'settings_cutoff_out_of_range',
 }

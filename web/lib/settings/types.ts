@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  BOOKING_CUTOFF_HOURS_MAX,
+  BOOKING_CUTOFF_HOURS_MIN,
   DEFAULT_CHARGE_LEAD_HOURS_MAX,
   DEFAULT_CHARGE_LEAD_HOURS_MIN,
   MINIMUM_DECISION_WINDOW_HOURS_MAX,
@@ -20,6 +22,12 @@ export const BusinessSettingsFormSchema = z.object({
     .int()
     .min(DEFAULT_CHARGE_LEAD_HOURS_MIN)
     .max(DEFAULT_CHARGE_LEAD_HOURS_MAX),
+  // 0 es válido (venta hasta la salida), así que un campo vacío no puede convertirse en 0 sin que
+  // nadie lo escriba: vacío falla (spec 0041).
+  booking_cutoff_hours: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().min(BOOKING_CUTOFF_HOURS_MIN).max(BOOKING_CUTOFF_HOURS_MAX),
+  ),
 });
 
 export type BusinessSettingsForm = z.infer<typeof BusinessSettingsFormSchema>;
@@ -28,6 +36,7 @@ export type BusinessSettings = Pick<
   Tables<'business_settings'>,
   | 'minimum_decision_window_hours'
   | 'default_charge_lead_hours'
+  | 'booking_cutoff_hours'
   | 'updated_at'
   | 'operator_legal_name'
   | 'operator_tax_id'

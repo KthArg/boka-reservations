@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import { BUSINESS_SETTINGS_ID } from '@shared/constants/settings';
+import { BOOKING_CUTOFF_HOURS_DEFAULT, BUSINESS_SETTINGS_ID } from '@shared/constants/settings';
 import type { OperatorIdentity } from './types';
 
 // Lectura de la identidad del operador (spec 0034). La leen páginas públicas (términos, pie del
@@ -67,4 +67,23 @@ export const getNoShowToleranceMinutes = cache(async (): Promise<number> => {
     .single();
   if (error) throw new Error(`getNoShowToleranceMinutes: ${error.message}`);
   return data.no_show_tolerance_minutes;
+});
+
+/**
+ * Anticipación mínima para reservar en línea (spec 0041). La usa el calendario para no mostrar
+ * salidas cerradas; la base (`create_hold_atomic`) es la que decide. Si la lectura falla, se
+ * registra y se usa el valor por defecto: mostrar de más no vende de más.
+ */
+export const getBookingCutoffHours = cache(async (): Promise<number> => {
+  const db = createSupabaseServiceClient();
+  const { data, error } = await db
+    .from('business_settings')
+    .select('booking_cutoff_hours')
+    .eq('id', BUSINESS_SETTINGS_ID)
+    .single();
+  if (error) {
+    console.error('[operator] no se pudo leer la anticipación mínima:', error.message);
+    return BOOKING_CUTOFF_HOURS_DEFAULT;
+  }
+  return data.booking_cutoff_hours;
 });

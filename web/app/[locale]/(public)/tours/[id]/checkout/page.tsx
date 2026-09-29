@@ -1,10 +1,21 @@
 import { notFound } from 'next/navigation';
+import { z } from 'zod';
 import { getTranslations, getLocale } from 'next-intl/server';
-import { getTourBySlug, getTourPricingForDay, getUpcomingInstances } from '@/lib/public/tours';
+import {
+  getTourBySlug,
+  getTourPricingForDay,
+  getUpcomingInstances,
+  isClosedForOnlineBooking,
+} from '@/lib/public/tours';
+import { Link } from '@/i18n/navigation';
 import { crDate } from '@/lib/dates/cr-date';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
-import { getNoShowToleranceMinutes, getOperatorIdentity } from '@/lib/operator/repository';
+import {
+  getBookingCutoffHours,
+  getNoShowToleranceMinutes,
+  getOperatorIdentity,
+} from '@/lib/operator/repository';
 import { isOperatorIdentityComplete } from '@/lib/operator/types';
 import { CheckoutForm } from '@/components/public/CheckoutForm/CheckoutForm';
 import { DeferredCheckoutForm } from '@/components/public/CheckoutForm/DeferredCheckoutForm';
@@ -17,21 +28,35 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   const { id: slug } = await params;
   const { instance: instanceId } = await searchParams;
 
-  if (!instanceId) notFound();
+  if (!instanceId || !z.string().uuid().safeParse(instanceId).success) notFound();
 
-  const [t, locale, tour, operator, toleranceMinutes] = await Promise.all([
+  const [t, locale, tour, operator, toleranceMinutes, cutoffHours] = await Promise.all([
     getTranslations('checkout'),
     getLocale(),
     getTourBySlug(slug),
     getOperatorIdentity(),
     getNoShowToleranceMinutes(),
+    getBookingCutoffHours(),
   ]);
 
   if (!tour) notFound();
 
-  const instances = await getUpcomingInstances(tour.id);
+  const instances = await getUpcomingInstances(tour.id, cutoffHours);
   const instance = instances.find((i) => i.id === instanceId);
-  if (!instance) notFound();
+  if (!instance) {
+    // Spec 0041: una salida disponible pero dentro de la anticipación mínima muestra el aviso;
+    // una cancelada, ya pasada o inexistente sigue siendo 404.
+    if (!(await isClosedForOnlineBooking(tour.id, instanceId, cutoffHours))) notFound();
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.title}>{locale === 'es' ? tour.name_es : tour.name_en}</h1>
+        <p>{t('booking-closed')}</p>
+        <p>
+          <Link href={`/tours/${slug}`}>{t('booking-closed-back')}</Link>
+        </p>
+      </div>
+    );
+  }
 
   // Spec 0040: los precios del día de la salida, los mismos que cobra el servidor.
   const pricing = await getTourPricingForDay(tour.id, crDate(new Date(instance.starts_at)));

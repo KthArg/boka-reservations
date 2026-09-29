@@ -229,7 +229,9 @@
     "summary-tolerance": "Tolerancia de llegada tarde: {minutes} minutos. Después se considera no presentación.",
     "summary-seller": "Vendido por {name}, cédula jurídica {taxId}.",
     "sales-not-enabled": "La venta en línea de este tour todavía no está habilitada.",
-    "consent-required": "Para continuar, marcá las dos casillas."
+    "consent-required": "Para continuar, marcá las dos casillas.",
+    "booking-closed": "Esta salida ya no acepta reservas en línea: la venta cierra unas horas antes de que empiece. Elegí otra fecha.",
+    "booking-closed-back": "Ver otras fechas"
   },
   "legal": {
     "privacy-title": "Aviso de privacidad",
@@ -652,11 +654,12 @@
     "saved": "Configuración guardada.",
     "errors": {
       "settings_unauthorized": "Solo un administrador puede cambiar la configuración.",
-      "settings_window_out_of_range": "Ingresa un número entero de horas entre {min} y {max}.",
+      "settings_window_out_of_range": "Ingresá un número entero de horas entre {min} y {max}.",
       "settings_lead_hours_out_of_range": "Ingresá un número entero de horas entre {min} y {max} para el plazo de cobro.",
-      "settings_update_failed": "No se pudo guardar la configuración. Intenta de nuevo.",
+      "settings_update_failed": "No se pudo guardar la configuración. Intentá de nuevo.",
       "settings_operator_invalid": "Revisá los datos del operador: algún correo no es válido o algún texto es demasiado largo.",
-      "settings_tolerance_out_of_range": "La tolerancia tiene que estar entre {min} y {max} minutos."
+      "settings_tolerance_out_of_range": "La tolerancia tiene que estar entre {min} y {max} minutos.",
+      "settings_cutoff_out_of_range": "Ingresá un número entero de horas entre {min} y {max} para la anticipación mínima."
     },
     "section-operator": "Datos del operador y venta",
     "operator-intro": "Estos datos aparecen en los términos y condiciones, el aviso de privacidad, el pie del sitio y de los correos, y el resumen antes de pagar. La venta en línea se habilita cuando están completos todos los campos, salvo la declaratoria del ICT, que es opcional. Cada cambio queda registrado.",
@@ -680,7 +683,9 @@
     "hint-operator_ict_declaration": "El número, si el negocio la tiene. Vacío si no la tiene: la frase no aparece en los términos.",
     "field-operator_has_liability_policy": "Tenemos una póliza de responsabilidad civil vigente",
     "field-no-show-tolerance": "Tolerancia de llegada tarde (minutos)",
-    "hint-no-show-tolerance": "Después de estos minutos, quien no llegó se considera no presentación y no tiene reembolso. Aparece en el resumen de compra y en el correo de confirmación; cada reserva conserva el valor vigente cuando se hizo. Entre {min} y {max} minutos."
+    "hint-no-show-tolerance": "Después de estos minutos, quien no llegó se considera no presentación y no tiene reembolso. Aparece en el resumen de compra y en el correo de confirmación; cada reserva conserva el valor vigente cuando se hizo. Entre {min} y {max} minutos.",
+    "field-booking-cutoff": "Anticipación mínima para reservar (horas antes de la salida)",
+    "hint-booking-cutoff": "Las reservas en línea de cada salida cierran esta cantidad de horas antes de que empiece. Con 0 se puede reservar hasta la hora de salida. Entre {min} y {max} horas."
   },
   "operations": {
     "cancel-departure": "Cancelar salida",

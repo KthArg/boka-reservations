@@ -12,6 +12,7 @@ describe('checkoutErrorKey', () => {
     ['HOLD_INSTANCE_UNAVAILABLE', CheckoutErrorKey.NoAvailability],
     ['INSTANCE_UNAVAILABLE', CheckoutErrorKey.NoAvailability],
     ['HOLD_INSTANCE_PAST', CheckoutErrorKey.InstancePast],
+    ['HOLD_BOOKING_CLOSED', CheckoutErrorKey.BookingClosed],
     ['INSTANCE_PAST', CheckoutErrorKey.InstancePast],
     ['HOLD_NOT_ACTIVE', CheckoutErrorKey.HoldExpired],
     ['HOLD_SESSION_MISMATCH', CheckoutErrorKey.HoldExpired],
