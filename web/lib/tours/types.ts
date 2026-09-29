@@ -19,10 +19,14 @@ const preprocess = (v: unknown) => (v === '' ? null : v);
 const optionalDate = z.preprocess(preprocess, z.string().nullable().optional());
 const optionalDateOmit = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
 
+// Un precio o una capacidad vacíos llegan como null (NaN en JSON): z.coerce los convertiría en 0 y
+// se guardaría un precio de 0 sin que nadie lo escribiera. null pasa a undefined y el campo falla.
+const requiredNumber = (v: unknown) => (v === null ? undefined : v);
+
 export const PricingRowSchema = z.object({
   id: z.string().uuid().optional(),
   ticket_type: z.nativeEnum(TicketType),
-  price_usd: z.coerce.number().min(0),
+  price_usd: z.preprocess(requiredNumber, z.coerce.number().min(0)),
   season_label: z.string().nullable().optional(),
   valid_from: optionalDate,
   valid_until: optionalDate,
@@ -33,7 +37,7 @@ export const ScheduleRowSchema = z.object({
   id: z.string().uuid().optional(),
   day_of_week: z.coerce.number().int().min(0).max(6),
   start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
-  capacity: z.coerce.number().int().positive(),
+  capacity: z.preprocess(requiredNumber, z.coerce.number().int().positive()),
   valid_from: optionalDateOmit,
   valid_until: optionalDate,
   active: z.boolean().default(true),

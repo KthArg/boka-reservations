@@ -126,3 +126,19 @@ describe('coerción de fechas vacías a null (fix 22007)', () => {
     expect(parsed.valid_until).toBeNull();
   });
 });
+
+describe('precio y capacidad vacíos no pasan como 0', () => {
+  it('PricingRowSchema rechaza un precio null (NaN en el formulario)', () => {
+    const parsed = PricingRowSchema.safeParse({ ticket_type: TicketType.Adult, price_usd: null });
+    expect(parsed.success).toBe(false);
+  });
+
+  it('ScheduleRowSchema rechaza una capacidad null', () => {
+    const parsed = ScheduleRowSchema.safeParse({
+      day_of_week: 1,
+      start_time: '08:00',
+      capacity: null,
+    });
+    expect(parsed.success).toBe(false);
+  });
+});

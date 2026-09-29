@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { PublicPricing } from '@/lib/public/tours';
 import { MAX_TICKETS_PER_BOOKING } from '@/lib/booking/quantities';
+import { NumberField } from '@/components/forms/NumberField';
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
 import { ConsentField } from './ConsentField';
 import { PurchaseSummary, type PurchaseSummaryInfo } from './PurchaseSummary';
@@ -52,18 +53,12 @@ export function CheckoutDetailsFields({
               <label className={styles.ticketLabel}>
                 {t(`ticket-${type}`)} — ${price} USD
               </label>
-              <input
-                type="number"
+              <NumberField
                 name={type}
-                min={0}
-                max={MAX_TICKETS_PER_BOOKING}
                 value={quantities[type]}
-                onChange={(e) =>
-                  onQuantitiesChange({
-                    ...quantities,
-                    [type]: parseInt(e.target.value || '0', 10),
-                  })
-                }
+                onChange={(quantity) => onQuantitiesChange({ ...quantities, [type]: quantity })}
+                rule={{ min: 0, max: MAX_TICKETS_PER_BOOKING, integer: true }}
+                mode="correct"
                 className={styles.qtyInput}
               />
             </div>
