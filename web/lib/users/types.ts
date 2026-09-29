@@ -19,4 +19,10 @@ export type FieldErrors = { _form?: string[] } & Partial<Record<string, string[]
 export type FormResult = { success: true } | { success: false; errors: FieldErrors };
 
 /** Resultado de las acciones de botón (activar/desactivar, reenviar invitación). */
-export type UserActionResult = { ok: true } | { ok: false; error: UserManagementError };
+export type UserActionResult =
+  | {
+      ok: true;
+      /** Qué correo salió al reenviar el acceso: la invitación o el de fijar contraseña. */
+      sent?: 'invite' | 'password';
+    }
+  | { ok: false; error: UserManagementError };
