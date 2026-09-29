@@ -16,6 +16,10 @@
   max-width: var(--max-width-prose);
 }
 
+.section + .section {
+  margin-top: var(--space-lg);
+}
+
 .sectionTitle {
   font-size: var(--text-lg);
   font-weight: 600;
@@ -52,6 +56,14 @@
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
+}
+
+/* Campos de texto (datos del operador): ocupan el ancho de la sección; `.input` es para horas. */
+.textInput {
+  composes: input;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input:focus {
