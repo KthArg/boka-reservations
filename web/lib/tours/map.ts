@@ -1,5 +1,6 @@
 import type { PricingRow, ScheduleRow, TourFormData } from './types';
 import type { TablesInsert } from '@/types/database';
+import { crDate } from '@/lib/dates/cr-date';
 
 // Mapeo de filas del formulario a payloads de insert/upsert. Vive aparte de `actions.ts`
 // (que es `'use server'` y solo puede exportar funciones async) para poder unit-testearlo.
@@ -33,14 +34,20 @@ export function mapPricing(pricing: PricingRow[], tourId: string) {
   }));
 }
 
-export function mapSchedules(schedules: ScheduleRow[], tourId: string) {
+/**
+ * `valid_from` es NOT NULL con DEFAULT current_date, pero el formulario no lo pide: una fila nueva
+ * lo trae undefined y supabase-js lo manda como null (el mismo problema que `id`), así que el
+ * insert fallaba. Sin fecha, el horario rige desde hoy en Costa Rica; las filas existentes
+ * conservan la suya.
+ */
+export function mapSchedules(schedules: ScheduleRow[], tourId: string, today: string = crDate()) {
   return schedules.map((s) => ({
     ...(s.id ? { id: s.id } : {}),
     tour_id: tourId,
     day_of_week: s.day_of_week,
     start_time: s.start_time,
     capacity: s.capacity,
-    valid_from: s.valid_from,
+    valid_from: s.valid_from ?? today,
     valid_until: s.valid_until ?? null,
     active: s.active,
   }));
