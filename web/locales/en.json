@@ -725,7 +725,7 @@
     "erase": "Erase the data",
     "erase-ask": "Erase the data of {email}? This cannot be undone.",
     "erase-done": "Done: {anonymized, plural, one {# booking anonymized} other {# bookings anonymized}} and {deleted, plural, one {# deleted} other {# deleted}}. It was logged.",
-    "erase-retained": "{count, plural, one {# booking was not erased} other {# bookings were not erased}}: they have a charge or a departure in progress. Run the erasure again once they finish.",
+    "erase-retained": "{count, plural, one {# booking was not erased because it has a charge or a departure in progress} other {# bookings were not erased because they have a charge or a departure in progress}}. Run the erasure again once they finish.",
     "error-unauthorized": "Only an administrator can do this.",
     "error-invalid-email": "That email is not valid.",
     "error-pending-refund": "There is an unfinished refund: nothing was erased.",

@@ -9,6 +9,8 @@
 
 El número 0037 queda reservado para la factura electrónica (Fase 0 de Hacienda). Revisado por spec-reviewer el 2026-09-28; los hallazgos están resueltos en este texto.
 
+**Actualización 2026-09-29 (implementación).** Una cuenta de acceso inexistente devuelve `user_mgmt_account_missing` (no `user_mgmt_not_found`), con un mensaje que pide invitar de nuevo. La fila que queda inactiva pierde también el teléfono. La verificación previa de la migración en producción es `has_table_privilege('postgres', 'auth.users', 'TRIGGER')`: `db push --dry-run` no ejecuta SQL. La limpieza de Sentry cubre también headers (Referer, next-url, cookies) y spans.
+
 ## 1. Contexto y motivación
 
 La primera prueba real en producción (2026-09-28) y los pendientes de los specs 0035 y 0036 dejaron seis huecos chicos que conviene cerrar antes de vender. Ninguno cambia reglas de negocio: todos hacen que lo que ya existe funcione sin sorpresas para el admin o el staff. Van juntos porque son el mismo tipo de trabajo (cierre de lanzamiento), cada uno es chico y ninguno depende de otro; el PR se organiza en un commit por punto para revisarlos por separado.

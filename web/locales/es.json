@@ -725,7 +725,7 @@
     "erase": "Borrar los datos",
     "erase-ask": "¿Borrar los datos de {email}? No se puede deshacer.",
     "erase-done": "Listo: {anonymized, plural, one {# reserva anonimizada} other {# reservas anonimizadas}} y {deleted, plural, one {# borrada} other {# borradas}}. Quedó registrado.",
-    "erase-retained": "{count, plural, one {# reserva no se borró} other {# reservas no se borraron}}: tienen un cobro o una salida en curso. Repetí el borrado cuando terminen.",
+    "erase-retained": "{count, plural, one {# reserva no se borró porque tiene un cobro o una salida en curso} other {# reservas no se borraron porque tienen un cobro o una salida en curso}}. Repetí el borrado cuando terminen.",
     "error-unauthorized": "Solo un administrador puede hacer esto.",
     "error-invalid-email": "Ese correo no es válido.",
     "error-pending-refund": "Hay un reembolso sin terminar: no se borró nada.",

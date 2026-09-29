@@ -11,7 +11,7 @@ const TOUR_IMAGES_BUCKET = 'tour-images';
 const LIST_PAGE_SIZE = 1000;
 const REMOVE_BATCH_SIZE = 100;
 
-async function listObjects(db: SupabaseClient): Promise<StoredObject[]> {
+export async function listObjects(db: SupabaseClient): Promise<StoredObject[]> {
   const objects: StoredObject[] = [];
   for (let offset = 0; ; offset += LIST_PAGE_SIZE) {
     const { data, error } = await db.storage
@@ -26,13 +26,21 @@ async function listObjects(db: SupabaseClient): Promise<StoredObject[]> {
   }
 }
 
-async function coverImageUrls(db: SupabaseClient): Promise<string[]> {
-  const { data, error } = await db
+/**
+ * Todas las fotos en uso. PostgREST corta en max-rows sin avisar: si faltaran filas, el job
+ * borraría fotos en uso. Se compara con el total y, ante una diferencia, no se borra nada.
+ */
+export async function coverImageUrls(db: SupabaseClient): Promise<string[]> {
+  const { data, error, count } = await db
     .from('tours')
-    .select('cover_image_url')
+    .select('cover_image_url', { count: 'exact' })
     .not('cover_image_url', 'is', null);
   if (error) throw new Error(`no se pudieron leer los tours: ${error.message}`);
-  return ((data ?? []) as { cover_image_url: string }[]).map((t) => t.cover_image_url);
+  const rows = (data ?? []) as { cover_image_url: string }[];
+  if (count !== null && rows.length !== count) {
+    throw new Error(`lectura de tours incompleta (${rows.length} de ${count})`);
+  }
+  return rows.map((t) => t.cover_image_url);
 }
 
 export async function cleanupTourImages(now: Date = new Date()): Promise<void> {

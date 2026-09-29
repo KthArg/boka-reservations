@@ -8,7 +8,8 @@ import { UserRole } from '@shared/constants/enums';
 import { UserManagementError } from '@shared/constants/users';
 import { UserCreateSchema, UserUpdateSchema } from '@shared/schemas';
 import { createInternalUser } from './create';
-import { resendInvite as resendInviteService, setUserActive, updateInternalUser } from './manage';
+import { setUserActive, updateInternalUser } from './manage';
+import { resendInvite as resendInviteService } from './resend-invite';
 import { emailExists } from './repository';
 import type { FieldErrors, FormResult, UserActionResult } from './types';
 

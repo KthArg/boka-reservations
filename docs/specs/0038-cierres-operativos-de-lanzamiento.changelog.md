@@ -23,7 +23,21 @@
 - Integración: `auth-user-deleted` (3, borrando con GoTrue), `password-link` (el enlace con `token_hash` se verifica pedido con PKCE desde el navegador y con el cliente de servicio; leído desde Mailpit), `retained_count` en `retention-anonymization` y `deferred-booking-guards`.
 - `cleanup-tour-images` corrido contra el Storage local.
 
+## 2026-09-29 — Revisiones (db-schema-guardian y code-reviewer)
+
+**Hecho**:
+
+- Migración 051: `phone = NULL` en la fila inactiva, `COMMENT` en la función y el trigger, supuestos escritos (borrado suave de GoTrue, FK en cascada de guías). Verificado en producción que `postgres` tiene `TRIGGER` sobre `auth.users`.
+- Sentry (bloqueante de la revisión): `scrubEvent` quita cookies, `authorization` y `next-router-state-tree`, limpia `Referer` y `next-url`, y recorre los spans y el contexto de la traza. En el servidor, `requestDataIntegration` sin cookies ni cuerpo. `SENTRY_TRACES_SAMPLE_RATE` compartida.
+- `resendInvite` pasa a `lib/users/resend-invite.ts` y no envía nada a un usuario desactivado; tests unitarios de sus ramas y de reactivar sin cuenta.
+- Worker: `coverImageUrls` compara con el total (`count: 'exact'`) y no borra nada si la lectura vino cortada; tests de paginación y de fallas de lectura con un cliente falso.
+- Texto de retenidas con el verbo dentro del plural.
+
 **Pendiente**:
+
+- Tests de integración que no se sumaron: la bandeja leída con la sesión de staff (RLS ya cubierta por `refunds_select_admin_staff`), el GET real a `/auth/confirm` con la cookie (necesita el servidor de Next) y el caso `business_settings.updated_by` del trigger (fila única compartida con otros tests).
+
+**Pendiente (implementación)**:
 
 - Rollout en producción (spec §11): plantillas ya pegadas por el usuario el 2026-09-28; respaldo y migración 051 antes de promover.
 - Prueba manual: forzar un error de render en el preview y verlo en Sentry sin tokens.
