@@ -17,9 +17,10 @@ type WriteRow = Record<string, unknown> & { id?: string };
 type PgError = { code?: string; message?: string };
 
 const BASE_UNIQUE_INDEX = 'tour_pricing_one_base_per_type';
-const OVERLAP_CONSTRAINT = 'tour_pricing_no_seasonal_overlap';
+/** Texto del error del trigger de superposición de temporadas (…052, spec 0040). */
+const OVERLAP_CONSTRAINT = 'tour_pricing_season_overlap';
 
-/** Mapea la violación de un constraint de …041 a su código de dominio. */
+/** Mapea la violación del índice del precio base o del trigger de temporadas a su código. */
 export function writeErrorCode(error: PgError, fallback: string): string {
   if (error.code === PG_UNIQUE_VIOLATION && error.message?.includes(BASE_UNIQUE_INDEX)) {
     return TourActionError.BasePriceDuplicate;

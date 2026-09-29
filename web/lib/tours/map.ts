@@ -28,8 +28,8 @@ export function mapPricing(pricing: PricingRow[], tourId: string) {
     ticket_type: p.ticket_type,
     price_usd: p.price_usd,
     season_label: p.season_label ?? null,
-    valid_from: p.valid_from ?? null,
-    valid_until: p.valid_until ?? null,
+    season_start: p.season_start ?? null,
+    season_end: p.season_end ?? null,
     active: p.active,
   }));
 }

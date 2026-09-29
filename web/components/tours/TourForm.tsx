@@ -34,8 +34,8 @@ function toPricingRows(pricing: TourWithDetails['pricing']): PricingRow[] {
     ticket_type: p.ticket_type as TicketType,
     price_usd: Number(p.price_usd),
     season_label: p.season_label,
-    valid_from: p.valid_from,
-    valid_until: p.valid_until,
+    season_start: p.season_start,
+    season_end: p.season_end,
     active: p.active,
   }));
 }

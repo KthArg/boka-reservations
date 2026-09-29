@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
-import { getTourBySlug, getTourPricing, getUpcomingInstances } from '@/lib/public/tours';
+import { getTourBySlug, getTourPriceList, getUpcomingInstances } from '@/lib/public/tours';
 import { isPublicReadThrottled } from '@/lib/public/read-limit';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isSalesEnabled } from '@/lib/booking/sales-gate';
@@ -30,7 +30,7 @@ export default async function TourDetailPage({ params }: Props) {
   if (!tour) notFound();
 
   const [pricing, instances, salesEnabled] = await Promise.all([
-    getTourPricing(tour.id),
+    getTourPriceList(tour.id),
     getUpcomingInstances(tour.id),
     isSalesEnabled(),
   ]);
@@ -109,7 +109,7 @@ export default async function TourDetailPage({ params }: Props) {
             <h2 className={styles.sectionTitle}>{t('detail-availability')}</h2>
             {bookable ? (
               <AvailabilityCalendar
-                departures={toCalendarDepartures(instances, locale)}
+                departures={toCalendarDepartures(instances, locale, pricing)}
                 today={crDate()}
                 tourSlug={slug}
               />

@@ -27,9 +27,10 @@ export const PricingRowSchema = z.object({
   id: z.string().uuid().optional(),
   ticket_type: z.nativeEnum(TicketType),
   price_usd: z.preprocess(requiredNumber, z.coerce.number().min(0)),
-  season_label: z.string().nullable().optional(),
-  valid_from: optionalDate,
-  valid_until: optionalDate,
+  season_label: z.preprocess(preprocess, z.string().trim().nullable().optional()),
+  // Temporada que se repite cada año (spec 0040): 'MM-DD', las dos o ninguna (precio base).
+  season_start: optionalDate,
+  season_end: optionalDate,
   active: z.boolean().default(true),
 });
 

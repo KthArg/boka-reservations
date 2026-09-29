@@ -12,6 +12,8 @@ export type CalendarDeparture = {
   /** Hora formateada en el servidor, en el idioma de la página. */
   time: string;
   seatsLeft: number;
+  /** Precio de adulto del día de la salida, ya formateado (spec 0040); null si no hay. */
+  adultPrice: string | null;
 };
 
 export type CalendarDay = {

@@ -13,8 +13,8 @@ describe('mapPricing', () => {
         {
           ticket_type: TicketType.Adult,
           price_usd: 70,
-          valid_from: null,
-          valid_until: null,
+          season_start: null,
+          season_end: null,
           active: true,
         },
       ],
@@ -23,8 +23,8 @@ describe('mapPricing', () => {
     // Clave del fix: 'id' NO debe estar presente (no `id: null`, que rompería el NOT NULL del PK).
     expect('id' in row).toBe(false);
     expect(row.tour_id).toBe(TOUR_ID);
-    expect(row.valid_from).toBeNull();
-    expect(row.valid_until).toBeNull();
+    expect(row.season_start).toBeNull();
+    expect(row.season_end).toBeNull();
   });
 
   it('conserva el id en filas existentes (para el upsert de updateTour)', () => {

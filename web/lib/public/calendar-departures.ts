@@ -1,6 +1,9 @@
 import 'server-only';
 import { BUSINESS_TIMEZONE, crDate } from '@/lib/dates/cr-date';
-import { intlLocaleTag } from '@/lib/format/money';
+import { formatMoneyCents, intlLocaleTag } from '@/lib/format/money';
+import { selectPriceForDay, type PriceRow } from '@/lib/pricing/season';
+import { CENTS_PER_UNIT } from '@shared/constants/bookings';
+import { TicketType } from '@shared/constants/enums';
 import { seatsLeft, type CalendarDeparture } from './calendar';
 import type { PublicInstance } from './tours';
 
@@ -12,6 +15,7 @@ import type { PublicInstance } from './tours';
 export function toCalendarDepartures(
   instances: PublicInstance[],
   locale: string,
+  pricing: PriceRow[] = [],
 ): CalendarDeparture[] {
   const time = new Intl.DateTimeFormat(intlLocaleTag(locale), {
     hour: 'numeric',
@@ -20,11 +24,16 @@ export function toCalendarDepartures(
   });
   return instances.map((instance) => {
     const startsAt = new Date(instance.starts_at);
+    const crDay = crDate(startsAt);
+    const adult = selectPriceForDay(pricing, crDay).find((p) => p.ticket_type === TicketType.Adult);
     return {
       id: instance.id,
-      crDay: crDate(startsAt),
+      crDay,
       time: time.format(startsAt),
       seatsLeft: seatsLeft(instance.capacity_total, instance.capacity_reserved),
+      adultPrice: adult
+        ? formatMoneyCents(Math.round(Number(adult.price_usd) * CENTS_PER_UNIT), 'USD', locale)
+        : null,
     };
   });
 }

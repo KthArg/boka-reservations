@@ -1,4 +1,5 @@
 import { TourActionError } from '@shared/constants/tours';
+import { isValidMonthDay, seasonsOverlap } from '@/lib/pricing/season';
 import type { PricingRow, ScheduleRow } from './types';
 
 export function slugify(text: string): string {
@@ -15,48 +16,30 @@ export function slugify(text: string): string {
 
 type OverlapError = { indices: [number, number]; code: string };
 
-// Semántica alineada con los constraints de la migración …041 (spec 0028, B1):
-//  - fila SEASONAL = al menos un límite de fecha (un límite ausente = infinito hacia ese lado);
-//  - fila BASE = sin fechas; un base + temporadas conviven (la temporada gana al cobrar);
-//  - dos bases del mismo tipo = conflicto; dos temporadas solapadas = conflicto,
-//    con BORDES INCLUSIVOS ([from, until] cerrado, igual que el filtro de vigencia:
-//    antes el borde compartido pasaba la validación pero ambas quedaban vigentes ese día).
-function rangesOverlap(
-  aFrom: string | null | undefined,
-  aUntil: string | null | undefined,
-  bFrom: string | null | undefined,
-  bUntil: string | null | undefined,
-): boolean {
-  const aSeasonal = aFrom != null || aUntil != null;
-  const bSeasonal = bFrom != null || bUntil != null;
-
-  if (!aSeasonal && !bSeasonal) return true; // dos precios base para el mismo tipo
-  if (!aSeasonal || !bSeasonal) return false; // base + temporada = ok (la temporada gana)
-
-  const MIN_DATE = '0000-00-00';
-  const MAX_DATE = '9999-12-31';
-  return (aFrom ?? MIN_DATE) <= (bUntil ?? MAX_DATE) && (bFrom ?? MIN_DATE) <= (aUntil ?? MAX_DATE);
+function hasSeason(
+  row: PricingRow,
+): row is PricingRow & { season_start: string; season_end: string } {
+  return row.season_start != null && row.season_end != null;
 }
 
 /**
- * Temporadas con UNA sola fecha (review pre-PR de 0028): el CHECK valid_season_range de
- * DB exige ambas o ninguna; sin este rechazo temprano el guardado moría en DB con el
- * error genérico. Se valida antes que los solapes.
+ * Temporadas con una sola punta (spec 0040): el CHECK tour_pricing_season_shape exige las dos o
+ * ninguna. Se valida antes que los solapes.
  */
 export function hasHalfOpenSeasons(rows: PricingRow[]): boolean {
-  return rows.some((r) => r.active && (r.valid_from == null) !== (r.valid_until == null));
+  return rows.some((r) => (r.season_start == null) !== (r.season_end == null));
 }
 
-/**
- * Temporadas con rango inválido (review pre-PR): valid_season_range exige
- * `valid_from < valid_until` ESTRICTO — una temporada de un día o invertida moría en DB
- * a mitad de la reconciliación (con las eliminaciones ya aplicadas).
- */
+/** Temporadas con un día que no existe (31 de abril): CHECK tour_pricing_season_days. */
 export function hasInvalidSeasonRange(rows: PricingRow[]): boolean {
   return rows.some(
-    (r) =>
-      r.active && r.valid_from != null && r.valid_until != null && r.valid_from >= r.valid_until,
+    (r) => hasSeason(r) && (!isValidMonthDay(r.season_start) || !isValidMonthDay(r.season_end)),
   );
+}
+
+/** Temporadas sin nombre: el CHECK tour_pricing_season_shape lo exige. */
+export function hasUnlabeledSeason(rows: PricingRow[]): boolean {
+  return rows.some((r) => hasSeason(r) && !r.season_label);
 }
 
 /**
@@ -71,23 +54,34 @@ export function hasInvalidScheduleRange(rows: ScheduleRow[]): boolean {
   );
 }
 
+/**
+ * Conflictos entre filas activas del mismo tiquete (spec 0040): dos precios base, o dos
+ * temporadas que comparten un día del año (con bordes inclusivos y cruce de año). Un base y una
+ * temporada conviven: la temporada gana en sus días.
+ */
 export function detectPricingOverlaps(rows: PricingRow[]): OverlapError[] {
   const errors: OverlapError[] = [];
-  const active = rows.map((r, i) => ({ row: r, originalIndex: i })).filter((r) => r.row.active);
+  const active = rows.map((row, index) => ({ row, index })).filter((r) => r.row.active);
 
   for (let i = 0; i < active.length; i++) {
     for (let j = i + 1; j < active.length; j++) {
       const a = active[i];
       const b = active[j];
-
       if (a.row.ticket_type !== b.row.ticket_type) continue;
 
-      if (rangesOverlap(a.row.valid_from, a.row.valid_until, b.row.valid_from, b.row.valid_until)) {
-        const bothBase = a.row.valid_from == null && a.row.valid_until == null;
-        errors.push({
-          indices: [a.originalIndex, b.originalIndex],
-          code: bothBase ? TourActionError.BasePriceDuplicate : TourActionError.PricingOverlap,
-        });
+      const aSeason = hasSeason(a.row);
+      const bSeason = hasSeason(b.row);
+      if (!aSeason && !bSeason) {
+        errors.push({ indices: [a.index, b.index], code: TourActionError.BasePriceDuplicate });
+      } else if (
+        hasSeason(a.row) &&
+        hasSeason(b.row) &&
+        seasonsOverlap(
+          { start: a.row.season_start, end: a.row.season_end },
+          { start: b.row.season_start, end: b.row.season_end },
+        )
+      ) {
+        errors.push({ indices: [a.index, b.index], code: TourActionError.PricingOverlap });
       }
     }
   }

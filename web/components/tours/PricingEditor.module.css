@@ -90,3 +90,25 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+
+.hint {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Día y mes de una temporada (spec 0040): dos selectores bajo una sola etiqueta. */
+.monthDay {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.monthDay legend {
+  padding: 0;
+  margin-bottom: var(--space-xs);
+}
