@@ -9,6 +9,8 @@ import { loadErasurePreview, type ErasurePreview } from './preview';
 export interface AnonymizeResult {
   anonymizedCount: number;
   deletedCount: number;
+  /** Reservas vivas que no se tocaron: un cobro o una salida en curso (spec 0038). */
+  retainedCount: number;
 }
 
 export type PrivacyError = 'unauthorized' | 'invalid-email' | 'pending-refund' | 'error-generic';
@@ -81,6 +83,7 @@ export async function anonymizeCustomerByEmail(email: string): Promise<Anonymize
     result: {
       anonymizedCount: row?.anonymized_count ?? 0,
       deletedCount: row?.deleted_count ?? 0,
+      retainedCount: row?.retained_count ?? 0,
     },
   };
 }

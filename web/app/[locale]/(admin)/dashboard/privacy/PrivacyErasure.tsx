@@ -81,6 +81,11 @@ export function PrivacyErasure() {
           {t('erase-done', { anonymized: result.anonymizedCount, deleted: result.deletedCount })}
         </p>
       ) : null}
+      {result && result.retainedCount > 0 ? (
+        <p className={styles.warning} role="status">
+          {t('erase-retained', { count: result.retainedCount })}
+        </p>
+      ) : null}
     </section>
   );
 }

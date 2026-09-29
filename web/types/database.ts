@@ -1333,7 +1333,7 @@ export type Database = {
       };
       anonymize_booking_pii_by_email: {
         Args: { p_email: string; p_actor_id: string };
-        Returns: { anonymized_count: number; deleted_count: number }[];
+        Returns: { anonymized_count: number; deleted_count: number; retained_count: number }[];
       };
       anonymize_bookings_past_retention: {
         Args: { p_cutoff: string };

@@ -406,7 +406,7 @@ describe('retención — reservas vivas e intents abiertos', () => {
     );
 
     // Assert
-    expect(result).toEqual({ anonymized_count: 0, deleted_count: 0 });
+    expect(result).toEqual({ anonymized_count: 0, deleted_count: 0, retained_count: 1 });
     expect(await bookingExists(bookingId)).toBe(true);
     const { data: audit } = await db
       .from('audit_logs')

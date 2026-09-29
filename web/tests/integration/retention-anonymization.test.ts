@@ -195,7 +195,7 @@ describe('anonymize_booking_pii_by_email (PRIV-02)', () => {
       p_actor_id: adminUserId,
     });
     expect(error).toBeNull();
-    expect(data![0]).toEqual({ anonymized_count: 1, deleted_count: 1 });
+    expect(data![0]).toEqual({ anonymized_count: 1, deleted_count: 1, retained_count: 0 });
 
     const { data: paid } = await admin
       .from('bookings')
@@ -232,7 +232,7 @@ describe('anonymize_booking_pii_by_email (PRIV-02)', () => {
       p_email: email,
       p_actor_id: adminUserId,
     });
-    expect(second![0]).toEqual({ anonymized_count: 0, deleted_count: 0 });
+    expect(second![0]).toEqual({ anonymized_count: 0, deleted_count: 0, retained_count: 0 });
   });
 
   it('normaliza el email (trim + mayúsculas) antes de buscar', async () => {
@@ -254,7 +254,7 @@ describe('anonymize_booking_pii_by_email (PRIV-02)', () => {
       p_email: email,
       p_actor_id: adminUserId,
     });
-    expect(data![0]).toEqual({ anonymized_count: 1, deleted_count: 0 });
+    expect(data![0]).toEqual({ anonymized_count: 1, deleted_count: 0, retained_count: 0 });
 
     const { data: row } = await admin
       .from('bookings')
@@ -270,7 +270,7 @@ describe('anonymize_booking_pii_by_email (PRIV-02)', () => {
       p_email: uniqueEmail('nobody'),
       p_actor_id: adminUserId,
     });
-    expect(data![0]).toEqual({ anonymized_count: 0, deleted_count: 0 });
+    expect(data![0]).toEqual({ anonymized_count: 0, deleted_count: 0, retained_count: 0 });
   });
 });
 
