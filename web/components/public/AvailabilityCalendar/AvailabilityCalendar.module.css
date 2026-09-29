@@ -1,12 +1,13 @@
 .calendar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-md);
 }
 
-.month {
+.monthNav {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-sm);
 }
 
@@ -16,8 +17,111 @@
   margin: 0;
   text-transform: capitalize;
   color: var(--color-text);
+}
+
+.navButton {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.navButton:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.navButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 2px;
+  table-layout: fixed;
+}
+
+.weekday {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
   padding-bottom: var(--space-xs);
-  border-bottom: 2px solid var(--color-primary-light);
+}
+
+.cell {
+  padding: 0;
+  text-align: center;
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.5rem;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  opacity: 0.55;
+}
+
+.dayBookable {
+  border: 1px solid var(--color-primary-light);
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark, var(--color-primary));
+  font-weight: 600;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.dayBookable:hover {
+  border-color: var(--color-primary);
+}
+
+.dayBookable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.daySelected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.daySoldOut {
+  text-decoration: line-through;
+}
+
+.dayToday {
+  box-shadow: inset 0 -3px 0 var(--color-primary);
+}
+
+.dayPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.dayTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.dayTitle::first-letter {
+  text-transform: uppercase;
 }
 
 .dateList {
@@ -32,33 +136,59 @@
 .dateItem {
   font-size: var(--text-sm);
   color: var(--color-text);
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-sm);
   border-radius: var(--radius-sm);
   background: var(--color-surface-alt);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
 }
 
 .dateLabel {
+  font-weight: 600;
+}
+
+.seats {
   flex: 1;
+  color: var(--color-text-muted);
+}
+
+.seatsLow {
+  flex: 1;
+  color: var(--color-error);
+  font-weight: 600;
 }
 
 .bookLink {
-  font-size: 0.8rem;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--color-primary, #1d9e75);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .bookLink:hover {
-  text-decoration: underline;
+  background: var(--color-primary-dark, var(--color-primary));
 }
 
 .empty {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
