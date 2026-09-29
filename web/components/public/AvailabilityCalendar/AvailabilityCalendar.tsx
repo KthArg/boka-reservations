@@ -12,7 +12,8 @@ import {
   monthsRange,
   type CalendarDeparture,
   type MonthKey,
-} from './calendar';
+} from '@/lib/public/calendar';
+import { MONTH_KEYS, WEEKDAY_LONG_KEYS, WEEKDAY_SHORT_KEYS } from '@/lib/public/calendar-keys';
 import { MonthGrid } from './MonthGrid';
 import { DayDepartures } from './DayDepartures';
 import styles from './AvailabilityCalendar.module.css';
@@ -39,9 +40,9 @@ export function AvailabilityCalendar({ departures, today, tourSlug }: Props) {
 
   if (!range || !month) return <p className={styles.empty}>{t('detail-no-instances')}</p>;
 
-  const monthName = (m: number) => t(`calendar-month-${m}` as Parameters<typeof t>[0]);
+  const monthName = (m: number) => t(MONTH_KEYS[m - 1]);
   const weekdayName = (d: number, form: 'short' | 'long') =>
-    t(`calendar-weekday-${form}-${d}` as Parameters<typeof t>[0]);
+    t((form === 'short' ? WEEKDAY_SHORT_KEYS : WEEKDAY_LONG_KEYS)[d - 1]);
   const dayLabel = (day: string) => {
     const [, m, d] = day.split('-').map(Number);
     return t('calendar-day-title', {

@@ -1,6 +1,6 @@
 'use client';
 
-import { buildMonthGrid, type CalendarDay, type MonthKey } from './calendar';
+import { buildMonthGrid, type CalendarDay, type MonthKey } from '@/lib/public/calendar';
 import styles from './AvailabilityCalendar.module.css';
 
 type Props = {
@@ -67,7 +67,7 @@ export function MonthGrid({
                       type="button"
                       className={`${styles.day} ${styles.dayBookable} ${isSelected ? styles.daySelected : ''} ${isToday ? styles.dayToday : ''}`}
                       aria-pressed={isSelected}
-                      aria-label={dayLabel(day)}
+                      aria-label={isToday ? `${dayLabel(day)}, ${todayLabel}` : dayLabel(day)}
                       onClick={() => onSelect(day)}
                     >
                       {number}
@@ -79,7 +79,10 @@ export function MonthGrid({
               if (info) {
                 return (
                   <td key={day} className={styles.cell}>
-                    <span className={`${styles.day} ${styles.daySoldOut}`} title={soldOutLabel}>
+                    <span
+                      className={`${styles.day} ${styles.daySoldOut} ${isToday ? styles.dayToday : ''}`}
+                      title={soldOutLabel}
+                    >
                       {number}
                       <span className={styles.srOnly}>{`, ${soldOutLabel}`}</span>
                       {todayMark}

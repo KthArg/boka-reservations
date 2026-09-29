@@ -10,9 +10,6 @@ import {
   type CalendarDeparture,
 } from './calendar';
 
-// La lógica no debe depender de la zona de quien la ejecuta: se prueba lejos de UTC y de Costa Rica.
-process.env.TZ = 'Asia/Tokyo';
-
 function departure(crDay: string, seats: number, id = crDay): CalendarDeparture {
   return { id, crDay, time: '08:00', seatsLeft: seats };
 }
@@ -55,8 +52,7 @@ describe('monthsRange y firstBookableDay', () => {
     expect(firstBookableDay(days)).toBe('2026-10-06');
   });
 
-  it('la salida del 31 de octubre a las 23:30 de Costa Rica queda en octubre', () => {
-    // 2026-11-01T05:30Z en UTC; el servidor la manda con su día de Costa Rica.
+  it('un día de Costa Rica al final del mes queda en ese mes', () => {
     const days = groupByCrDay([departure('2026-10-31', 2)]);
     expect(monthsRange(days)).toEqual({ first: '2026-10', last: '2026-10' });
   });

@@ -26,6 +26,7 @@ export type MonthKey = string;
 
 const MONTH_KEY_LENGTH = 7;
 const DAYS_PER_WEEK = 7;
+const DAY_DIGITS = 2;
 /** Días de la semana ISO, de 1 (lunes) a 7 (domingo): el orden de las columnas de la grilla. */
 export const ISO_WEEKDAYS: readonly number[] = Array.from(
   { length: DAYS_PER_WEEK },
@@ -102,7 +103,7 @@ export function buildMonthGrid(month: MonthKey): (string | null)[][] {
 
   const cells: (string | null)[] = Array.from({ length: leading }, () => null);
   for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(`${month}-${String(d).padStart(2, '0')}`);
+    cells.push(`${month}-${String(d).padStart(DAY_DIGITS, '0')}`);
   }
   while (cells.length % DAYS_PER_WEEK !== 0) cells.push(null);
 

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { LOW_SEATS_THRESHOLD } from '@shared/constants/bookings';
-import type { CalendarDay } from './calendar';
+import type { CalendarDay } from '@/lib/public/calendar';
 import styles from './AvailabilityCalendar.module.css';
 
 type Props = {

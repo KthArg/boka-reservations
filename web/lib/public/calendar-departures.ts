@@ -1,9 +1,7 @@
 import 'server-only';
 import { BUSINESS_TIMEZONE, crDate } from '@/lib/dates/cr-date';
-import {
-  seatsLeft,
-  type CalendarDeparture,
-} from '@/components/public/AvailabilityCalendar/calendar';
+import { intlLocaleTag } from '@/lib/format/money';
+import { seatsLeft, type CalendarDeparture } from './calendar';
 import type { PublicInstance } from './tours';
 
 /**
@@ -15,7 +13,7 @@ export function toCalendarDepartures(
   instances: PublicInstance[],
   locale: string,
 ): CalendarDeparture[] {
-  const time = new Intl.DateTimeFormat(locale === 'es' ? 'es-CR' : 'en-US', {
+  const time = new Intl.DateTimeFormat(intlLocaleTag(locale), {
     hour: 'numeric',
     minute: '2-digit',
     timeZone: BUSINESS_TIMEZONE,
