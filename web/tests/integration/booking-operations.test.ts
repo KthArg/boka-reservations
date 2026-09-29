@@ -294,14 +294,22 @@ describe('punto de encuentro fijo', () => {
   });
 });
 
-function settle(refundId: string, overrides: Record<string, unknown> = {}) {
+async function settle(refundId: string, overrides: Record<string, unknown> = {}) {
+  // La transferencia se registra a la hora del pedido: nunca va adelante del reloj de la base y
+  // cae el mismo día de Costa Rica. "Un minuto antes de ahora" fallaba en el primer minuto del día
+  // (INVALID_PAID_AT por quedar el día anterior al pedido). Sin pedido, un minuto antes de ahora.
+  const { data } = await db
+    .from('refunds')
+    .select('transfer_requested_at')
+    .eq('id', refundId)
+    .single();
+  const paidAt = data?.transfer_requested_at ?? new Date(Date.now() - 60_000).toISOString();
   return db.rpc('settle_refund_transfer', {
     p_refund_id: refundId,
     p_actor_id: staffId,
     p_channel: TransferChannel.SinpeMovil,
     p_reference: 'SINPE-123456',
-    // Un minuto antes: el reloj de los tests puede ir unos segundos adelante del de la base.
-    p_paid_at: new Date(Date.now() - 60_000).toISOString(),
+    p_paid_at: paidAt,
     p_amount_cents: BOOKING_TOTAL,
     p_currency: 'USD',
     ...overrides,
