@@ -317,6 +317,8 @@ export type Database = {
           ticket_type: 'adult' | 'child' | 'student';
           price_usd: number;
           season_label: string | null;
+          season_end: string | null;
+          season_start: string | null;
           valid_from: string | null;
           valid_until: string | null;
           active: boolean;
@@ -329,6 +331,8 @@ export type Database = {
           ticket_type: 'adult' | 'child' | 'student';
           price_usd: number;
           season_label?: string | null;
+          season_end?: string | null;
+          season_start?: string | null;
           valid_from?: string | null;
           valid_until?: string | null;
           active?: boolean;
@@ -341,6 +345,8 @@ export type Database = {
           ticket_type?: 'adult' | 'child' | 'student';
           price_usd?: number;
           season_label?: string | null;
+          season_end?: string | null;
+          season_start?: string | null;
           valid_from?: string | null;
           valid_until?: string | null;
           active?: boolean;

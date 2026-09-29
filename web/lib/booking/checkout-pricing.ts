@@ -1,9 +1,7 @@
 import type { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import {
-  applyActivePricingFilter,
-  pricingToday,
-  selectEffectivePricing,
-} from '@/lib/pricing/active-filter';
+import { applyActivePricingFilter, PRICING_SELECTION_COLUMNS } from '@/lib/pricing/active-filter';
+import { selectPriceForDay, type PriceRow } from '@/lib/pricing/season';
+import { crDate } from '@/lib/dates/cr-date';
 import { computeAuthoritativeTotal } from '@/lib/booking/pricing-math';
 import type { PricingRow } from '@/lib/booking/pricing-math';
 import type { TicketQuantities } from '@/lib/booking/quantities';
@@ -18,6 +16,7 @@ type AuthoritativeCharge = {
 
 interface InstanceTourRow {
   tour_id: string;
+  starts_at: string;
   tours: { name_es: string; name_en: string } | null;
 }
 
@@ -35,7 +34,7 @@ export async function resolveAuthoritativeCharge(
 ): Promise<AuthoritativeCharge> {
   const { data, error } = await db
     .from('tour_instances')
-    .select('tour_id, tours!inner(name_es, name_en)')
+    .select('tour_id, starts_at, tours!inner(name_es, name_en)')
     .eq('id', instanceId)
     .single();
 
@@ -43,20 +42,20 @@ export async function resolveAuthoritativeCharge(
   if (error || !row || !row.tours) throw new Error('CHECKOUT_INSTANCE_NOT_FOUND');
 
   const tourName = locale === 'es' ? row.tours.name_es : row.tours.name_en;
-  const pricing = await loadActivePricing(db, row.tour_id);
+  // Spec 0040: la temporada la decide el día de la salida en Costa Rica, no el de la compra.
+  const pricing = await loadPricingForDay(db, row.tour_id, crDate(new Date(row.starts_at)));
   const totalAmountCents = computeAuthoritativeTotal(quantities, pricing);
 
   return { tourName, totalAmountCents };
 }
 
-async function loadActivePricing(db: ServiceClient, tourId: string): Promise<PricingRow[]> {
-  // valid_from/valid_until viajan para la regla de prioridad (temporada > base, spec 0028):
-  // sin ella, con ambos vigentes el mismo día el monto cobrado era no determinista.
-  const base = db
-    .from('tour_pricing')
-    .select('ticket_type, price_usd, valid_from, valid_until')
-    .eq('tour_id', tourId);
-  const { data, error } = await applyActivePricingFilter(base, pricingToday());
+async function loadPricingForDay(
+  db: ServiceClient,
+  tourId: string,
+  crDay: string,
+): Promise<PricingRow[]> {
+  const base = db.from('tour_pricing').select(PRICING_SELECTION_COLUMNS).eq('tour_id', tourId);
+  const { data, error } = await applyActivePricingFilter(base);
   if (error) throw new Error('CHECKOUT_PRICING_LOAD_FAILED');
-  return selectEffectivePricing((data ?? []) as (PricingRow & { valid_from: string | null })[]);
+  return selectPriceForDay((data ?? []) as (PricingRow & PriceRow)[], crDay);
 }

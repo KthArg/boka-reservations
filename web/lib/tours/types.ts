@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidMonthDay } from '@/lib/pricing/season';
 import { isTourImageUrl } from './cover-image';
 import { TourDifficulty, TicketType } from '@shared/constants/enums';
 import {
@@ -17,6 +18,11 @@ import type { Tables } from '@/types/database';
 // solapamientos (que trata null como "precio base"; antes veía '' como una fecha real).
 const preprocess = (v: unknown) => (v === '' ? null : v);
 const optionalDate = z.preprocess(preprocess, z.string().nullable().optional());
+// Día-mes 'MM-DD' de una temporada (spec 0040); vacío es null (precio base).
+const optionalMonthDay = z.preprocess(
+  preprocess,
+  z.string().refine(isValidMonthDay, 'tour_season_range_invalid').nullable().optional(),
+);
 const optionalDateOmit = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
 
 // Un precio o una capacidad vacíos llegan como null (NaN en JSON): z.coerce los convertiría en 0 y
@@ -27,9 +33,10 @@ export const PricingRowSchema = z.object({
   id: z.string().uuid().optional(),
   ticket_type: z.nativeEnum(TicketType),
   price_usd: z.preprocess(requiredNumber, z.coerce.number().min(0)),
-  season_label: z.string().nullable().optional(),
-  valid_from: optionalDate,
-  valid_until: optionalDate,
+  season_label: z.preprocess(preprocess, z.string().trim().nullable().optional()),
+  // Temporada que se repite cada año (spec 0040): 'MM-DD', las dos o ninguna (precio base).
+  season_start: optionalMonthDay,
+  season_end: optionalMonthDay,
   active: z.boolean().default(true),
 });
 

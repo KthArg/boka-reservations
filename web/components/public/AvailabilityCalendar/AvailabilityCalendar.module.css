@@ -149,6 +149,10 @@
   font-weight: 600;
 }
 
+.price {
+  color: var(--color-text);
+}
+
 .seats {
   flex: 1;
   color: var(--color-text-muted);

@@ -105,20 +105,20 @@ UPDATE business_settings SET
 WHERE id = 1;
 
 -- Precios Cerro Chompipe
-INSERT INTO tour_pricing (tour_id, ticket_type, price_usd, season_label, valid_from, valid_until, active) VALUES
-  ('11111111-0000-0000-0000-000000000001', 'adult',   65.00, 'alta', '2025-12-01', '2026-04-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'child',   40.00, 'alta', '2025-12-01', '2026-04-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'student', 50.00, 'alta', '2025-12-01', '2026-04-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'adult',   55.00, 'baja', '2026-05-01', '2026-11-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'child',   35.00, 'baja', '2026-05-01', '2026-11-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'student', 42.00, 'baja', '2026-05-01', '2026-11-30', true);
+INSERT INTO tour_pricing (tour_id, ticket_type, price_usd, season_label, season_start, season_end, active) VALUES
+  ('11111111-0000-0000-0000-000000000001', 'adult',   65.00, 'alta', '12-01', '04-30', true),
+  ('11111111-0000-0000-0000-000000000001', 'child',   40.00, 'alta', '12-01', '04-30', true),
+  ('11111111-0000-0000-0000-000000000001', 'student', 50.00, 'alta', '12-01', '04-30', true),
+  ('11111111-0000-0000-0000-000000000001', 'adult',   55.00, 'baja', '05-01', '11-30', true),
+  ('11111111-0000-0000-0000-000000000001', 'child',   35.00, 'baja', '05-01', '11-30', true),
+  ('11111111-0000-0000-0000-000000000001', 'student', 42.00, 'baja', '05-01', '11-30', true);
 
 -- Precios Birdwatching La Selva
-INSERT INTO tour_pricing (tour_id, ticket_type, price_usd, season_label, valid_from, valid_until, active) VALUES
-  ('11111111-0000-0000-0000-000000000002', 'adult', 80.00, 'alta', '2025-12-01', '2026-04-30', true),
-  ('11111111-0000-0000-0000-000000000002', 'child', 50.00, 'alta', '2025-12-01', '2026-04-30', true),
-  ('11111111-0000-0000-0000-000000000002', 'adult', 70.00, 'baja', '2026-05-01', '2026-11-30', true),
-  ('11111111-0000-0000-0000-000000000002', 'child', 45.00, 'baja', '2026-05-01', '2026-11-30', true);
+INSERT INTO tour_pricing (tour_id, ticket_type, price_usd, season_label, season_start, season_end, active) VALUES
+  ('11111111-0000-0000-0000-000000000002', 'adult', 80.00, 'alta', '12-01', '04-30', true),
+  ('11111111-0000-0000-0000-000000000002', 'child', 50.00, 'alta', '12-01', '04-30', true),
+  ('11111111-0000-0000-0000-000000000002', 'adult', 70.00, 'baja', '05-01', '11-30', true),
+  ('11111111-0000-0000-0000-000000000002', 'child', 45.00, 'baja', '05-01', '11-30', true);
 
 -- Schedules Cerro Chompipe: sábados y domingos a las 6am
 INSERT INTO tour_schedules (tour_id, day_of_week, start_time, capacity, active) VALUES

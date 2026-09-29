@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { PublicPricing } from '@/lib/public/tours';
 import { startDeferredCheckoutAction } from '@/lib/booking/deferred-checkout-action';
-import { calculateTotalCents } from '@/lib/booking/pricing-math';
+import { calculateTotalCents, initialQuantities } from '@/lib/booking/pricing-math';
 import { CheckoutDetailsFields, type TicketCounts } from './CheckoutDetailsFields';
 import type { PurchaseSummaryInfo } from './PurchaseSummary';
 import { CardDetailsForm } from './CardDetailsForm';
@@ -16,8 +16,6 @@ type Props = {
   pricing: PublicPricing[];
   summary: PurchaseSummaryInfo;
 };
-
-const INITIAL_QUANTITIES: TicketCounts = { adult: 1, child: 0, student: 0 };
 
 /**
  * Checkout diferido (spec 0029 §5.2). Remontar los pasos con otra `key` reinicia el checkout
@@ -43,7 +41,7 @@ function DeferredCheckoutSteps({
 }: Props & { onRestart: () => void }) {
   const t = useTranslations('checkout');
   const [state, action, pending] = useActionState(startDeferredCheckoutAction, null);
-  const [quantities, setQuantities] = useState<TicketCounts>(INITIAL_QUANTITIES);
+  const [quantities, setQuantities] = useState<TicketCounts>(() => initialQuantities(pricing));
 
   const totalCents = calculateTotalCents(
     quantities,

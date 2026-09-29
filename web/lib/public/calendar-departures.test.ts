@@ -32,3 +32,28 @@ describe('toCalendarDepartures', () => {
     expect(departure.seatsLeft).toBe(0);
   });
 });
+
+describe('precio de adulto del día (spec 0040)', () => {
+  const pricing = [
+    { ticket_type: 'adult', price_usd: 50, season_start: null, season_end: null },
+    { ticket_type: 'adult', price_usd: 65, season_start: '12-15', season_end: '04-30' },
+  ];
+
+  it('toma la temporada del día de la salida y lo formatea', () => {
+    const [departure] = toCalendarDepartures([instance('2027-01-10T14:00:00Z')], 'en', pricing);
+    expect(departure.adultPrice).toBe('$65.00');
+  });
+
+  it('las 00:30 del 1 de mayo en Costa Rica ya no son temporada alta', () => {
+    const [departure] = toCalendarDepartures([instance('2027-05-01T06:30:00Z')], 'en', pricing);
+    expect(departure.crDay).toBe('2027-05-01');
+    expect(departure.adultPrice).toBe('$50.00');
+  });
+
+  it('sin precio de adulto ese día, no muestra precio', () => {
+    const [departure] = toCalendarDepartures([instance('2027-06-10T14:00:00Z')], 'en', [
+      pricing[1],
+    ]);
+    expect(departure.adultPrice).toBeNull();
+  });
+});

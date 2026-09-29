@@ -51,25 +51,22 @@ describe('detectPricingOverlaps', () => {
   });
 
   it('permite precio base + temporada del mismo tipo', () => {
-    const rows = [
-      row(),
-      row({ valid_from: '2026-12-01', valid_until: '2027-04-30', season_label: 'alta' }),
-    ];
+    const rows = [row(), row({ season_start: '12-01', season_end: '04-30', season_label: 'alta' })];
     expect(detectPricingOverlaps(rows)).toHaveLength(0);
   });
 
   it('detecta solapamiento entre dos temporadas del mismo tipo', () => {
     const rows = [
-      row({ valid_from: '2026-12-01', valid_until: '2027-04-30', season_label: 'alta' }),
-      row({ valid_from: '2027-01-01', valid_until: '2027-06-30', season_label: 'pico' }),
+      row({ season_start: '12-01', season_end: '04-30', season_label: 'alta' }),
+      row({ season_start: '01-01', season_end: '06-30', season_label: 'pico' }),
     ];
     expect(detectPricingOverlaps(rows)).toHaveLength(1);
   });
 
   it('no detecta solapamiento entre temporadas que no se tocan', () => {
     const rows = [
-      row({ valid_from: '2026-06-01', valid_until: '2026-08-31', season_label: 'baja' }),
-      row({ valid_from: '2026-12-01', valid_until: '2027-04-30', season_label: 'alta' }),
+      row({ season_start: '06-01', season_end: '08-31', season_label: 'baja' }),
+      row({ season_start: '12-01', season_end: '04-30', season_label: 'alta' }),
     ];
     expect(detectPricingOverlaps(rows)).toHaveLength(0);
   });
@@ -89,28 +86,29 @@ describe('detectPricingOverlaps', () => {
 });
 
 describe('coerción de fechas vacías a null (fix 22007)', () => {
-  it('PricingRowSchema convierte valid_from/valid_until "" en null', () => {
+  it('PricingRowSchema convierte season_start/season_end "" en null (precio base)', () => {
     const parsed = PricingRowSchema.parse({
       ticket_type: TicketType.Adult,
       price_usd: 70,
-      valid_from: '',
-      valid_until: '',
+      season_start: '',
+      season_end: '',
       active: true,
     });
-    expect(parsed.valid_from).toBeNull();
-    expect(parsed.valid_until).toBeNull();
+    expect(parsed.season_start).toBeNull();
+    expect(parsed.season_end).toBeNull();
   });
 
-  it('PricingRowSchema preserva fechas reales', () => {
+  it('PricingRowSchema preserva el día-mes de una temporada', () => {
     const parsed = PricingRowSchema.parse({
       ticket_type: TicketType.Adult,
       price_usd: 70,
-      valid_from: '2026-12-01',
-      valid_until: '2027-04-30',
+      season_label: 'alta',
+      season_start: '12-15',
+      season_end: '04-30',
       active: true,
     });
-    expect(parsed.valid_from).toBe('2026-12-01');
-    expect(parsed.valid_until).toBe('2027-04-30');
+    expect(parsed.season_start).toBe('12-15');
+    expect(parsed.season_end).toBe('04-30');
   });
 
   it('ScheduleRowSchema: valid_from "" → undefined (se omite, aplica el default NOT NULL) y valid_until "" → null', () => {

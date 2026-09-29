@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { reconcileRows } from '@/lib/tours/reconcile';
 import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
+import { getTourPricingForDay } from '@/lib/public/tours';
 import { TourActionError } from '@shared/constants/tours';
 import type { Database } from '@/types/database';
 
@@ -98,9 +99,9 @@ afterAll(async () => {
 
 type PricingInsert = Database['public']['Tables']['tour_pricing']['Insert'];
 
-// El CHECK season_label_required_with_dates exige etiqueta en filas con fechas.
+// Temporada día-mes (spec 0040): el CHECK tour_pricing_season_shape exige nombre.
 function pricingRow(over: Partial<PricingInsert>): PricingInsert {
-  const seasonal = over.valid_from != null || over.valid_until != null;
+  const seasonal = over.season_start != null || over.season_end != null;
   return {
     tour_id: tourId,
     ticket_type: 'adult',
@@ -111,35 +112,80 @@ function pricingRow(over: Partial<PricingInsert>): PricingInsert {
   };
 }
 
-describe('constraints de tour_pricing (…041)', () => {
-  it('rechaza dos temporadas activas solapadas (incluido el día borde compartido)', async () => {
-    const { error: first } = await admin
-      .from('tour_pricing')
-      .insert(pricingRow({ valid_from: '2026-01-01', valid_until: '2026-01-31' }));
-    expect(first).toBeNull();
+async function clearPricing() {
+  await admin.from('tour_pricing').delete().eq('tour_id', tourId);
+}
 
-    const { error } = await admin
-      .from('tour_pricing')
-      .insert(pricingRow({ valid_from: '2026-01-31', valid_until: '2026-02-28' }));
-    expect(error?.message ?? '').toContain('tour_pricing_no_seasonal_overlap');
+function insert(...rows: Partial<PricingInsert>[]) {
+  return admin.from('tour_pricing').insert(rows.map(pricingRow));
+}
+
+/** Día-mes de una fecha ISO en Costa Rica. */
+function crMonthDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Costa_Rica' }).slice(5);
+}
+
+describe('superposición de temporadas (trigger de …052, spec 0040)', () => {
+  it('rechaza dos temporadas activas que comparten el día borde', async () => {
+    await clearPricing();
+    expect((await insert({ season_start: '01-01', season_end: '01-31' })).error).toBeNull();
+
+    const { error } = await insert({ season_start: '01-31', season_end: '02-28' });
+    expect(error?.code).toBe('23P01');
+    expect(error?.message ?? '').toContain('tour_pricing_season_overlap');
   });
 
-  it('permite base + temporada, pero rechaza un segundo base activo', async () => {
-    const { error: base } = await admin.from('tour_pricing').insert(pricingRow({}));
-    expect(base).toBeNull();
+  it('rechaza el choque con una temporada que cruza el año', async () => {
+    await clearPricing();
+    expect((await insert({ season_start: '12-15', season_end: '04-30' })).error).toBeNull();
+    const { error } = await insert({ season_start: '01-10', season_end: '01-20' });
+    expect(error?.code).toBe('23P01');
+  });
 
-    const { error: dup } = await admin.from('tour_pricing').insert(pricingRow({ price_usd: 45 }));
+  it('acepta temporadas contiguas y el mismo día en otro tiquete', async () => {
+    await clearPricing();
+    const { error } = await insert(
+      { season_start: '12-15', season_end: '04-30' },
+      { season_start: '05-01', season_end: '12-14' },
+      { season_start: '12-15', season_end: '04-30', ticket_type: 'child' },
+    );
+    expect(error).toBeNull();
+  });
+
+  it('el 29/02 choca con un rango que lo incluye', async () => {
+    await clearPricing();
+    expect((await insert({ season_start: '02-28', season_end: '03-01' })).error).toBeNull();
+    const { error } = await insert({ season_start: '02-29', season_end: '02-29' });
+    expect(error?.code).toBe('23P01');
+  });
+
+  it('rechaza activar una temporada inactiva que choca', async () => {
+    await clearPricing();
+    await insert({ season_start: '06-01', season_end: '06-30' });
+    const { data } = await insert({ season_start: '06-15', season_end: '07-15', active: false })
+      .select('id')
+      .single();
+    const { error } = await admin.from('tour_pricing').update({ active: true }).eq('id', data!.id);
+    expect(error?.code).toBe('23P01');
+  });
+
+  it('rechaza un segundo precio base activo; base + temporada conviven', async () => {
+    await clearPricing();
+    expect((await insert({}, { season_start: '12-15', season_end: '04-30' })).error).toBeNull();
+    const { error: dup } = await insert({ price_usd: 45 });
     expect(dup?.message ?? '').toContain('tour_pricing_one_base_per_type');
   });
 });
 
-describe('reconcileRows — el form es el estado final (spec 0028, B1)', () => {
+describe('reconcileRows — el form es el estado final (spec 0028, B1; spec 0040)', () => {
   it('elimina las filas quitadas y conserva/upsertea las presentes', async () => {
+    await clearPricing();
+    await insert({}, { season_start: '01-01', season_end: '01-31' });
     const { data: existing } = await admin
       .from('tour_pricing')
-      .select('id, valid_from')
+      .select('id, season_start')
       .eq('tour_id', tourId);
-    const keep = existing!.find((r) => r.valid_from === null)!;
+    const keep = existing!.find((r) => r.season_start === null)!;
 
     // Se envía SOLO el precio base (la temporada de enero se quitó del form).
     const err = await reconcileRows(
@@ -159,14 +205,47 @@ describe('reconcileRows — el form es el estado final (spec 0028, B1)', () => {
     expect(after![0]).toMatchObject({ id: keep.id, price_usd: 55 });
   });
 
-  it('mapea la violación del constraint de solape a su código de dominio', async () => {
+  it('correr el borde entre dos temporadas en un solo guardado funciona', async () => {
+    await clearPricing();
+    const { data: rows } = await insert(
+      { season_start: '12-15', season_end: '04-30', season_label: 'alta' },
+      { season_start: '05-01', season_end: '12-14', season_label: 'baja' },
+    ).select('id, season_label');
+    const high = rows!.find((r) => r.season_label === 'alta')!;
+    const low = rows!.find((r) => r.season_label === 'baja')!;
+
     const err = await reconcileRows(
       admin as never,
       'tour_pricing',
       tourId,
       [
-        pricingRow({ valid_from: '2026-03-01', valid_until: '2026-03-31' }) as never,
-        pricingRow({ valid_from: '2026-03-15', valid_until: '2026-04-15' }) as never,
+        pricingRow({
+          id: high.id,
+          season_start: '12-15',
+          season_end: '05-15',
+          season_label: 'alta',
+        }) as never,
+        pricingRow({
+          id: low.id,
+          season_start: '05-16',
+          season_end: '12-14',
+          season_label: 'baja',
+        }) as never,
+      ],
+      TourActionError.PricingWriteFailed,
+    );
+    expect(err).toBeNull();
+  });
+
+  it('mapea el error del trigger de superposición a su código de dominio', async () => {
+    await clearPricing();
+    const err = await reconcileRows(
+      admin as never,
+      'tour_pricing',
+      tourId,
+      [
+        pricingRow({ season_start: '03-01', season_end: '03-31' }) as never,
+        pricingRow({ season_start: '03-15', season_end: '04-15' }) as never,
       ],
       TourActionError.PricingWriteFailed,
     );
@@ -174,19 +253,23 @@ describe('reconcileRows — el form es el estado final (spec 0028, B1)', () => {
   });
 });
 
-describe('prioridad temporada>base en el COBRO real (spec 0028, §10)', () => {
-  it('resolveAuthoritativeCharge cobra la temporada vigente, no el precio base', async () => {
-    const DAY_MS = 86_400_000;
-    const from = new Date(Date.now() - 5 * DAY_MS).toISOString().slice(0, 10);
-    const until = new Date(Date.now() + 5 * DAY_MS).toISOString().slice(0, 10);
-    await admin.from('tour_pricing').delete().eq('tour_id', tourId);
-    const { error: seedErr } = await admin
-      .from('tour_pricing')
-      .insert([
-        pricingRow({ price_usd: 40 }),
-        pricingRow({ price_usd: 60, valid_from: from, valid_until: until }),
-      ]);
-    expect(seedErr).toBeNull();
+describe('el COBRO usa el día de la salida (spec 0040)', () => {
+  it('cobra la temporada del día de la salida aunque hoy no esté en ella', async () => {
+    const { data: inst } = await admin
+      .from('tour_instances')
+      .select('starts_at')
+      .eq('id', instanceId)
+      .single();
+    const departureDay = crMonthDay(inst!.starts_at);
+    await clearPricing();
+    expect(
+      (
+        await insert(
+          { price_usd: 40 },
+          { price_usd: 60, season_start: departureDay, season_end: departureDay },
+        )
+      ).error,
+    ).toBeNull();
 
     const { totalAmountCents } = await resolveAuthoritativeCharge(
       admin as never,
@@ -195,7 +278,55 @@ describe('prioridad temporada>base en el COBRO real (spec 0028, §10)', () => {
       'es',
     );
 
-    // 60 USD de la temporada — jamás los 40 del base (regla determinista de B1).
+    expect(totalAmountCents).toBe(6000);
+  });
+
+  it('una temporada de hoy que no incluye el día de la salida no se cobra', async () => {
+    const today = crMonthDay(new Date().toISOString());
+    const { data: inst } = await admin
+      .from('tour_instances')
+      .select('starts_at')
+      .eq('id', instanceId)
+      .single();
+    expect(crMonthDay(inst!.starts_at)).not.toBe(today);
+    await clearPricing();
+    await insert({ price_usd: 40 }, { price_usd: 60, season_start: today, season_end: today });
+
+    const { totalAmountCents } = await resolveAuthoritativeCharge(
+      admin as never,
+      instanceId,
+      { adult: 1, child: 0, student: 0 },
+      'es',
+    );
+
+    expect(totalAmountCents).toBe(4000);
+  });
+
+  it('la pantalla del checkout recibe el mismo precio que se cobra', async () => {
+    const { data: inst } = await admin
+      .from('tour_instances')
+      .select('starts_at')
+      .eq('id', instanceId)
+      .single();
+    const departureDay = crMonthDay(inst!.starts_at);
+    const crDay = new Date(inst!.starts_at).toLocaleDateString('en-CA', {
+      timeZone: 'America/Costa_Rica',
+    });
+    await clearPricing();
+    await insert(
+      { price_usd: 40 },
+      { price_usd: 60, season_start: departureDay, season_end: departureDay },
+    );
+
+    const shown = await getTourPricingForDay(tourId, crDay);
+    const { totalAmountCents } = await resolveAuthoritativeCharge(
+      admin as never,
+      instanceId,
+      { adult: 1, child: 0, student: 0 },
+      'es',
+    );
+
+    expect(shown.map((p) => Number(p.price_usd))).toEqual([60]);
     expect(totalAmountCents).toBe(6000);
   });
 });

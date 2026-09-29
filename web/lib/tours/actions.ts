@@ -13,6 +13,7 @@ import {
   hasHalfOpenSeasons,
   hasInvalidScheduleRange,
   hasInvalidSeasonRange,
+  hasUnlabeledSeason,
 } from './validation';
 import { slugExists } from './repository';
 import { parseTourFields } from './parse';
@@ -49,6 +50,9 @@ export async function createTour(
   }
   if (hasInvalidSeasonRange(pricing)) {
     return { success: false, errors: { _form: [TourActionError.SeasonRangeInvalid] } };
+  }
+  if (hasUnlabeledSeason(pricing)) {
+    return { success: false, errors: { _form: [TourActionError.SeasonLabelRequired] } };
   }
   if (hasInvalidScheduleRange(schedules)) {
     return { success: false, errors: { _form: [TourActionError.ScheduleRangeInvalid] } };
@@ -115,6 +119,9 @@ export async function updateTour(
   }
   if (hasInvalidSeasonRange(pricing)) {
     return { success: false, errors: { _form: [TourActionError.SeasonRangeInvalid] } };
+  }
+  if (hasUnlabeledSeason(pricing)) {
+    return { success: false, errors: { _form: [TourActionError.SeasonLabelRequired] } };
   }
   if (hasInvalidScheduleRange(schedules)) {
     return { success: false, errors: { _form: [TourActionError.ScheduleRangeInvalid] } };
