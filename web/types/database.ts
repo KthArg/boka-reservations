@@ -319,8 +319,6 @@ export type Database = {
           season_label: string | null;
           season_end: string | null;
           season_start: string | null;
-          valid_from: string | null;
-          valid_until: string | null;
           active: boolean;
           created_at: string;
           updated_at: string;
@@ -333,8 +331,6 @@ export type Database = {
           season_label?: string | null;
           season_end?: string | null;
           season_start?: string | null;
-          valid_from?: string | null;
-          valid_until?: string | null;
           active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -347,8 +343,6 @@ export type Database = {
           season_label?: string | null;
           season_end?: string | null;
           season_start?: string | null;
-          valid_from?: string | null;
-          valid_until?: string | null;
           active?: boolean;
           created_at?: string;
           updated_at?: string;
