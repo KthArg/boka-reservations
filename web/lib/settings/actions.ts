@@ -10,6 +10,13 @@ import type { SettingsFormResult } from './types';
 
 const SETTINGS_PATH = '/dashboard/settings';
 
+/** Cada campo con su error, en el orden en que se informan (el primero que falla gana). */
+const FIELD_ERRORS = [
+  ['minimum_decision_window_hours', SettingsActionError.WindowOutOfRange],
+  ['default_charge_lead_hours', SettingsActionError.LeadHoursOutOfRange],
+  ['booking_cutoff_hours', SettingsActionError.CutoffOutOfRange],
+] as const;
+
 export async function updateBusinessSettings(
   _prev: SettingsFormResult | null,
   formData: FormData,
@@ -20,17 +27,14 @@ export async function updateBusinessSettings(
   const parsed = BusinessSettingsFormSchema.safeParse({
     minimum_decision_window_hours: formData.get('minimum_decision_window_hours'),
     default_charge_lead_hours: formData.get('default_charge_lead_hours'),
+    booking_cutoff_hours: formData.get('booking_cutoff_hours'),
   });
   if (!parsed.success) {
     // Un solo error por respuesta (el formulario lo muestra arriba del botón), pero distinguido
     // por campo: el rango de cada uno se explica con su propio mensaje.
     const invalid = parsed.error.flatten().fieldErrors;
-    return {
-      success: false,
-      error: invalid.minimum_decision_window_hours
-        ? SettingsActionError.WindowOutOfRange
-        : SettingsActionError.LeadHoursOutOfRange,
-    };
+    const [, error] = FIELD_ERRORS.find(([field]) => invalid[field]) ?? FIELD_ERRORS[0];
+    return { success: false, error };
   }
 
   const updated = await updateSettings(parsed.data, admin.id);

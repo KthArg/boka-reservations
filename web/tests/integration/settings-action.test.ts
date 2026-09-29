@@ -64,10 +64,11 @@ async function currentSettings(): Promise<Settings> {
   return data;
 }
 
-function formWith(hours: string, leadHours = '48'): FormData {
+function formWith(hours: string, leadHours = '48', cutoffHours = '3'): FormData {
   const form = new FormData();
   form.append('minimum_decision_window_hours', hours);
   form.append('default_charge_lead_hours', leadHours);
+  form.append('booking_cutoff_hours', cutoffHours);
   return form;
 }
 
@@ -170,5 +171,21 @@ describe('updateBusinessSettings', () => {
     // Assert
     expect(result).toEqual({ success: false, error: SettingsActionError.UpdateFailed });
     expect(await currentSettings()).toEqual(original);
+  });
+
+  it('reports the minimum booking notice error for its own field (spec 0041)', async () => {
+    session.client = adminSession;
+    requireRoleMock.mockResolvedValue({ id: adminId });
+    for (const raw of ['73', '']) {
+      const result = await updateBusinessSettings(null, formWith('48', '48', raw));
+      expect(result).toEqual({ success: false, error: SettingsActionError.CutoffOutOfRange });
+    }
+  });
+
+  it('reports the decision window first when two fields fail', async () => {
+    session.client = adminSession;
+    requireRoleMock.mockResolvedValue({ id: adminId });
+    const result = await updateBusinessSettings(null, formWith('0', '48', '73'));
+    expect(result).toEqual({ success: false, error: SettingsActionError.WindowOutOfRange });
   });
 });

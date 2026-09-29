@@ -24,6 +24,8 @@ export const CheckoutErrorKey = {
   InstancePast: 'instance-past',
   HoldExpired: 'hold-expired',
   AmountChanged: 'amount-changed',
+  /** La salida ya no acepta reservas en línea: anticipación mínima (spec 0041). */
+  BookingClosed: 'booking-closed',
   CardInvalid: 'card-invalid',
   CardExpiresBeforeDeparture: 'card-expires-before-departure',
 } as const;
@@ -41,6 +43,7 @@ const CODE_TO_KEY: readonly (readonly [string, CheckoutErrorKeyValue])[] = [
   ['HOLD_NO_CAPACITY', CheckoutErrorKey.NoAvailability],
   ['INSTANCE_UNAVAILABLE', CheckoutErrorKey.NoAvailability],
   ['INSTANCE_PAST', CheckoutErrorKey.InstancePast],
+  ['HOLD_BOOKING_CLOSED', CheckoutErrorKey.BookingClosed],
   ['HOLD_NOT_ACTIVE', CheckoutErrorKey.HoldExpired],
   ['HOLD_SESSION_MISMATCH', CheckoutErrorKey.HoldExpired],
   ['HOLD_NOT_FOUND', CheckoutErrorKey.HoldExpired],

@@ -4,6 +4,8 @@ import { useActionState, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { updateBusinessSettings } from '@/lib/settings/actions';
 import {
+  BOOKING_CUTOFF_HOURS_MAX,
+  BOOKING_CUTOFF_HOURS_MIN,
   DEFAULT_CHARGE_LEAD_HOURS_MAX,
   DEFAULT_CHARGE_LEAD_HOURS_MIN,
   MINIMUM_DECISION_WINDOW_HOURS_MAX,
@@ -14,12 +16,19 @@ import type { SettingsFormResult } from '@/lib/settings/types';
 import { SettingsHoursField } from './SettingsHoursField';
 import styles from './settings.module.css';
 
-type Props = { decisionWindowHours: number; chargeLeadHours: number };
+type Props = { decisionWindowHours: number; chargeLeadHours: number; bookingCutoffHours: number };
 
 const WINDOW = { min: MINIMUM_DECISION_WINDOW_HOURS_MIN, max: MINIMUM_DECISION_WINDOW_HOURS_MAX };
 const LEAD = { min: DEFAULT_CHARGE_LEAD_HOURS_MIN, max: DEFAULT_CHARGE_LEAD_HOURS_MAX };
+const CUTOFF = { min: BOOKING_CUTOFF_HOURS_MIN, max: BOOKING_CUTOFF_HOURS_MAX };
 
-export function SettingsForm({ decisionWindowHours, chargeLeadHours }: Props) {
+/** El rango que explica cada error, según el campo que falló. */
+const ERROR_RANGE: Partial<Record<SettingsActionError, { min: number; max: number }>> = {
+  [SettingsActionError.LeadHoursOutOfRange]: LEAD,
+  [SettingsActionError.CutoffOutOfRange]: CUTOFF,
+};
+
+export function SettingsForm({ decisionWindowHours, chargeLeadHours, bookingCutoffHours }: Props) {
   const t = useTranslations('settings');
   const [state, formAction, pending] = useActionState<SettingsFormResult | null, FormData>(
     updateBusinessSettings,
@@ -28,9 +37,10 @@ export function SettingsForm({ decisionWindowHours, chargeLeadHours }: Props) {
   // Controlado: React 19 hace form.reset() tras la action y borraría lo tipeado si falla.
   const [hours, setHours] = useState(String(decisionWindowHours));
   const [leadHours, setLeadHours] = useState(String(chargeLeadHours));
+  const [cutoffHours, setCutoffHours] = useState(String(bookingCutoffHours));
 
   const failed = state?.success === false ? state.error : null;
-  const errorRange = failed === SettingsActionError.LeadHoursOutOfRange ? LEAD : WINDOW;
+  const errorRange = (failed && ERROR_RANGE[failed]) || WINDOW;
 
   return (
     <form action={formAction} className={styles.form}>
@@ -49,6 +59,14 @@ export function SettingsForm({ decisionWindowHours, chargeLeadHours }: Props) {
         {...LEAD}
         value={leadHours}
         onChange={setLeadHours}
+      />
+      <SettingsHoursField
+        name="booking_cutoff_hours"
+        label={t('field-booking-cutoff')}
+        hint={t('hint-booking-cutoff', CUTOFF)}
+        {...CUTOFF}
+        value={cutoffHours}
+        onChange={setCutoffHours}
       />
 
       {failed && (
