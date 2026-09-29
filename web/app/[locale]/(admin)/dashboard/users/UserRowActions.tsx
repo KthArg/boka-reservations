@@ -30,7 +30,8 @@ export function UserRowActions({ id, role, active, isSelf }: Props) {
   function onResend() {
     startTransition(async () => {
       const result = await resendInvite(id);
-      window.alert(result.ok ? t('invite-resent') : errorText(result));
+      if (!result.ok) return window.alert(errorText(result));
+      window.alert(t(result.sent === 'password' ? 'password-link-sent' : 'invite-resent'));
     });
   }
 

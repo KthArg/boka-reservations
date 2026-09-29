@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs';
+import { SENTRY_TRACES_SAMPLE_RATE, scrubEvent } from '@/lib/observability/sentry-scrub';
 
 export async function register() {
   // Validación de env al boot (spec 0028, B11): si falta una variable, el proceso muere
@@ -11,13 +12,13 @@ export async function register() {
   Sentry.init({
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     enabled: process.env.NODE_ENV === 'production' && !!process.env.NEXT_PUBLIC_SENTRY_DSN,
-    tracesSampleRate: 0.2,
-    // PRIV-04 (spec 0023): no enviar PII por defecto + recortar PII de usuario de los eventos.
+    tracesSampleRate: SENTRY_TRACES_SAMPLE_RATE,
+    // PRIV-04 (spec 0023): sin PII por defecto. Spec 0038: sin los tokens de las URLs.
     sendDefaultPii: false,
-    beforeSend(event) {
-      if (event.user) event.user = { id: event.user.id };
-      return event;
-    },
+    beforeSend: scrubEvent,
+    beforeSendTransaction: scrubEvent,
+    // Sin cookies ni cuerpo del pedido en los eventos del servidor: llevan la sesión (spec 0038).
+    integrations: [Sentry.requestDataIntegration({ include: { cookies: false, data: false } })],
   });
 }
 

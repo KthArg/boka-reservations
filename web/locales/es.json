@@ -512,6 +512,7 @@
     "deactivate-confirm": "¿Desactivar este usuario? Perderá acceso hasta que lo reactives.",
     "resend-invite": "Reenviar invitación",
     "invite-resent": "Invitación reenviada.",
+    "password-link-sent": "Ya había abierto la invitación: le enviamos un correo para fijar la contraseña.",
     "field-full-name": "Nombre completo",
     "field-email": "Email",
     "field-role": "Rol",
@@ -532,7 +533,9 @@
       "user_mgmt_write_failed": "No se pudo guardar. Intentá de nuevo.",
       "user_mgmt_invite_failed": "No se pudo enviar la invitación.",
       "user_mgmt_self_deactivation": "No podés desactivarte a vos mismo.",
-      "user_mgmt_last_admin": "No se puede desactivar al último administrador activo."
+      "user_mgmt_last_admin": "No se puede desactivar al último administrador activo.",
+      "user_mgmt_invite_rate_limited": "Supabase frenó el envío por la cantidad de correos. Esperá unos minutos y volvé a intentar.",
+      "user_mgmt_account_missing": "La cuenta de acceso de esta persona ya no existe. Invitala de nuevo como usuario nuevo."
     }
   },
   "cancellation": {
@@ -688,6 +691,10 @@
     "review-tray-title": "Reservas en revisión",
     "review-tray-intro": "Salidas canceladas por clima o seguridad. Decidí cada reserva desde su detalle: el turista espera la respuesta.",
     "review-open": "Decidir",
+    "refund-tray-title": "Reembolsos por resolver",
+    "refund-tray-intro": "Reembolsos que fallaron, que esperan una transferencia o que llevan más de un día sin avanzar. Resolvé cada uno desde el detalle de la reserva: el turista espera su dinero.",
+    "refund-tray-since": "esperando desde el {date}",
+    "refund-tray-open": "Resolver",
     "review-title": "Reserva en revisión",
     "review-intro": "La salida se canceló por {reason}. Decidí qué pasa con esta reserva; el turista recibe un correo con la decisión.",
     "review-refund": "Reembolsar el 100 %",
@@ -752,6 +759,7 @@
     "erase": "Borrar los datos",
     "erase-ask": "¿Borrar los datos de {email}? No se puede deshacer.",
     "erase-done": "Listo: {anonymized, plural, one {# reserva anonimizada} other {# reservas anonimizadas}} y {deleted, plural, one {# borrada} other {# borradas}}. Quedó registrado.",
+    "erase-retained": "{count, plural, one {# reserva no se borró porque tiene un cobro o una salida en curso} other {# reservas no se borraron porque tienen un cobro o una salida en curso}}. Repetí el borrado cuando terminen.",
     "error-unauthorized": "Solo un administrador puede hacer esto.",
     "error-invalid-email": "Ese correo no es válido.",
     "error-pending-refund": "Hay un reembolso sin terminar: no se borró nada.",

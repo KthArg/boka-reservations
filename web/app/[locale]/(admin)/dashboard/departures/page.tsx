@@ -6,18 +6,20 @@ import { ChargeStatus } from './ChargeStatus';
 import { DecisionTray } from './DecisionTray';
 import { MinimumTray } from './MinimumTray';
 import { ReviewTray } from './ReviewTray';
+import { RefundTray } from './RefundTray';
 import { CancelDepartureDialog } from './CancelDepartureDialog';
-import { listReviewBookings } from '@/lib/operations/repository';
+import { listRefundsToResolve, listReviewBookings } from '@/lib/operations/repository';
 import styles from './departures.module.css';
 
 export default async function SalidasPage() {
   const t = await getTranslations('guides');
   const tCharge = await getTranslations('departures');
   const tOps = await getTranslations('operations');
-  const [departures, guides, reviews] = await Promise.all([
+  const [departures, guides, reviews, refunds] = await Promise.all([
     listUpcomingDepartures(),
     listGuides(),
     listReviewBookings(),
+    listRefundsToResolve(),
   ]);
 
   return (
@@ -26,6 +28,7 @@ export default async function SalidasPage() {
         <h1 className={styles.title}>{t('departures-title')}</h1>
       </div>
 
+      <RefundTray refunds={refunds} />
       <ReviewTray bookings={reviews} />
       <MinimumTray departures={departures} />
       <DecisionTray departures={departures} />

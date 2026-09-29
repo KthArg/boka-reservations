@@ -11,6 +11,7 @@ import { watchCharges } from './jobs/watch-charges.js';
 import { chargeDepartures } from './jobs/charge-departures.js';
 import { closePaymentIntents } from './jobs/close-payment-intents.js';
 import { resolveMinimum } from './jobs/resolve-minimum.js';
+import { cleanupTourImages } from './jobs/cleanup-tour-images.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -93,3 +94,5 @@ schedule('close-payment-intents', closePaymentIntents, FIVE_MINUTES_MS);
 // Spec 0035: cierre por mínimo del cobro inmediato, con 24 h de aviso. Fuera del flag del cobro
 // diferido: es lo que prometen los términos para toda salida.
 schedule('resolve-minimum', resolveMinimum, FIVE_MINUTES_MS);
+// Spec 0038: fotos de tours que ningún tour usa. Una vez por día, con frenos ante cualquier duda.
+schedule('cleanup-tour-images', () => cleanupTourImages(), ONE_DAY_MS);

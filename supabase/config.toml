@@ -257,8 +257,14 @@ otp_expiry = 3600
 # Template de invitación de usuario interno (spec 0010). Apunta a /auth/confirm
 # (verifyOtp con token_hash), no al flujo PKCE de /auth/callback.
 [auth.email.template.invite]
-subject = "Te invitaron a Boka Verde / You've been invited"
+subject = "Te invitaron a Boka Verde / You've been invited to Boka Verde"
 content_path = "./supabase/templates/invite.html"
+
+# Fijar o restablecer la contraseña (spec 0038): forgot-password y el reenvío de acceso a una
+# cuenta ya confirmada. Enlace a /auth/confirm con token_hash.
+[auth.email.template.recovery]
+subject = "Fijá tu contraseña de Boka Verde / Set your Boka Verde password"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
