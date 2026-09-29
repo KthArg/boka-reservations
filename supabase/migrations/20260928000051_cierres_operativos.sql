@@ -62,8 +62,7 @@ CREATE TRIGGER on_auth_user_deleted
 
 COMMENT ON FUNCTION public.handle_auth_user_deleted() IS
   'Spec 0038: al borrar una cuenta de Auth borra su fila de public.users o, con historial, la deja inactiva con el correo liberado.';
-COMMENT ON TRIGGER on_auth_user_deleted ON auth.users IS
-  'Spec 0038: mantiene public.users coherente cuando una cuenta se borra fuera del panel.';
+-- Sin COMMENT ON TRIGGER: exige ser dueño de auth.users (supabase_auth_admin), y postgres no lo es.
 
 -- ================================================================
 -- 2. Borrado por correo: cuántas reservas quedaron retenidas
