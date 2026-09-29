@@ -3,11 +3,15 @@
 import { useTranslations } from 'next-intl';
 import { DayOfWeek } from '@shared/constants/enums';
 import type { ScheduleRow } from '@/lib/tours/types';
+import { CAPACITY_RULE } from '@/lib/tours/number-rules';
+import { NumberField } from '@/components/forms/NumberField';
 import styles from './ScheduleEditor.module.css';
 
 type Props = {
   value: ScheduleRow[];
   onChange: (rows: ScheduleRow[]) => void;
+  /** El formulario intentó guardar: mostrar los errores de campos sin tocar. */
+  showErrors?: boolean;
 };
 
 const DAYS = [
@@ -24,7 +28,7 @@ function emptyRow(): ScheduleRow {
   return { day_of_week: DayOfWeek.Monday, start_time: '08:00', capacity: 10, active: true };
 }
 
-export default function ScheduleEditor({ value, onChange }: Props) {
+export default function ScheduleEditor({ value, onChange, showErrors }: Props) {
   const t = useTranslations('tours');
 
   function update(index: number, patch: Partial<ScheduleRow>) {
@@ -70,12 +74,15 @@ export default function ScheduleEditor({ value, onChange }: Props) {
 
               <label className={styles.fieldLabel}>
                 {t('schedules-capacity')}
-                <input
-                  type="number"
-                  min={1}
+                <NumberField
                   className={styles.input}
                   value={row.capacity}
-                  onChange={(e) => update(i, { capacity: parseInt(e.target.value, 10) || 1 })}
+                  onChange={(capacity) => update(i, { capacity })}
+                  rule={CAPACITY_RULE}
+                  mode="report"
+                  errorMessage={t('schedules-capacity-invalid')}
+                  forceError={showErrors}
+                  errorClassName={styles.error}
                 />
               </label>
 

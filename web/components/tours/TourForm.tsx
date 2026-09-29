@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { createTour, updateTour } from '@/lib/tours/actions';
 import { slugify } from '@/lib/tours/validation';
 import { useSubmitWithoutReset } from '@/lib/forms/use-submit-without-reset';
+import { hasInvalidNumbers } from '@/lib/tours/number-rules';
 import { TicketType, TourDifficulty } from '@shared/constants/enums';
 import { ChargeTiming } from '@shared/constants/tours';
 import type {
@@ -104,7 +105,23 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
   );
 
   const formRef = useRef<HTMLFormElement>(null);
-  const handleSubmit = useSubmitWithoutReset(formAction);
+  const submitToServer = useSubmitWithoutReset(formAction);
+  const [showNumberErrors, setShowNumberErrors] = useState(false);
+  // Precios y capacidades se validan antes de enviar: el campo deja borrar libremente y un
+  // valor vacío o inválido llega como NaN, que JSON convertiría en null.
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (hasInvalidNumbers(pricing, schedules)) {
+      event.preventDefault();
+      setShowNumberErrors(true);
+      requestAnimationFrame(() =>
+        formRef.current
+          ?.querySelector('[aria-invalid="true"]')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+      );
+      return;
+    }
+    submitToServer(event);
+  };
 
   useEffect(() => {
     if (state?.success === false && formRef.current) {
@@ -140,8 +157,9 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
         value={pricing}
         onChange={setPricing}
         errors={errors.pricing as string[] | undefined}
+        showErrors={showNumberErrors}
       />
-      <ScheduleEditor value={schedules} onChange={setSchedules} />
+      <ScheduleEditor value={schedules} onChange={setSchedules} showErrors={showNumberErrors} />
 
       <div className={styles.footer}>
         <button type="submit" disabled={isPending} className={styles.submitBtn}>
