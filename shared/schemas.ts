@@ -68,8 +68,9 @@ export const TourPricingSchema = z.object({
   ticket_type: z.nativeEnum(TicketType),
   price_usd: z.number().nonnegative(),
   season_label: z.string().nullable(),
-  valid_from: z.coerce.date().nullable(),
-  valid_until: z.coerce.date().nullable(),
+  // Temporada que se repite cada año (spec 0040): 'MM-DD', las dos o ninguna (precio base).
+  season_start: z.string().nullable(),
+  season_end: z.string().nullable(),
   active: z.boolean(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),

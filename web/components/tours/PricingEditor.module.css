@@ -27,7 +27,8 @@
 
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto;
+  /* Se acomoda al ancho: una temporada tiene más campos que un precio base (spec 0040). */
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
   gap: var(--space-sm);
   align-items: end;
   padding: var(--space-md);
@@ -89,4 +90,27 @@
 .addBtn:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+.hint {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Día y mes de una temporada (spec 0040): dos selectores bajo una sola etiqueta. */
+.monthDay {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: var(--space-xs);
+  min-width: 11rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.monthDay legend {
+  padding: 0;
+  margin-bottom: var(--space-xs);
 }

@@ -17,10 +17,20 @@
 }
 
 .type {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text);
   flex: 1;
+}
+
+/* Nombre y fechas de una temporada que se repite cada año (spec 0040). */
+.seasonRange {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
 }
 
 .season {

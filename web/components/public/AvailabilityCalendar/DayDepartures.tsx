@@ -28,6 +28,11 @@ export function DayDepartures({ day, title, checkoutHref }: Props) {
               return (
                 <li key={departure.id} className={styles.dateItem}>
                   <span className={styles.dateLabel}>{departure.time}</span>
+                  {departure.adultPrice ? (
+                    <span className={styles.price}>
+                      {t('calendar-adult-price', { price: departure.adultPrice })}
+                    </span>
+                  ) : null}
                   <span className={low ? styles.seatsLow : styles.seats}>
                     {soldOut
                       ? t('calendar-sold-out')

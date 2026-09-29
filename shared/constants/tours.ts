@@ -11,12 +11,14 @@ export enum TourActionError {
   UpdateFailed = 'tour_update_failed',
   PricingWriteFailed = 'tour_pricing_write_failed',
   SchedulesWriteFailed = 'tour_schedules_write_failed',
-  /** Dos temporadas activas solapadas para el mismo tipo (validación + constraint …041). */
+  /** Dos temporadas activas que comparten un día del año (validación + trigger de …052, spec 0040). */
   PricingOverlap = 'tour_pricing_overlap',
-  /** Temporada con una sola fecha: el CHECK valid_season_range exige ambas o ninguna. */
+  /** Temporada con una sola punta: el CHECK tour_pricing_season_shape exige las dos o ninguna. */
   SeasonDatesIncomplete = 'tour_season_dates_incomplete',
-  /** Temporada de un día o invertida: valid_season_range exige from < until estricto. */
+  /** Temporada con un día que no existe (31 de abril): CHECK tour_pricing_season_days. */
   SeasonRangeInvalid = 'tour_season_range_invalid',
+  /** Temporada sin nombre: el CHECK tour_pricing_season_shape lo exige (spec 0040). */
+  SeasonLabelRequired = 'tour_season_label_required',
   /** Dos precios base activos para el mismo tipo. */
   BasePriceDuplicate = 'tour_base_price_duplicate',
   /** Horario con vigencia invertida: el generador no crearía salidas en silencio. */

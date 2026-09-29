@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
-import { getTourBySlug, getTourPricing, getUpcomingInstances } from '@/lib/public/tours';
+import { getTourBySlug, getTourPricingForDay, getUpcomingInstances } from '@/lib/public/tours';
+import { crDate } from '@/lib/dates/cr-date';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { getNoShowToleranceMinutes, getOperatorIdentity } from '@/lib/operator/repository';
@@ -28,19 +29,23 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
 
   if (!tour) notFound();
 
-  const [pricing, instances] = await Promise.all([
-    getTourPricing(tour.id),
-    getUpcomingInstances(tour.id),
-  ]);
-
+  const instances = await getUpcomingInstances(tour.id);
   const instance = instances.find((i) => i.id === instanceId);
   if (!instance) notFound();
+
+  // Spec 0040: los precios del día de la salida, los mismos que cobra el servidor.
+  const pricing = await getTourPricingForDay(tour.id, crDate(new Date(instance.starts_at)));
 
   const tourName = locale === 'es' ? tour.name_es : tour.name_en;
 
   // Spec 0034: sin datos del operador, o sin la información del tour que prometen los términos,
   // no se vende. Las acciones lo vuelven a verificar; acá solo se evita mostrar un formulario inútil.
-  if (!isOperatorIdentityComplete(operator) || !isTourBookable(tour, pricing)) {
+  // Spec 0040: un día sin ningún precio no se vende.
+  if (
+    !isOperatorIdentityComplete(operator) ||
+    pricing.length === 0 ||
+    !isTourBookable(tour, pricing)
+  ) {
     return (
       <div className={styles.page}>
         <h1 className={styles.title}>{tourName}</h1>

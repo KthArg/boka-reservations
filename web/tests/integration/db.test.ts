@@ -115,39 +115,47 @@ describe('tour_pricing — constraints', () => {
     expect(error).toBeNull();
   });
 
-  it('inserta pricing con temporada válida', async () => {
+  it('inserta pricing con temporada día-mes válida (cruza el año)', async () => {
     const { error } = await admin.from('tour_pricing').insert({
       tour_id: tourId,
       ticket_type: 'child',
       price_usd: 30,
       season_label: 'alta',
-      valid_from: '2026-12-01',
-      valid_until: '2027-04-30',
+      season_start: '12-01',
+      season_end: '04-30',
     });
     expect(error).toBeNull();
   });
 
-  it('rechaza valid_from > valid_until', async () => {
+  it('rechaza un día que no existe (31 de abril)', async () => {
     const { error } = await admin.from('tour_pricing').insert({
       tour_id: tourId,
       ticket_type: 'student',
       price_usd: 40,
       season_label: 'test',
-      valid_from: '2026-12-01',
-      valid_until: '2026-06-01',
+      season_start: '04-31',
+      season_end: '05-10',
     });
     expect(error).not.toBeNull();
   });
 
-  it('rechaza temporada sin season_label', async () => {
-    const { error } = await admin.from('tour_pricing').insert({
+  it('rechaza temporada sin season_label o con una sola punta', async () => {
+    const noLabel = await admin.from('tour_pricing').insert({
       tour_id: tourId,
       ticket_type: 'student',
       price_usd: 40,
-      valid_from: '2026-12-01',
-      valid_until: '2027-04-30',
+      season_start: '12-01',
+      season_end: '04-30',
     });
-    expect(error).not.toBeNull();
+    expect(noLabel.error).not.toBeNull();
+    const halfOpen = await admin.from('tour_pricing').insert({
+      tour_id: tourId,
+      ticket_type: 'student',
+      price_usd: 40,
+      season_label: 'test',
+      season_start: '12-01',
+    });
+    expect(halfOpen.error).not.toBeNull();
   });
 });
 

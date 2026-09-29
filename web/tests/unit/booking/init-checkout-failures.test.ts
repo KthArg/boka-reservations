@@ -120,4 +120,18 @@ describe('initCheckout — fallos parciales (spec 0028)', () => {
 
     expect(holdMocks.releaseHold).toHaveBeenCalledWith('h1');
   });
+
+  it('si el total que vio el turista no es el que se cobra, no aparta ni cobra (spec 0040)', async () => {
+    await expect(initCheckout({ ...params, expectedAmountCents: 4000 })).rejects.toThrow(
+      'CHECKOUT_AMOUNT_CHANGED',
+    );
+
+    expect(holdMocks.createHold).not.toHaveBeenCalled();
+    expect(providerMocks.createPaymentSession).not.toHaveBeenCalled();
+  });
+
+  it('con el mismo total sigue normal', async () => {
+    await expect(initCheckout({ ...params, expectedAmountCents: 5000 })).resolves.toBeDefined();
+    expect(holdMocks.createHold).toHaveBeenCalled();
+  });
 });

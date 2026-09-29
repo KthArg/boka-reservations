@@ -10,6 +10,9 @@ export const DeferredCheckoutCode = {
   AmountChanged: 'DEFERRED_AMOUNT_CHANGED',
 } as const;
 
+/** El total que vio el turista no es el que se cobraría (checkout inmediato, spec 0040). */
+export const CHECKOUT_AMOUNT_CHANGED = 'CHECKOUT_AMOUNT_CHANGED';
+
 /** Claves de `checkout` en los diccionarios. */
 export const CheckoutErrorKey = {
   Generic: 'error-generic',
@@ -44,6 +47,7 @@ const CODE_TO_KEY: readonly (readonly [string, CheckoutErrorKeyValue])[] = [
   ['HOLD_SEATS_MISMATCH', CheckoutErrorKey.HoldExpired],
   [DeferredCheckoutCode.HoldInvalid, CheckoutErrorKey.HoldExpired],
   [DeferredCheckoutCode.AmountChanged, CheckoutErrorKey.AmountChanged],
+  [CHECKOUT_AMOUNT_CHANGED, CheckoutErrorKey.AmountChanged],
   ['CARD_EXPIRES_BEFORE_DEPARTURE', CheckoutErrorKey.CardExpiresBeforeDeparture],
   ['CARD_DATA_INVALID', CheckoutErrorKey.CardInvalid],
   ['CARD_DATA_MISSING', CheckoutErrorKey.CardInvalid],
