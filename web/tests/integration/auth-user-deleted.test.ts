@@ -33,13 +33,18 @@ async function staff(): Promise<{ id: string; email: string }> {
     email: account.email,
     role: 'staff',
     full_name: 'Staff de prueba',
+    phone: '+506 8888-8888',
   });
   if (error) throw new Error(error.message);
   return account;
 }
 
 async function row(id: string) {
-  const { data } = await admin.from('users').select('active, email').eq('id', id).maybeSingle();
+  const { data } = await admin
+    .from('users')
+    .select('active, email, phone')
+    .eq('id', id)
+    .maybeSingle();
   return data;
 }
 
@@ -67,7 +72,11 @@ describe('cuenta borrada en Supabase Auth (spec 0038)', () => {
     const { error } = await admin.auth.admin.deleteUser(id);
 
     expect(error).toBeNull();
-    expect(await row(id)).toEqual({ active: false, email: `${id}@cuenta-borrada.invalid` });
+    expect(await row(id)).toEqual({
+      active: false,
+      email: `${id}@cuenta-borrada.invalid`,
+      phone: null,
+    });
     const { count } = await admin
       .from('users')
       .select('id', { count: 'exact', head: true })

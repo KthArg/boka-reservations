@@ -10,7 +10,14 @@
 -- saltaría al final de la transacción, fuera del bloque que la atrapa, y revertiría el borrado en
 -- Auth). El bloque EXCEPTION abre una subtransacción que revierte solo el DELETE. A una función de
 -- trigger no se le controla EXECUTE al dispararse: corre aunque GoTrue borre como
--- supabase_auth_admin.
+-- supabase_auth_admin. Verificado en producción antes de aplicar: postgres tiene TRIGGER sobre
+-- auth.users.
+--
+-- Solo el borrado en duro dispara el trigger: `auth.admin.deleteUser(id, true)` (borrado suave)
+-- hace un UPDATE de deleted_at y la fila del panel no cambia. El dashboard de Supabase y
+-- create.ts borran en duro. Las FK con CASCADE hacia public.users (tour_instance_guides.guide_id,
+-- guide_access_tokens.guide_id, notifications.guide_id) son de guías, que no tienen cuenta de
+-- Auth; si algún día la tuvieran, borrarla eliminaría sus asignaciones sin aviso.
 --
 -- Hardening (patrón …044): SECURITY DEFINER + search_path = '' + REVOKE de PUBLIC, anon,
 -- authenticated; GRANT explícito a service_role (…039: en producción no se hereda).
@@ -36,10 +43,12 @@ BEGIN
     DELETE FROM public.users WHERE id = OLD.id;
   EXCEPTION WHEN foreign_key_violation THEN
     -- Tiene historial (reservas marcadas, asignaciones, auditoría, decisiones): la fila queda
-    -- inactiva y el correo se libera para poder invitar de nuevo a la persona.
+    -- inactiva, el correo se libera para poder invitar de nuevo a la persona y se quita el
+    -- teléfono (el nombre queda para leer el historial).
     UPDATE public.users
        SET active = false,
-           email = OLD.id::text || '@cuenta-borrada.invalid'
+           email = OLD.id::text || '@cuenta-borrada.invalid',
+           phone = NULL
      WHERE id = OLD.id;
   END;
   RETURN OLD;
@@ -50,6 +59,11 @@ REVOKE EXECUTE ON FUNCTION public.handle_auth_user_deleted() FROM PUBLIC, anon, 
 CREATE TRIGGER on_auth_user_deleted
   AFTER DELETE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_auth_user_deleted();
+
+COMMENT ON FUNCTION public.handle_auth_user_deleted() IS
+  'Spec 0038: al borrar una cuenta de Auth borra su fila de public.users o, con historial, la deja inactiva con el correo liberado.';
+COMMENT ON TRIGGER on_auth_user_deleted ON auth.users IS
+  'Spec 0038: mantiene public.users coherente cuando una cuenta se borra fuera del panel.';
 
 -- ================================================================
 -- 2. Borrado por correo: cuántas reservas quedaron retenidas
