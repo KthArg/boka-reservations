@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { calculateTotalCents, computeAuthoritativeTotal } from '@/lib/booking/pricing-math';
+import {
+  calculateTotalCents,
+  computeAuthoritativeTotal,
+  initialQuantities,
+} from '@/lib/booking/pricing-math';
 import type { PricingRow } from '@/lib/booking/pricing-math';
 
 const pricing: PricingRow[] = [
@@ -30,7 +34,9 @@ describe('calculateTotalCents', () => {
     const oddPricing: PricingRow[] = [{ ticket_type: 'adult', price_usd: 33.333 }];
     const cents = calculateTotalCents({ adult: 3, child: 0, student: 0 }, oddPricing);
     expect(Number.isInteger(cents)).toBe(true);
-    expect(cents).toBe(10000); // 3 * 33.333 = 99.999 → * 100 = 9999.9 → round = 10000
+    // Cada tiquete se cobra en centavos enteros (spec 0040): 33.333 → 3333 × 3 = 9999. La base
+    // guarda numeric(10,2), así que un precio real nunca tiene tres decimales.
+    expect(cents).toBe(9999);
   });
 
   it('devuelve 0 con pricing vacío', () => {
@@ -60,5 +66,28 @@ describe('computeAuthoritativeTotal', () => {
     expect(() => computeAuthoritativeTotal({ adult: 1, child: 0, student: 0 }, freeAdult)).toThrow(
       'CHECKOUT_ZERO_AMOUNT',
     );
+  });
+});
+
+describe('centavos enteros y cantidades iniciales (spec 0040)', () => {
+  it('suma cada precio en centavos enteros (sin correr un centavo)', () => {
+    expect(
+      calculateTotalCents({ adult: 3, child: 0, student: 0 }, [
+        { ticket_type: 'adult', price_usd: 19.99 },
+      ]),
+    ).toBe(5997);
+  });
+
+  it('arranca con un adulto si el día tiene precio de adulto', () => {
+    expect(initialQuantities(pricing)).toEqual({ adult: 1, child: 0, student: 0 });
+  });
+
+  it('sin precio de adulto ese día, arranca con otro tiquete que sí tiene precio', () => {
+    expect(initialQuantities([{ ticket_type: 'child' }])).toEqual({
+      adult: 0,
+      child: 1,
+      student: 0,
+    });
+    expect(initialQuantities([])).toEqual({ adult: 0, child: 0, student: 0 });
   });
 });

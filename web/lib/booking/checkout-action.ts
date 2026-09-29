@@ -14,6 +14,13 @@ import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { checkoutErrorKey, CheckoutErrorKey } from '@/lib/booking/deferred-checkout-errors';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
 
+/** El total que vio el turista (spec 0040); una página vieja sin el campo no se compara. */
+function expectedAmount(get: (key: string) => FormDataEntryValue | null): number | undefined {
+  const raw = get('expected_amount_cents');
+  const value = typeof raw === 'string' ? Number(raw) : Number.NaN;
+  return Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
 export type CheckoutFormState =
   | { error: string }
   | { paymentIntentId: string; bookingId: string }
@@ -51,6 +58,7 @@ export async function checkoutAction(
       sessionToken,
       locale: await checkoutLocale(),
       legalAccepted: true,
+      expectedAmountCents: expectedAmount((key) => formData.get(key)),
     });
     // ACCESS-03: liga el hold a esta sesión de browser (cookie HttpOnly), para que solo quien
     // hizo el checkout pueda liberar el hold desde /checkout/cancel (no cualquiera con el UUID).

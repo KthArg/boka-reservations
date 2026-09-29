@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { PublicPricing } from '@/lib/public/tours';
 import { checkoutAction } from '@/lib/booking/checkout-action';
-import { calculateTotalCents } from '@/lib/booking/pricing-math';
+import { calculateTotalCents, initialQuantities } from '@/lib/booking/pricing-math';
 import { formatAmountCents } from '@/lib/format/money';
 import { HOLD_TTL_MINUTES } from '@shared/constants/bookings';
 import { CheckoutDetailsFields, type TicketCounts } from './CheckoutDetailsFields';
@@ -18,14 +18,12 @@ type Props = {
   summary: PurchaseSummaryInfo;
 };
 
-const INITIAL_QUANTITIES: TicketCounts = { adult: 1, child: 0, student: 0 };
-
 /** Checkout con el widget de OnvoPay: cobra al reservar (flujo sin cobro diferido). */
 export function CheckoutForm({ instanceId, pricing, summary }: Props) {
   const t = useTranslations('checkout');
   const locale = useLocale();
   const [state, action, pending] = useActionState(checkoutAction, null);
-  const [quantities, setQuantities] = useState<TicketCounts>(INITIAL_QUANTITIES);
+  const [quantities, setQuantities] = useState<TicketCounts>(() => initialQuantities(pricing));
 
   const totalCents = calculateTotalCents(
     quantities,
@@ -46,6 +44,7 @@ export function CheckoutForm({ instanceId, pricing, summary }: Props) {
   return (
     <form action={action} className={styles.form}>
       <input type="hidden" name="instance_id" value={instanceId} />
+      <input type="hidden" name="expected_amount_cents" value={totalCents} />
       <CheckoutDetailsFields
         summary={summary}
         pricing={pricing}

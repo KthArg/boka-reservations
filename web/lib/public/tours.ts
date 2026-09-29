@@ -75,9 +75,12 @@ export async function getTourBySlug(slug: string): Promise<PublicTour | null> {
 export async function getTourPriceList(tourId: string): Promise<PublicPricing[]> {
   const db = createSupabasePublicClient();
   const base = db.from('tour_pricing').select('*').eq('tour_id', tourId);
-  const { data } = await applyActivePricingFilter(base)
+  const { data, error } = await applyActivePricingFilter(base)
     .order('ticket_type')
     .order('season_start', { ascending: true, nullsFirst: true });
+  // Falla cerrada (sin precios no se vende), pero queda registro: si no, se vería un checkout
+  // vacío sin saber por qué.
+  if (error) console.error('[tours] no se pudieron leer los precios:', error.message);
   return (data ?? []) as PublicPricing[];
 }
 

@@ -40,7 +40,12 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
 
   // Spec 0034: sin datos del operador, o sin la información del tour que prometen los términos,
   // no se vende. Las acciones lo vuelven a verificar; acá solo se evita mostrar un formulario inútil.
-  if (!isOperatorIdentityComplete(operator) || !isTourBookable(tour, pricing)) {
+  // Spec 0040: un día sin ningún precio no se vende.
+  if (
+    !isOperatorIdentityComplete(operator) ||
+    pricing.length === 0 ||
+    !isTourBookable(tour, pricing)
+  ) {
     return (
       <div className={styles.page}>
         <h1 className={styles.title}>{tourName}</h1>

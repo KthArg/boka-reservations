@@ -2,7 +2,7 @@ import 'server-only';
 import { BUSINESS_TIMEZONE, crDate } from '@/lib/dates/cr-date';
 import { formatMoneyCents, intlLocaleTag } from '@/lib/format/money';
 import { selectPriceForDay, type PriceRow } from '@/lib/pricing/season';
-import { CENTS_PER_UNIT } from '@shared/constants/bookings';
+import { CENTS_PER_UNIT, CHECKOUT_CURRENCY } from '@shared/constants/bookings';
 import { TicketType } from '@shared/constants/enums';
 import { seatsLeft, type CalendarDeparture } from './calendar';
 import type { PublicInstance } from './tours';
@@ -32,7 +32,11 @@ export function toCalendarDepartures(
       time: time.format(startsAt),
       seatsLeft: seatsLeft(instance.capacity_total, instance.capacity_reserved),
       adultPrice: adult
-        ? formatMoneyCents(Math.round(Number(adult.price_usd) * CENTS_PER_UNIT), 'USD', locale)
+        ? formatMoneyCents(
+            Math.round(Number(adult.price_usd) * CENTS_PER_UNIT),
+            CHECKOUT_CURRENCY,
+            locale,
+          )
         : null,
     };
   });

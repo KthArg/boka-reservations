@@ -88,3 +88,13 @@ export function detectPricingOverlaps(rows: PricingRow[]): OverlapError[] {
 
   return errors;
 }
+
+/** Algún error de tarifas que el formulario puede detectar antes de enviar (spec 0040). */
+export function hasPricingErrors(rows: PricingRow[]): boolean {
+  return (
+    hasHalfOpenSeasons(rows) ||
+    hasInvalidSeasonRange(rows) ||
+    hasUnlabeledSeason(rows) ||
+    detectPricingOverlaps(rows).length > 0
+  );
+}

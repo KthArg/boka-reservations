@@ -1,11 +1,12 @@
 import { useTranslations } from 'next-intl';
 import type { PublicPricing } from '@/lib/public/tours';
+import { TicketType } from '@shared/constants/enums';
 import { MONTH_KEYS } from '@/lib/public/calendar-keys';
 import styles from './PriceList.module.css';
 
 type Props = { pricing: PublicPricing[] };
 
-const TICKET_ORDER = ['adult', 'child', 'student'];
+const TICKET_ORDER: string[] = [TicketType.Adult, TicketType.Child, TicketType.Student];
 const TICKET_KEY_MAP: Record<string, 'ticket-adult' | 'ticket-child' | 'ticket-student'> = {
   adult: 'ticket-adult',
   child: 'ticket-child',

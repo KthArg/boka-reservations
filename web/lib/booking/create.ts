@@ -1,4 +1,5 @@
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
+import { CHECKOUT_AMOUNT_CHANGED } from '@/lib/booking/deferred-checkout-errors';
 import { createHold, releaseHold } from '@/lib/booking/availability';
 import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import { getPaymentProvider } from '@/lib/payments';
@@ -21,6 +22,11 @@ export type InitCheckoutParams = {
    * (specs 0021 y 0031). Con `true` se estampan las dos versiones; con `false`, ninguna.
    */
   legalAccepted: boolean;
+  /**
+   * El total que el turista vio en el checkout (spec 0040). Si no coincide con el que calcula el
+   * servidor (cambió un precio con la página abierta), no se cobra. Sin valor, no se compara.
+   */
+  expectedAmountCents?: number;
 };
 
 export type InitCheckoutResult = {
@@ -37,6 +43,7 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
     quantities,
     locale,
     legalAccepted,
+    expectedAmountCents,
   } = params;
 
   const totalSeats = quantities.adult + quantities.child + quantities.student;
@@ -52,6 +59,12 @@ export async function initCheckout(params: InitCheckoutParams): Promise<InitChec
     quantities,
     locale,
   );
+
+  // Lo que se cobra es lo que el turista aceptó: si el precio cambió, empieza de nuevo sin
+  // crear apartado ni cobro.
+  if (expectedAmountCents !== undefined && expectedAmountCents !== totalAmountCents) {
+    throw new Error(CHECKOUT_AMOUNT_CHANGED);
+  }
 
   const { holdId } = await createHold(instanceId, totalSeats, sessionToken);
 

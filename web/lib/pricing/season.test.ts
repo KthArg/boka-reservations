@@ -138,3 +138,10 @@ describe('coversWholeYear y lowestChargedPrice', () => {
     expect(lowestChargedPrice(partial, 'child')).toBeNull();
   });
 });
+
+describe('lowestChargedPrice, bordes', () => {
+  it('solo precio base: el base; sin filas: null', () => {
+    expect(lowestChargedPrice([row('adult', 30)], 'adult')).toBe(30);
+    expect(lowestChargedPrice([], 'adult')).toBeNull();
+  });
+});

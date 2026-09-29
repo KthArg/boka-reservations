@@ -6,6 +6,7 @@ import { createTour, updateTour } from '@/lib/tours/actions';
 import { slugify } from '@/lib/tours/validation';
 import { useSubmitWithoutReset } from '@/lib/forms/use-submit-without-reset';
 import { hasInvalidNumbers } from '@/lib/tours/number-rules';
+import { hasPricingErrors } from '@/lib/tours/validation';
 import { TicketType, TourDifficulty } from '@shared/constants/enums';
 import { ChargeTiming } from '@shared/constants/tours';
 import type {
@@ -110,12 +111,12 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
   // Precios y capacidades se validan antes de enviar: el campo deja borrar libremente y un
   // valor vacío o inválido llega como NaN, que JSON convertiría en null.
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    if (hasInvalidNumbers(pricing, schedules)) {
+    if (hasInvalidNumbers(pricing, schedules) || hasPricingErrors(pricing)) {
       event.preventDefault();
       setShowNumberErrors(true);
       requestAnimationFrame(() =>
         formRef.current
-          ?.querySelector('[aria-invalid="true"]')
+          ?.querySelector('[aria-invalid="true"], [data-pricing-error]')
           ?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
       );
       return;

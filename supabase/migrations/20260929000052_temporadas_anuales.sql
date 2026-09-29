@@ -18,10 +18,23 @@
 -- Hardening: SECURITY DEFINER + search_path = '' en la función del trigger (no depende de la RLS
 -- de lectura de quien guarda); REVOKE de PUBLIC, anon, authenticated en las funciones nuevas.
 --
--- Reversión: DROP TRIGGER tour_pricing_season_overlap ON public.tour_pricing; DROP FUNCTION de
--- las tres funciones; recrear el EXCLUDE tour_pricing_no_seasonal_overlap y el índice
--- tour_pricing_one_base_per_type como en …041; DROP de las columnas season_*. Las filas que la
--- conversión dejó inactivas se reactivan a mano.
+-- Despliegue: no editar precios entre esta migración y el despliegue del código nuevo (el código
+-- anterior escribe valid_* y no season_*). Verificación después del despliegue (debe dar 0 filas):
+--   SELECT id FROM public.tour_pricing
+--   WHERE valid_from IS NOT NULL
+--     AND (season_start IS NULL
+--          OR (season_start <> to_char(valid_from, 'MM-DD') AND season_start <> '01-01'));
+--
+-- Reversión (antes de …053):
+--   1. Si el código nuevo ya escribió: desactivar o convertir a mano las filas con
+--      season_start IS NOT NULL AND valid_from IS NULL, y poner valid_from/valid_until en NULL en
+--      las filas con season_start IS NULL (si no, al quitar season_* cambian de tipo).
+--   2. DROP TRIGGER tour_pricing_season_overlap ON public.tour_pricing; DROP FUNCTION de las tres
+--      funciones; DROP de los CHECK tour_pricing_season_shape y tour_pricing_season_days.
+--   3. Recrear el índice tour_pricing_one_base_per_type y el EXCLUDE
+--      tour_pricing_no_seasonal_overlap como en …041 (con extensions en el search_path, por
+--      btree_gist); DROP de las columnas season_*.
+--   4. Reactivar a mano las filas que la conversión dejó inactivas (quedan en los NOTICE).
 
 SET LOCAL lock_timeout = '5s';
 
@@ -110,12 +123,24 @@ UPDATE public.tour_pricing
  WHERE valid_from IS NOT NULL
    AND valid_until >= (valid_from + interval '1 year' - interval '1 day')::date;
 
--- Vencidas: se convertirían en una temporada que vuelve a cobrarse cada año.
-UPDATE public.tour_pricing
-   SET active = false
- WHERE active
-   AND valid_until IS NOT NULL
-   AND valid_until < (now() AT TIME ZONE 'America/Costa_Rica')::date;
+-- Vencidas: se convertirían en una temporada que vuelve a cobrarse cada año. Cada una queda en un
+-- NOTICE, para poder reactivarla si hiciera falta.
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    UPDATE public.tour_pricing
+       SET active = false
+     WHERE active
+       AND valid_until IS NOT NULL
+       AND valid_until < (now() AT TIME ZONE 'America/Costa_Rica')::date
+    RETURNING id
+  LOOP
+    RAISE NOTICE 'tour_pricing %: temporada vencida, queda inactiva', r.id;
+  END LOOP;
+END;
+$$;
 
 -- Choques tras la conversión: por tour y tiquete queda la vigente hoy o, si no, la que empieza
 -- antes; las que chocan con una ya conservada pasan a inactivas.
@@ -193,7 +218,8 @@ DECLARE
   v_row public.tour_pricing;
 BEGIN
   -- El trigger es diferido: se relee la fila en su estado final (pudo cambiar o borrarse después
-  -- del evento en la misma transacción).
+  -- del evento en la misma transacción). Supone READ COMMITTED: con REPEATABLE READ o
+  -- SERIALIZABLE el lock ya no garantiza ver lo que confirmó el otro guardado.
   SELECT * INTO v_row FROM public.tour_pricing WHERE id = NEW.id;
   IF NOT FOUND OR NOT v_row.active OR v_row.season_start IS NULL THEN
     RETURN NULL;

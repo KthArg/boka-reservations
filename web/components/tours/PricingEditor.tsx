@@ -34,14 +34,28 @@ export default function PricingEditor({ value, onChange, errors, showErrors }: P
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
 
+  // Cada fila con problema dice cuál es y, si choca, con qué temporada (spec 0040).
   const conflicts = new Map<number, string>();
-  for (const overlap of detectPricingOverlaps(value)) {
-    const message =
-      overlap.code === TourActionError.BasePriceDuplicate
-        ? t('pricing-conflict-base')
-        : t('pricing-conflict-season');
-    for (const index of overlap.indices) conflicts.set(index, message);
+  for (const { code, indices } of detectPricingOverlaps(value)) {
+    const [a, b] = indices;
+    for (const [index, other] of [
+      [a, b],
+      [b, a],
+    ]) {
+      conflicts.set(
+        index,
+        code === TourActionError.BasePriceDuplicate
+          ? t('pricing-conflict-base')
+          : t('pricing-conflict-season', { other: value[other].season_label ?? '' }),
+      );
+    }
   }
+  value.forEach((row, index) => {
+    const isSeason = row.season_start != null && row.season_end != null;
+    if (isSeason && !row.season_label && !conflicts.has(index)) {
+      conflicts.set(index, t('pricing-label-required'));
+    }
+  });
 
   return (
     <div className={styles.editor}>
@@ -101,7 +115,7 @@ export default function PricingEditor({ value, onChange, errors, showErrors }: P
                 </label>
 
                 {conflicts.has(i) ? (
-                  <p className={styles.error} role="alert">
+                  <p className={styles.error} role="alert" data-pricing-error>
                     {conflicts.get(i)}
                   </p>
                 ) : null}

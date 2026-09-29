@@ -91,7 +91,7 @@ El usuario decidió (2026-09-29): el precio se elige por la **fecha de la salida
 La migración convierte cada temporada actual, en este orden, antes de crear el trigger:
 
 1. **Vencida** (`valid_until < hoy` en Costa Rica): queda inactiva.
-2. **Un año o más** (`valid_until >= valid_from + 1 año − 1 día`): se convierte a `01-01`–`12-31` si cubre el año entero; si no, queda inactiva.
+2. **Un año o más** (`valid_until >= valid_from + 1 año − 1 día`): se convierte a `01-01`–`12-31` (un rango así cubre todos los días del año).
 3. **Resto**: `season_start = MM-DD(valid_from)`, `season_end = MM-DD(valid_until)`.
 4. **Choques tras la conversión** (por ejemplo, la alta de 2026 y la de 2027 dan el mismo día-mes): por tour y tiquete, queda activa la temporada vigente hoy o, si ninguna lo está, la que empieza antes; las demás quedan inactivas.
 
@@ -152,8 +152,8 @@ No aplica.
 ## 11. Plan de rollout
 
 - Sin feature flag. Dos pasos para que la venta no quede caída:
-  1. Respaldo de producción; migración 052 (el código viejo sigue funcionando: `valid_*` siguen ahí con los datos). Verificar con una consulta: cantidad de filas activas e inactivas por tour y ninguna activa con `season_start` nula salvo los base.
-  2. Promover el código nuevo a `main`.
+  1. Respaldo de producción; migración 052 (el código viejo sigue funcionando: `valid_*` siguen ahí con los datos). Las temporadas que la conversión deja inactivas quedan en los `NOTICE` de la migración.
+  2. Promover el código nuevo a `main`. **Entre el paso 1 y el 2 no se editan precios**: el código viejo escribe `valid_*` y no `season_*`. Después del despliegue, esta consulta tiene que dar 0 filas: `SELECT id FROM tour_pricing WHERE valid_from IS NOT NULL AND (season_start IS NULL OR (season_start <> to_char(valid_from,'MM-DD') AND season_start <> '01-01'))`.
   3. Migración 053 (borra las columnas viejas) cuando el despliegue esté verificado.
 - Reversible hasta el paso 3 (§6).
 

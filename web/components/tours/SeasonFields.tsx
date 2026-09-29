@@ -10,6 +10,7 @@ type Props = { row: PricingRow; onChange: (patch: Partial<PricingRow>) => void }
 /** Una temporada nueva arranca en enero; el admin la ajusta. */
 const NEW_SEASON = { season_start: '01-01', season_end: '01-31' };
 const BASE_PRICE = { season_start: null, season_end: null, season_label: null };
+const Kind = { Base: 'base', Season: 'season' } as const;
 
 /**
  * Tipo de tarifa y, si es temporada, su nombre y su día-mes de inicio y fin, sin año (spec 0040).
@@ -24,11 +25,11 @@ export function SeasonFields({ row, onChange }: Props) {
         {t('pricing-kind')}
         <select
           className={styles.select}
-          value={isSeason ? 'season' : 'base'}
-          onChange={(e) => onChange(e.target.value === 'season' ? NEW_SEASON : BASE_PRICE)}
+          value={isSeason ? Kind.Season : Kind.Base}
+          onChange={(e) => onChange(e.target.value === Kind.Season ? NEW_SEASON : BASE_PRICE)}
         >
-          <option value="base">{t('pricing-kind-base')}</option>
-          <option value="season">{t('pricing-kind-season')}</option>
+          <option value={Kind.Base}>{t('pricing-kind-base')}</option>
+          <option value={Kind.Season}>{t('pricing-kind-season')}</option>
         </select>
       </label>
 

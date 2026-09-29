@@ -13,13 +13,31 @@ const CENTS_PER_UNIT = 100;
  * `computeAuthoritativeTotal`.
  */
 export function calculateTotalCents(quantities: TicketQuantities, pricing: PricingRow[]): number {
-  const priceMap = new Map(pricing.map((p) => [p.ticket_type, p.price_usd]));
-  const total =
-    (quantities.adult * (priceMap.get('adult') ?? 0) +
-      quantities.child * (priceMap.get('child') ?? 0) +
-      quantities.student * (priceMap.get('student') ?? 0)) *
-    CENTS_PER_UNIT;
-  return Math.round(total);
+  // Cada precio unitario se pasa a centavos enteros antes de multiplicar: sumar decimales en
+  // punto flotante y redondear al final podía correr un centavo.
+  const unitCents = new Map(
+    pricing.map((p) => [p.ticket_type, Math.round(Number(p.price_usd) * CENTS_PER_UNIT)]),
+  );
+  return (
+    quantities.adult * (unitCents.get('adult') ?? 0) +
+    quantities.child * (unitCents.get('child') ?? 0) +
+    quantities.student * (unitCents.get('student') ?? 0)
+  );
+}
+
+/** Orden en que se elige el tiquete que arranca en 1 al abrir el checkout. */
+const DEFAULT_TICKET_ORDER = ['adult', 'student', 'child'] as const;
+
+/**
+ * Cantidades con que abre el checkout (spec 0040): un tiquete del primer tipo con precio ese día
+ * (adulto si lo hay). Así el resumen nunca lista un tiquete que no se cobra.
+ */
+export function initialQuantities(pricing: { ticket_type: string }[]): TicketQuantities {
+  const priced = new Set<string>(pricing.map((p) => p.ticket_type));
+  const first = DEFAULT_TICKET_ORDER.find((type) => priced.has(type));
+  const quantities: TicketQuantities = { adult: 0, child: 0, student: 0 };
+  if (first) quantities[first] = 1;
+  return quantities;
 }
 
 /**
