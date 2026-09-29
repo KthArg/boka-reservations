@@ -57,3 +57,6 @@ export const SUCCESS_PAGE_WINDOW_HOURS = 24;
 
 /** Moneda de los dos checkouts (widget y cobro diferido): hoy siempre USD (spec 0032 §5.3). */
 export const CHECKOUT_CURRENCY = Currency.USD;
+
+/** Con esta cantidad de lugares o menos, el calendario del tour avisa que quedan pocos (spec 0039). */
+export const LOW_SEATS_THRESHOLD = 3;

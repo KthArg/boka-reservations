@@ -1,70 +1,110 @@
-import Link from 'next/link';
+'use client';
+
+import { useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import type { PublicInstance } from '@/lib/public/tours';
+import {
+  addMonths,
+  firstBookableDay,
+  ISO_WEEKDAYS,
+  groupByCrDay,
+  isoWeekday,
+  monthOf,
+  monthsRange,
+  type CalendarDeparture,
+  type MonthKey,
+} from './calendar';
+import { MonthGrid } from './MonthGrid';
+import { DayDepartures } from './DayDepartures';
 import styles from './AvailabilityCalendar.module.css';
 
-type Props = { instances: PublicInstance[]; tourSlug: string };
+type Props = {
+  departures: CalendarDeparture[];
+  /** Hoy en Costa Rica, calculado en el servidor. */
+  today: string;
+  tourSlug: string;
+};
 
-type InstanceRow = { id: string; label: string };
-type MonthGroup = { label: string; rows: InstanceRow[] };
-
-function groupByMonth(instances: PublicInstance[], locale: string): MonthGroup[] {
-  const groups = new Map<string, InstanceRow[]>();
-
-  for (const inst of instances) {
-    const date = new Date(inst.starts_at);
-    const lcTag = locale === 'es' ? 'es-CR' : 'en-US';
-    const monthKey = date.toLocaleDateString(lcTag, {
-      year: 'numeric',
-      month: 'long',
-      timeZone: 'America/Costa_Rica',
-    });
-    const dateLabel = date.toLocaleDateString(lcTag, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Costa_Rica',
-    });
-
-    if (!groups.has(monthKey)) groups.set(monthKey, []);
-    groups.get(monthKey)!.push({ id: inst.id, label: dateLabel });
-  }
-
-  return Array.from(groups.entries()).map(([label, rows]) => ({ label, rows }));
-}
-
-export function AvailabilityCalendar({ instances, tourSlug }: Props) {
+/**
+ * Calendario mensual de salidas del tour (spec 0039). Los nombres de meses y días salen de los
+ * archivos de idioma, no de `Intl`: su texto cambia entre Node y cada navegador y el HTML del
+ * servidor no coincidiría con el del navegador.
+ */
+export function AvailabilityCalendar({ departures, today, tourSlug }: Props) {
   const locale = useLocale();
   const t = useTranslations('public');
+  const days = useMemo(() => groupByCrDay(departures), [departures]);
+  const range = useMemo(() => monthsRange(days), [days]);
+  const [month, setMonth] = useState<MonthKey | null>(range?.first ?? null);
+  const [selected, setSelected] = useState<string | null>(() => firstBookableDay(days));
 
-  if (instances.length === 0) {
-    return <p className={styles.empty}>{t('detail-no-instances')}</p>;
-  }
+  if (!range || !month) return <p className={styles.empty}>{t('detail-no-instances')}</p>;
 
-  const groups = groupByMonth(instances, locale);
+  const monthName = (m: number) => t(`calendar-month-${m}` as Parameters<typeof t>[0]);
+  const weekdayName = (d: number, form: 'short' | 'long') =>
+    t(`calendar-weekday-${form}-${d}` as Parameters<typeof t>[0]);
+  const dayLabel = (day: string) => {
+    const [, m, d] = day.split('-').map(Number);
+    return t('calendar-day-title', {
+      weekday: weekdayName(isoWeekday(day), 'long'),
+      day: d,
+      month: monthName(m),
+    });
+  };
+
+  const goTo = (target: MonthKey) => {
+    setMonth(target);
+    setSelected(firstBookableDay(days, target));
+  };
+
+  const [year, monthNumber] = month.split('-').map(Number);
+  const selectedDay = selected && monthOf(selected) === month ? (days.get(selected) ?? null) : null;
 
   return (
     <div className={styles.calendar}>
-      {groups.map((group) => (
-        <section key={group.label} className={styles.month}>
-          <h3 className={styles.monthLabel}>{group.label}</h3>
-          <ul className={styles.dateList}>
-            {group.rows.map((row) => (
-              <li key={row.id} className={styles.dateItem}>
-                <span className={styles.dateLabel}>{row.label}</span>
-                <Link
-                  href={`/${locale}/tours/${tourSlug}/checkout?instance=${row.id}`}
-                  className={styles.bookLink}
-                >
-                  {t('detail-book-cta')}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <div className={styles.monthNav}>
+        <button
+          type="button"
+          className={styles.navButton}
+          aria-label={t('calendar-prev-month')}
+          disabled={month <= range.first}
+          onClick={() => goTo(addMonths(month, -1))}
+        >
+          ‹
+        </button>
+        <h3 className={styles.monthLabel} aria-live="polite">
+          {`${monthName(monthNumber)} ${year}`}
+        </h3>
+        <button
+          type="button"
+          className={styles.navButton}
+          aria-label={t('calendar-next-month')}
+          disabled={month >= range.last}
+          onClick={() => goTo(addMonths(month, 1))}
+        >
+          ›
+        </button>
+      </div>
+
+      <MonthGrid
+        month={month}
+        days={days}
+        selected={selected}
+        today={today}
+        weekdays={ISO_WEEKDAYS.map((d) => ({
+          short: weekdayName(d, 'short'),
+          long: weekdayName(d, 'long'),
+        }))}
+        dayLabel={dayLabel}
+        soldOutLabel={t('calendar-sold-out')}
+        todayLabel={t('calendar-today')}
+        onSelect={setSelected}
+      />
+
+      <DayDepartures
+        day={selectedDay}
+        title={selectedDay ? dayLabel(selectedDay.day) : null}
+        checkoutHref={(id) => `/${locale}/tours/${tourSlug}/checkout?instance=${id}`}
+      />
     </div>
   );
 }
