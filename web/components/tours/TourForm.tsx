@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { createTour, updateTour } from '@/lib/tours/actions';
 import { slugify } from '@/lib/tours/validation';
+import { useSubmitWithoutReset } from '@/lib/forms/use-submit-without-reset';
 import { TicketType, TourDifficulty } from '@shared/constants/enums';
 import { ChargeTiming } from '@shared/constants/tours';
 import type {
@@ -103,6 +104,7 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
   );
 
   const formRef = useRef<HTMLFormElement>(null);
+  const handleSubmit = useSubmitWithoutReset(formAction);
 
   useEffect(() => {
     if (state?.success === false && formRef.current) {
@@ -113,7 +115,7 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className={styles.form}>
+    <form ref={formRef} onSubmit={handleSubmit} className={styles.form}>
       <input type="hidden" name="pricing" value={JSON.stringify(pricing)} />
       <input type="hidden" name="schedules" value={JSON.stringify(schedules)} />
 
