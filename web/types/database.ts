@@ -896,6 +896,7 @@ export type Database = {
         Row: {
           id: number;
           minimum_decision_window_hours: number;
+          booking_cutoff_hours: number;
           default_charge_lead_hours: number;
           operator_legal_name: string;
           operator_tax_id: string;
@@ -914,6 +915,7 @@ export type Database = {
         Insert: {
           id?: number;
           minimum_decision_window_hours?: number;
+          booking_cutoff_hours?: number;
           default_charge_lead_hours?: number;
           operator_legal_name?: string;
           operator_tax_id?: string;
@@ -932,6 +934,7 @@ export type Database = {
         Update: {
           id?: number;
           minimum_decision_window_hours?: number;
+          booking_cutoff_hours?: number;
           default_charge_lead_hours?: number;
           operator_legal_name?: string;
           operator_tax_id?: string;

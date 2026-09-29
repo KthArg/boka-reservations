@@ -45,6 +45,7 @@ export default async function SettingsPage({ params }: Props) {
         <SettingsForm
           decisionWindowHours={settings.minimum_decision_window_hours}
           chargeLeadHours={settings.default_charge_lead_hours}
+          bookingCutoffHours={settings.booking_cutoff_hours}
         />
       </section>
     </div>

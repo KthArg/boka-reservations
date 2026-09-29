@@ -229,7 +229,9 @@
     "summary-tolerance": "Late-arrival tolerance: {minutes} minutes. After that it counts as a no-show.",
     "summary-seller": "Sold by {name}, legal ID {taxId}.",
     "sales-not-enabled": "Online sales for this tour are not enabled yet.",
-    "consent-required": "To continue, check both boxes."
+    "consent-required": "To continue, check both boxes.",
+    "booking-closed": "This departure no longer accepts online bookings: sales close a few hours before it starts. Please choose another date.",
+    "booking-closed-back": "See other dates"
   },
   "legal": {
     "privacy-title": "Privacy notice",
@@ -656,7 +658,8 @@
       "settings_lead_hours_out_of_range": "Enter a whole number of hours between {min} and {max} for the charge lead time.",
       "settings_update_failed": "Settings couldn't be saved. Please try again.",
       "settings_operator_invalid": "Check the operator details: an email is not valid or a text is too long.",
-      "settings_tolerance_out_of_range": "The tolerance must be between {min} and {max} minutes."
+      "settings_tolerance_out_of_range": "The tolerance must be between {min} and {max} minutes.",
+      "settings_cutoff_out_of_range": "Enter a whole number of hours between {min} and {max} for the minimum booking notice."
     },
     "section-operator": "Operator details and sales",
     "operator-intro": "These details appear in the terms and conditions, the privacy notice, the site and email footers, and the summary before paying. Online sales are enabled once every field is filled in, except the ICT declaration, which is optional. Every change is logged.",
@@ -680,7 +683,9 @@
     "hint-operator_ict_declaration": "The number, if the business has one. Leave it empty if not: the sentence does not appear in the terms.",
     "field-operator_has_liability_policy": "We hold a current civil liability insurance policy",
     "field-no-show-tolerance": "Late-arrival tolerance (minutes)",
-    "hint-no-show-tolerance": "After these minutes, anyone who has not arrived counts as a no-show and gets no refund. It appears in the purchase summary and in the confirmation email; each booking keeps the value in force when it was made. Between {min} and {max} minutes."
+    "hint-no-show-tolerance": "After these minutes, anyone who has not arrived counts as a no-show and gets no refund. It appears in the purchase summary and in the confirmation email; each booking keeps the value in force when it was made. Between {min} and {max} minutes.",
+    "field-booking-cutoff": "Minimum booking notice (hours before departure)",
+    "hint-booking-cutoff": "Online bookings for each departure close this many hours before it starts. With 0, bookings are open until departure time. Between {min} and {max} hours."
   },
   "operations": {
     "cancel-departure": "Cancel departure",
