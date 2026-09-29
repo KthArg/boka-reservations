@@ -6,6 +6,8 @@ import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isSalesEnabled } from '@/lib/booking/sales-gate';
 import { PriceList } from '@/components/public/PriceList/PriceList';
 import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/AvailabilityCalendar';
+import { toCalendarDepartures } from '@/lib/public/calendar-departures';
+import { crDate } from '@/lib/dates/cr-date';
 import styles from './slug.module.css';
 
 type Props = { params: Promise<{ id: string }> };
@@ -106,7 +108,11 @@ export default async function TourDetailPage({ params }: Props) {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>{t('detail-availability')}</h2>
             {bookable ? (
-              <AvailabilityCalendar instances={instances} tourSlug={slug} />
+              <AvailabilityCalendar
+                departures={toCalendarDepartures(instances, locale)}
+                today={crDate()}
+                tourSlug={slug}
+              />
             ) : (
               <p className={styles.prose}>{t('detail-not-bookable')}</p>
             )}
