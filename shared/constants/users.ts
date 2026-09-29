@@ -31,4 +31,8 @@ export enum UserManagementError {
   InviteFailed = 'user_mgmt_invite_failed',
   SelfDeactivation = 'user_mgmt_self_deactivation',
   LastAdmin = 'user_mgmt_last_admin',
+  /** Supabase frenó el correo: intervalo por persona o límite por hora (spec 0038). */
+  InviteRateLimited = 'user_mgmt_invite_rate_limited',
+  /** La cuenta de acceso ya no existe: se borró fuera del panel (spec 0038). */
+  AccountMissing = 'user_mgmt_account_missing',
 }

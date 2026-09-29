@@ -512,6 +512,7 @@
     "deactivate-confirm": "Deactivate this user? They will lose access until reactivated.",
     "resend-invite": "Resend invite",
     "invite-resent": "Invite resent.",
+    "password-link-sent": "They had already opened the invitation: we sent them an email to set their password.",
     "field-full-name": "Full name",
     "field-email": "Email",
     "field-role": "Role",
@@ -532,7 +533,9 @@
       "user_mgmt_write_failed": "Couldn’t save. Please try again.",
       "user_mgmt_invite_failed": "Couldn’t send the invitation.",
       "user_mgmt_self_deactivation": "You can’t deactivate yourself.",
-      "user_mgmt_last_admin": "You can’t deactivate the last active administrator."
+      "user_mgmt_last_admin": "You can’t deactivate the last active administrator.",
+      "user_mgmt_invite_rate_limited": "Supabase held the email back because of the sending limit. Wait a few minutes and try again.",
+      "user_mgmt_account_missing": "This person’s login account no longer exists. Invite them again as a new user."
     }
   },
   "cancellation": {
@@ -688,6 +691,10 @@
     "review-tray-title": "Bookings under review",
     "review-tray-intro": "Departures cancelled because of the weather or for safety. Decide each booking from its detail: the tourist is waiting for an answer.",
     "review-open": "Decide",
+    "refund-tray-title": "Refunds to resolve",
+    "refund-tray-intro": "Refunds that failed, are waiting for a transfer or have not moved for more than a day. Resolve each one from the booking detail: the customer is waiting for their money.",
+    "refund-tray-since": "waiting since {date}",
+    "refund-tray-open": "Resolve",
     "review-title": "Booking under review",
     "review-intro": "The departure was cancelled for {reason}. Decide what happens to this booking; the tourist receives an email with the decision.",
     "review-refund": "Refund 100%",
@@ -752,6 +759,7 @@
     "erase": "Erase the data",
     "erase-ask": "Erase the data of {email}? This cannot be undone.",
     "erase-done": "Done: {anonymized, plural, one {# booking anonymized} other {# bookings anonymized}} and {deleted, plural, one {# deleted} other {# deleted}}. It was logged.",
+    "erase-retained": "{count, plural, one {# booking was not erased because it has a charge or a departure in progress} other {# bookings were not erased because they have a charge or a departure in progress}}. Run the erasure again once they finish.",
     "error-unauthorized": "Only an administrator can do this.",
     "error-invalid-email": "That email is not valid.",
     "error-pending-refund": "There is an unfinished refund: nothing was erased.",

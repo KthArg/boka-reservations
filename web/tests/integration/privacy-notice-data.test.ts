@@ -261,7 +261,10 @@ describe('borrado a pedido', () => {
       ok: true,
       preview: { total: 1, byStatus: { confirmed: 1 }, upcoming: 1, pendingRefunds: 0 },
     });
-    expect(erased).toEqual({ ok: true, result: { anonymizedCount: 1, deletedCount: 0 } });
+    expect(erased).toEqual({
+      ok: true,
+      result: { anonymizedCount: 1, deletedCount: 0, retainedCount: 0 },
+    });
     expect((await readBooking(db, bookingId)).customer_name).toBe('ANONIMIZADO');
   });
 

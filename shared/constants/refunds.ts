@@ -69,3 +69,6 @@ export const REFUND_UNSETTLED_REASONS: readonly string[] = [
 
 /** OnvoPay no encontró el pago: no pudo crear el reembolso, aunque la fila no tenga id externo. */
 export const REFUND_PAYMENT_MISSING_REASON = 'payment-intent-missing';
+
+/** Un reembolso en cola o procesando que no cambia en este tiempo aparece en la bandeja (spec 0038). */
+export const STUCK_REFUND_HOURS = 24;

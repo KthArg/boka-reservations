@@ -6,3 +6,5 @@ dist
 pnpm-lock.yaml
 *.generated.*
 .claude/
+# Plantillas de correo de Supabase Auth: HTML con sintaxis de plantillas de Go, que Prettier no entiende.
+supabase/templates/

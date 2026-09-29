@@ -1,10 +1,10 @@
 import 'server-only';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
-import { env } from '@/lib/env';
 import { UserRole } from '@shared/constants/enums';
 import { LOGIN_ROLES, UserManagementError } from '@shared/constants/users';
 import type { UserUpdateInput } from '@shared/schemas';
 import { checkDeactivation } from './guards';
+import { isAuthUserMissing } from './auth-errors';
 import { countActiveAdmins, getUserById } from './repository';
 import type { UserActionResult } from './types';
 
@@ -60,6 +60,19 @@ export async function setUserActive(
     return { ok: true };
   }
 
+  // Reactivar a alguien cuya cuenta de acceso ya no existe dejaría una fila activa sin forma de
+  // entrar (spec 0038): se avisa antes de escribir.
+  if (LOGIN_ROLES.includes(target.role as UserRole)) {
+    const { data, error: lookupError } = await db.auth.admin.getUserById(id);
+    if (isAuthUserMissing(lookupError) || (!lookupError && !data.user)) {
+      return { ok: false, error: UserManagementError.AccountMissing };
+    }
+    if (lookupError) {
+      console.error('[users] no se pudo leer la cuenta al reactivar:', lookupError.code, id);
+      return { ok: false, error: UserManagementError.WriteFailed };
+    }
+  }
+
   const { error } = await db.from('users').update({ active }).eq('id', id);
   if (error) return { ok: false, error: UserManagementError.WriteFailed };
   // Si el desbloqueo en Auth falla, el usuario seguiría sin poder entrar: se informa.
@@ -91,20 +104,4 @@ async function setSessionsBlocked(
     return false;
   }
   return true;
-}
-
-/** Reenvía la invitación a un admin/staff que aún no fijó contraseña. */
-export async function resendInvite(id: string, locale: string): Promise<UserActionResult> {
-  const target = await getUserById(id);
-  if (!target) return { ok: false, error: UserManagementError.NotFound };
-  if (!LOGIN_ROLES.includes(target.role as UserRole)) {
-    return { ok: false, error: UserManagementError.InviteFailed };
-  }
-
-  const db = createSupabaseServiceClient();
-  const { error } = await db.auth.admin.inviteUserByEmail(target.email, {
-    data: { locale: target.locale, full_name: target.full_name, role: target.role },
-    redirectTo: `${env.APP_URL}/${locale}/reset-password`,
-  });
-  return error ? { ok: false, error: UserManagementError.InviteFailed } : { ok: true };
 }

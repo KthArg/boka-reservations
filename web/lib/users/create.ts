@@ -5,6 +5,7 @@ import { UserRole } from '@shared/constants/enums';
 import { UserManagementError } from '@shared/constants/users';
 import type { UserCreateInput } from '@shared/schemas';
 import type { UserActionResult } from './types';
+import { emailErrorFor } from './auth-errors';
 
 function inviteRedirectTo(locale: string): string {
   return `${env.APP_URL}/${locale}/reset-password`;
@@ -41,7 +42,10 @@ export async function createInternalUser(
     data: { locale: input.locale, full_name: input.full_name, role: input.role },
     redirectTo: inviteRedirectTo(locale),
   });
-  if (inviteErr || !data.user) return { ok: false, error: UserManagementError.InviteFailed };
+  if (inviteErr || !data.user) {
+    console.error('[users] no se pudo enviar la invitación:', inviteErr?.code, inviteErr?.message);
+    return { ok: false, error: emailErrorFor(inviteErr) };
+  }
 
   const { error: insErr } = await db.from('users').insert({
     id: data.user.id,
