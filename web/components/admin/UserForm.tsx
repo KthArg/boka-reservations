@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { createUser, updateUser } from '@/lib/users/actions';
 import { UserRole } from '@shared/constants/enums';
 import type { FormResult, UserListItem } from '@/lib/users/types';
+import { useSubmitWithoutReset } from '@/lib/forms/use-submit-without-reset';
 import styles from './UserForm.module.css';
 
 type Props = { user?: UserListItem };
@@ -14,6 +15,7 @@ export default function UserForm({ user }: Props) {
   const isEdit = !!user;
   const action = isEdit ? updateUser.bind(null, user.id) : createUser;
   const [state, formAction, pending] = useActionState<FormResult | null, FormData>(action, null);
+  const handleSubmit = useSubmitWithoutReset(formAction);
   const errors = state && !state.success ? state.errors : {};
   const [role, setRole] = useState<UserRole>((user?.role as UserRole) ?? UserRole.Guide);
 
@@ -25,7 +27,7 @@ export default function UserForm({ user }: Props) {
   };
 
   return (
-    <form action={formAction} className={styles.form}>
+    <form onSubmit={handleSubmit} className={styles.form}>
       {errors._form?.map((code) => (
         <p key={code} className={styles.formError}>
           {tr(code)}
