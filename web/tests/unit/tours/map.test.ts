@@ -53,6 +53,32 @@ describe('mapSchedules', () => {
     );
     expect(row).toHaveProperty('id', ROW_ID);
   });
+
+  it('una fila sin fecha de inicio rige desde hoy (la columna es NOT NULL)', () => {
+    const [row] = mapSchedules(
+      [{ day_of_week: 1, start_time: '08:00', capacity: 10, active: true }],
+      TOUR_ID,
+      '2026-09-28',
+    );
+    expect(row.valid_from).toBe('2026-09-28');
+  });
+
+  it('conserva la fecha de inicio que ya tiene la fila', () => {
+    const [row] = mapSchedules(
+      [
+        {
+          day_of_week: 1,
+          start_time: '08:00',
+          capacity: 10,
+          active: true,
+          valid_from: '2026-06-01',
+        },
+      ],
+      TOUR_ID,
+      '2026-09-28',
+    );
+    expect(row.valid_from).toBe('2026-06-01');
+  });
 });
 
 describe('mapTourColumns', () => {
