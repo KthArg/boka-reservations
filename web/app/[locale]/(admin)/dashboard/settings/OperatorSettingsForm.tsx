@@ -59,7 +59,7 @@ export function OperatorSettingsForm({ initial }: Props) {
               maxLength={OPERATOR_FIELD_MAX_LENGTH}
               value={values[field]}
               onChange={(e) => setText(field, e.target.value)}
-              className={styles.input}
+              className={styles.textInput}
             />
           </label>
           <p className={styles.hint}>{t(`hint-${field}`)}</p>
