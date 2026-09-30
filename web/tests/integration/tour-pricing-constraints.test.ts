@@ -205,6 +205,57 @@ describe('reconcileRows — el form es el estado final (spec 0028, B1; spec 0040
     expect(after![0]).toMatchObject({ id: keep.id, price_usd: 55 });
   });
 
+  it('editar un tour agregando un horario nuevo junto a los existentes funciona', async () => {
+    const { data: existing } = await admin
+      .from('tour_schedules')
+      .select('id, day_of_week, start_time, capacity, valid_from, valid_until, active')
+      .eq('tour_id', tourId);
+
+    const err = await reconcileRows(
+      admin as never,
+      'tour_schedules',
+      tourId,
+      [
+        ...existing!.map((row) => ({ ...row, tour_id: tourId })),
+        {
+          tour_id: tourId,
+          day_of_week: 4,
+          start_time: '13:00',
+          capacity: 5,
+          valid_from: '2026-09-30',
+          valid_until: null,
+          active: true,
+        },
+      ],
+      TourActionError.SchedulesWriteFailed,
+    );
+
+    expect(err).toBeNull();
+    const { count } = await admin
+      .from('tour_schedules')
+      .select('id', { count: 'exact', head: true })
+      .eq('tour_id', tourId);
+    expect(count).toBe(existing!.length + 1);
+  });
+
+  it('agregar un precio nuevo junto a uno existente funciona', async () => {
+    await clearPricing();
+    const { data: base } = await insert({}).select('id').single();
+
+    const err = await reconcileRows(
+      admin as never,
+      'tour_pricing',
+      tourId,
+      [
+        pricingRow({ id: base!.id }) as never,
+        pricingRow({ season_start: '12-15', season_end: '04-30' }) as never,
+      ],
+      TourActionError.PricingWriteFailed,
+    );
+
+    expect(err).toBeNull();
+  });
+
   it('correr el borde entre dos temporadas en un solo guardado funciona', async () => {
     await clearPricing();
     const { data: rows } = await insert(
