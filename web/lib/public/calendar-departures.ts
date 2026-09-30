@@ -1,10 +1,11 @@
 import 'server-only';
-import { BUSINESS_TIMEZONE, crDate } from '@/lib/dates/cr-date';
+import { BUSINESS_TIMEZONE, crClockTime, crDate } from '@/lib/dates/cr-date';
 import { formatMoneyCents, intlLocaleTag } from '@/lib/format/money';
 import { selectPriceForDay, type PriceRow } from '@/lib/pricing/season';
 import { CENTS_PER_UNIT, CHECKOUT_CURRENCY } from '@shared/constants/bookings';
 import { TicketType } from '@shared/constants/enums';
 import { seatsLeft, type CalendarDeparture } from './calendar';
+import { shiftOfTime } from './shift';
 import type { PublicInstance } from './tours';
 
 /**
@@ -30,6 +31,7 @@ export function toCalendarDepartures(
       id: instance.id,
       crDay,
       time: time.format(startsAt),
+      shift: shiftOfTime(crClockTime(startsAt)),
       seatsLeft: seatsLeft(instance.capacity_total, instance.capacity_reserved),
       adultPrice: adult
         ? formatMoneyCents(

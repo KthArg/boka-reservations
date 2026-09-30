@@ -1,18 +1,20 @@
 import { getLocale } from 'next-intl/server';
-import { Hanken_Grotesk, Young_Serif } from 'next/font/google';
+import { Gloock, Montserrat } from 'next/font/google';
 import './globals.css';
 
-const bodyFont = Hanken_Grotesk({
+// Spec 0042: las tipografías de la landing, autoalojadas por next/font (sin pedidos a Google en
+// tiempo de ejecución; la CSP solo permite fuentes propias).
+const bodyFont = Montserrat({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-hanken',
+  variable: '--font-montserrat',
 });
 
-const displayFont = Young_Serif({
+const displayFont = Gloock({
   subsets: ['latin'],
   weight: '400',
   display: 'swap',
-  variable: '--font-young-serif',
+  variable: '--font-gloock',
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

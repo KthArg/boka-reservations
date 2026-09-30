@@ -33,6 +33,23 @@ describe('toCalendarDepartures', () => {
   });
 });
 
+describe('turno de la salida (spec 0042)', () => {
+  it('las 23:30 UTC son las 17:30 de Costa Rica: noche', () => {
+    const [departure] = toCalendarDepartures([instance('2026-10-06T23:30:00Z')], 'es');
+    expect(departure.shift).toBe('night');
+  });
+
+  it('las 14:00 UTC son las 08:00 de Costa Rica: día', () => {
+    const [departure] = toCalendarDepartures([instance('2026-10-06T14:00:00Z')], 'en');
+    expect(departure.shift).toBe('day');
+  });
+
+  it('las 10:59 UTC son las 04:59 de Costa Rica: todavía noche', () => {
+    const [departure] = toCalendarDepartures([instance('2026-10-06T10:59:00Z')], 'en');
+    expect(departure.shift).toBe('night');
+  });
+});
+
 describe('precio de adulto del día (spec 0040)', () => {
   const pricing = [
     { ticket_type: 'adult', price_usd: 50, season_start: null, season_end: null },

@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { getOperatorIdentity } from '@/lib/operator/repository';
 import { isOperatorIdentityComplete } from '@/lib/operator/types';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import styles from './SiteFooter.module.css';
 
 /**
@@ -14,7 +15,8 @@ export async function SiteFooter() {
   const complete = isOperatorIdentityComplete(operator);
 
   return (
-    <footer className={styles.footer}>
+    // Spec 0042: pie en verde noche con el logo mixto, como el cierre de la landing.
+    <footer className={`theme-night ${styles.footer}`}>
       <div className={styles.inner}>
         {complete ? (
           <p className={styles.identity}>
@@ -32,6 +34,7 @@ export async function SiteFooter() {
           <Link href="/privacy">{t('privacy')}</Link>
           <Link href={{ pathname: '/terms', hash: 'quejas' }}>{t('complaints')}</Link>
         </nav>
+        <BrandLogo variant="mix" className={styles.logo} decorative />
       </div>
     </footer>
   );

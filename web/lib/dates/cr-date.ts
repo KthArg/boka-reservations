@@ -12,6 +12,18 @@ export function crDate(d: Date = new Date()): string {
   return d.toLocaleDateString('en-CA', { timeZone: BUSINESS_TIMEZONE });
 }
 
+const CR_CLOCK = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: BUSINESS_TIMEZONE,
+});
+
+/** Hora 'HH:MM' de 24 h de un instante en Costa Rica, sin depender del idioma de la página. */
+export function crClockTime(d: Date): string {
+  return CR_CLOCK.format(d);
+}
+
 /** Inicio del día CR ('YYYY-MM-DD') como ISO UTC — límite inferior inclusivo. */
 export function crDayStartIso(day: string): string {
   return new Date(`${day}T00:00:00${CR_UTC_OFFSET}`).toISOString();

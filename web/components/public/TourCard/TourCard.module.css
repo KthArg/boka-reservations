@@ -1,26 +1,27 @@
 .card {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  width: 100%;
+  border-radius: var(--radius-xl);
   overflow: hidden;
   text-decoration: none;
-  color: inherit;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
   transition:
-    transform var(--transition-base),
-    box-shadow var(--transition-base),
+    transform var(--transition-slow),
+    box-shadow var(--transition-slow),
     border-color var(--transition-base);
 }
 
 .card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   box-shadow: var(--shadow-lg);
   border-color: var(--color-border-strong);
 }
 
 .imageWrapper {
+  position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background: var(--color-surface-sunken);
@@ -30,23 +31,30 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition-slow);
+  transition: transform 800ms var(--ease-out-expo);
 }
 
 .card:hover .image {
-  transform: scale(1.045);
+  transform: scale(1.06);
 }
 
 .placeholder {
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(circle at 70% 30%, var(--color-primary-light), transparent 55%),
+    radial-gradient(circle at 72% 28%, var(--color-sun) 0 9%, transparent 10%),
+    radial-gradient(circle at 70% 30%, var(--color-primary-light), transparent 60%),
     var(--color-primary-tint);
 }
 
+.shift {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+}
+
 .body {
-  padding: var(--space-lg);
+  padding: clamp(1.1rem, 2vw, 1.5rem);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -55,7 +63,6 @@
 
 .name {
   font-size: var(--text-xl);
-  font-weight: 400;
   margin: 0;
   color: var(--color-text);
 }
@@ -63,35 +70,65 @@
 .meta {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-sm) var(--space-md);
   flex-wrap: wrap;
-  margin-top: auto;
 }
 
 .badge {
-  font-size: var(--text-xs);
-  background: var(--color-primary-light);
-  color: var(--color-primary-dark);
-  padding: 0.2em 0.7em;
+  font-size: 0.6875rem;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  padding: 0.3em 0.8em;
   border-radius: var(--radius-full);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: 0.1em;
 }
 
 .metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-.price {
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--color-text);
-  margin: var(--space-xs) 0 0;
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: auto;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
 }
 
-.price strong {
+.price {
+  font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--color-primary-dark);
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base),
+    transform var(--transition-slow);
+}
+
+.card:hover .arrow {
+  background: var(--color-sun);
+  border-color: var(--color-sun);
+  color: var(--color-night);
+  transform: rotate(45deg);
 }

@@ -1,4 +1,6 @@
 import { getTranslations } from 'next-intl/server';
+import { Moon, Sun } from 'lucide-react';
+import { shiftOfTime } from '@/lib/public/shift';
 import { listGuides, listUpcomingDepartures } from '@/lib/guides/repository';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { GuideAssigner } from './GuideAssigner';
@@ -15,6 +17,7 @@ export default async function SalidasPage() {
   const t = await getTranslations('guides');
   const tCharge = await getTranslations('departures');
   const tOps = await getTranslations('operations');
+  const tPublic = await getTranslations('public');
   const [departures, guides, reviews, refunds] = await Promise.all([
     listUpcomingDepartures(),
     listGuides(),
@@ -52,10 +55,27 @@ export default async function SalidasPage() {
           <tbody>
             {departures.map((dep) => {
               const { date, time } = formatOperatorDateTime(dep.startsAt);
+              // Spec 0042: sol o luna según la hora de inicio de la salida.
+              const shift = time ? shiftOfTime(time) : null;
               return (
                 <tr key={dep.id} className={styles.row}>
                   <td className={styles.td}>
-                    {date} {time}
+                    <span className={styles.when}>
+                      {shift ? (
+                        <span
+                          className={shift === 'night' ? styles.shiftNight : styles.shiftDay}
+                          title={tPublic(`shift-${shift}`)}
+                        >
+                          {shift === 'night' ? (
+                            <Moon aria-hidden="true" size={14} />
+                          ) : (
+                            <Sun aria-hidden="true" size={14} />
+                          )}
+                          <span className={styles.srOnly}>{tPublic(`shift-${shift}`)}</span>
+                        </span>
+                      ) : null}
+                      {date} {time}
+                    </span>
                   </td>
                   <td className={styles.td}>{dep.tourName}</td>
                   <td className={styles.td}>

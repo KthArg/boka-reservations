@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { Moon, Sun } from 'lucide-react';
 import { LOW_SEATS_THRESHOLD } from '@shared/constants/bookings';
 import type { CalendarDay } from '@/lib/public/calendar';
 import styles from './AvailabilityCalendar.module.css';
@@ -26,7 +27,19 @@ export function DayDepartures({ day, title, checkoutHref }: Props) {
               const soldOut = departure.seatsLeft === 0;
               const low = !soldOut && departure.seatsLeft <= LOW_SEATS_THRESHOLD;
               return (
-                <li key={departure.id} className={styles.dateItem}>
+                <li
+                  key={departure.id}
+                  className={`${styles.dateItem} ${departure.shift === 'night' ? styles.dateItemNight : ''}`}
+                >
+                  {/* Spec 0042: sol o luna según la hora de inicio de la salida. */}
+                  <span className={styles.shiftIcon} title={t(`shift-${departure.shift}`)}>
+                    {departure.shift === 'night' ? (
+                      <Moon aria-hidden="true" size={16} />
+                    ) : (
+                      <Sun aria-hidden="true" size={16} />
+                    )}
+                    <span className={styles.srOnly}>{t(`shift-${departure.shift}`)}</span>
+                  </span>
                   <span className={styles.dateLabel}>{departure.time}</span>
                   {departure.adultPrice ? (
                     <span className={styles.price}>

@@ -3,12 +3,18 @@ import { applyActivePricingFilter } from '@/lib/pricing/active-filter';
 import { lowestChargedPrice, selectPriceForDay } from '@/lib/pricing/season';
 import { InstanceStatus, TicketType, TourStatus } from '@shared/constants/enums';
 import type { Tables } from '@/types/database';
+import { crDate } from '@/lib/dates/cr-date';
+import { shiftOfTour, type TourShift } from './shift';
 
 export type PublicTour = Tables<'tours'>;
 export type PublicPricing = Tables<'tour_pricing'>;
 export type PublicInstance = Tables<'tour_instances'>;
 
-export type TourWithMinPrice = PublicTour & { min_price_usd: number | null };
+export type TourWithMinPrice = PublicTour & {
+  min_price_usd: number | null;
+  /** Día, noche o ambos según sus horarios vigentes (spec 0042); null sin horarios. */
+  shift: TourShift | null;
+};
 
 type PricingForSelection = {
   ticket_type: string;
@@ -34,7 +40,10 @@ export async function listActiveTours(): Promise<TourWithMinPrice[]> {
     .from('tour_pricing')
     .select('tour_id, price_usd, ticket_type, season_start, season_end')
     .eq('ticket_type', TicketType.Adult);
-  const { data: pricing } = await applyActivePricingFilter(base);
+  const [{ data: pricing }, startTimes] = await Promise.all([
+    applyActivePricingFilter(base),
+    listScheduleStartTimes(tours.map((t) => t.id)),
+  ]);
 
   const byTour = new Map<string, PricingForSelection[]>();
   for (const p of (pricing ?? []) as (PricingForSelection & { tour_id: string })[]) {
@@ -51,7 +60,40 @@ export async function listActiveTours(): Promise<TourWithMinPrice[]> {
   return tours.map((t) => ({
     ...t,
     min_price_usd: priceByTour.get(t.id) ?? null,
+    shift: shiftOfTour(startTimes.get(t.id) ?? []),
   }));
+}
+
+/**
+ * Horas de inicio de los horarios vigentes de cada tour (spec 0042 §5.3): activos (lo único que
+ * anon puede leer) y sin vencer. Si la consulta falla, los tours se muestran sin turno.
+ */
+async function listScheduleStartTimes(tourIds: string[]): Promise<Map<string, string[]>> {
+  const byTour = new Map<string, string[]>();
+  if (tourIds.length === 0) return byTour;
+  const db = createSupabasePublicClient();
+  const { data, error } = await db
+    .from('tour_schedules')
+    .select('tour_id, start_time')
+    .in('tour_id', tourIds)
+    .eq('active', true)
+    .or(`valid_until.is.null,valid_until.gte.${crDate()}`);
+  if (error) {
+    console.error('[tours] no se pudieron leer los horarios:', error.message);
+    return byTour;
+  }
+  for (const row of data ?? []) {
+    const times = byTour.get(row.tour_id) ?? [];
+    times.push(row.start_time);
+    byTour.set(row.tour_id, times);
+  }
+  return byTour;
+}
+
+/** Turno del tour para su página de detalle (spec 0042). */
+export async function getTourShift(tourId: string): Promise<TourShift | null> {
+  const startTimes = await listScheduleStartTimes([tourId]);
+  return shiftOfTour(startTimes.get(tourId) ?? []);
 }
 
 export async function getTourBySlug(slug: string): Promise<PublicTour | null> {

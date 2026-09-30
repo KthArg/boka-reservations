@@ -11,7 +11,7 @@ import {
 } from './calendar';
 
 function departure(crDay: string, seats: number, id = crDay): CalendarDeparture {
-  return { id, crDay, time: '08:00', seatsLeft: seats, adultPrice: null };
+  return { id, crDay, time: '08:00', seatsLeft: seats, adultPrice: null, shift: 'day' };
 }
 
 describe('seatsLeft', () => {
@@ -24,8 +24,15 @@ describe('seatsLeft', () => {
 describe('groupByCrDay', () => {
   it('agrupa por día y conserva el orden de las horas', () => {
     const days = groupByCrDay([
-      { id: 'a', crDay: '2026-10-06', time: '08:00', seatsLeft: 5, adultPrice: null },
-      { id: 'b', crDay: '2026-10-06', time: '19:00', seatsLeft: 5, adultPrice: null },
+      { id: 'a', crDay: '2026-10-06', time: '08:00', seatsLeft: 5, adultPrice: null, shift: 'day' },
+      {
+        id: 'b',
+        crDay: '2026-10-06',
+        time: '19:00',
+        seatsLeft: 5,
+        adultPrice: null,
+        shift: 'night',
+      },
     ]);
     expect(days.get('2026-10-06')?.departures.map((d) => d.id)).toEqual(['a', 'b']);
   });

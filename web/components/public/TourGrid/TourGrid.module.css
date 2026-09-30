@@ -3,8 +3,12 @@
   margin: 0;
   padding: 0;
   display: grid;
-  /* min(100%, 300px) evita el overflow horizontal cuando el viewport es más
-     angosto que la pista mínima (p. ej. 320px). */
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-  gap: var(--space-xl) var(--space-lg);
+  /* De 1 a 5 columnas según el ancho; la pista crece en monitores grandes. min(100%, …) evita
+     el overflow horizontal cuando el viewport es más angosto que la pista mínima (p. ej. 320px). */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, clamp(280px, 17vw, 380px)), 1fr));
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.grid > li {
+  display: flex;
 }

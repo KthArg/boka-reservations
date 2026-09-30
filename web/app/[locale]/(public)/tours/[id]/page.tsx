@@ -1,12 +1,19 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
-import { getTourBySlug, getTourPriceList, getUpcomingInstances } from '@/lib/public/tours';
+import { Clock, MapPin, Mountain } from 'lucide-react';
+import {
+  getTourBySlug,
+  getTourPriceList,
+  getTourShift,
+  getUpcomingInstances,
+} from '@/lib/public/tours';
 import { isPublicReadThrottled } from '@/lib/public/read-limit';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isSalesEnabled } from '@/lib/booking/sales-gate';
 import { getBookingCutoffHours } from '@/lib/operator/repository';
 import { PriceList } from '@/components/public/PriceList/PriceList';
 import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/AvailabilityCalendar';
+import { ShiftBadge } from '@/components/public/ShiftBadge/ShiftBadge';
 import { toCalendarDepartures } from '@/lib/public/calendar-departures';
 import { crDate } from '@/lib/dates/cr-date';
 import styles from './slug.module.css';
@@ -30,10 +37,11 @@ export default async function TourDetailPage({ params }: Props) {
 
   if (!tour) notFound();
 
-  const [pricing, instances, salesEnabled] = await Promise.all([
+  const [pricing, instances, salesEnabled, shift] = await Promise.all([
     getTourPriceList(tour.id),
     getBookingCutoffHours().then((hours) => getUpcomingInstances(tour.id, hours)),
     isSalesEnabled(),
+    getTourShift(tour.id),
   ]);
   // Spec 0034: sin la información que prometen los términos, o sin datos del operador, el tour se
   // muestra pero no se puede reservar.
@@ -47,58 +55,76 @@ export default async function TourDetailPage({ params }: Props) {
   const meetingPoint = locale === 'es' ? tour.meeting_point_es : tour.meeting_point_en;
   const difficultyKey = `tours-difficulty-${tour.difficulty}` as const;
 
-  return (
-    <article className={styles.page}>
-      {tour.cover_image_url && (
-        <img src={tour.cover_image_url} alt={name} className={styles.cover} />
-      )}
+  // Spec 0042: la página de un tour de noche pasa entera al tema nocturno.
+  const theme = shift === 'night' ? 'theme-night theme-page-night' : '';
 
-      <header className={styles.header}>
-        <h1 className={styles.title}>{name}</h1>
-        <div className={styles.meta}>
-          <span className={styles.metaItem}>
-            <strong>{t('detail-difficulty')}:</strong> {t(difficultyKey)}
-          </span>
-          <span className={styles.metaItem}>
-            <strong>{t('detail-duration')}:</strong>{' '}
-            {t('tours-duration', { n: tour.duration_minutes })}
-          </span>
+  // "Qué incluye" siempre se muestra; lo que no incluye y los requisitos, solo si tienen texto.
+  const sections = [
+    { title: t('detail-includes'), body: includes },
+    ...(excludes.trim() ? [{ title: t('detail-excludes'), body: excludes }] : []),
+    ...(requirements.trim() ? [{ title: t('detail-requirements'), body: requirements }] : []),
+  ];
+
+  return (
+    <article className={`${theme} ${styles.page}`}>
+      <header className={`${styles.hero} ${tour.cover_image_url ? styles.heroWithImage : ''}`}>
+        {tour.cover_image_url && (
+          <img
+            src={tour.cover_image_url}
+            alt={name}
+            className={styles.cover}
+            fetchPriority="high"
+            decoding="async"
+          />
+        )}
+        <div className={styles.heroContent}>
+          <div className={`bv-fade ${styles.tags}`}>
+            {shift ? <ShiftBadge shift={shift} /> : null}
+            <span className={styles.tag}>
+              <Mountain aria-hidden="true" size={14} />
+              <span className="bv-sr-only">{`${t('detail-difficulty')}: `}</span>
+              {t(difficultyKey)}
+            </span>
+            <span className={styles.tag}>
+              <Clock aria-hidden="true" size={14} />
+              <span className="bv-sr-only">{`${t('detail-duration')}: `}</span>
+              {t('tours-duration', { n: tour.duration_minutes })}
+            </span>
+          </div>
+          <h1 className={styles.title}>
+            <span className="bv-line">
+              <span>{name}</span>
+            </span>
+          </h1>
         </div>
       </header>
 
       <div className={styles.body}>
         <div className={styles.mainCol}>
-          <p className={styles.description}>{description}</p>
+          <p className={`bv-rise ${styles.description}`}>{description}</p>
 
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t('detail-includes')}</h2>
-            <p className={styles.prose}>{includes}</p>
+          <div className={styles.sectionGrid}>
+            {sections.map((section) => (
+              <section key={section.title} className={`bv-reveal ${styles.section}`}>
+                <h2 className={styles.sectionTitle}>{section.title}</h2>
+                <p className={styles.prose}>{section.body}</p>
+              </section>
+            ))}
+          </div>
+
+          <section className={`bv-reveal ${styles.meeting}`}>
+            <MapPin aria-hidden="true" size={22} className={styles.meetingIcon} />
+            <div>
+              <h2 className={styles.sectionTitle}>{t('detail-meeting-point')}</h2>
+              <p className={styles.prose}>{meetingPoint}</p>
+            </div>
           </section>
 
-          {excludes.trim() && (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>{t('detail-excludes')}</h2>
-              <p className={styles.prose}>{excludes}</p>
-            </section>
-          )}
-
-          {requirements.trim() && (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>{t('detail-requirements')}</h2>
-              <p className={styles.prose}>{requirements}</p>
-            </section>
-          )}
-
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t('detail-meeting-point')}</h2>
-            <p className={styles.prose}>{meetingPoint}</p>
-          </section>
-
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t('detail-prices')}</h2>
+          <section className={`bv-reveal ${styles.priceCard}`}>
+            <h2 className={styles.cardTitle}>{t('detail-prices')}</h2>
             <PriceList pricing={pricing} />
             {tour.child_age_min !== null && tour.child_age_max !== null && (
-              <p className={styles.prose}>
+              <p className={styles.note}>
                 {t('detail-child-ages', { min: tour.child_age_min, max: tour.child_age_max })}
               </p>
             )}
@@ -106,8 +132,8 @@ export default async function TourDetailPage({ params }: Props) {
         </div>
 
         <aside className={styles.aside}>
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>{t('detail-availability')}</h2>
+          <section className={styles.bookingCard}>
+            <h2 className={styles.cardTitle}>{t('detail-availability')}</h2>
             {bookable ? (
               <AvailabilityCalendar
                 departures={toCalendarDepartures(instances, locale, pricing)}

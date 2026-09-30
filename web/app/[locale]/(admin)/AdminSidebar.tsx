@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from 'react';
 import { PanelLeftClose, PanelLeftOpen, Menu, X } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
 import { Icon } from '@/components/admin/icons';
 import styles from './admin.module.css';
 
@@ -46,13 +46,28 @@ export function AdminSidebar({
 }: Props) {
   const collapsed = useSyncExternalStore(subscribe, getSnapshot, () => false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const secondary = items.filter((item) => !item.primary);
 
   return (
     <aside className={styles.sidebar} data-collapsed={collapsed}>
       <div className={styles.brandRow}>
-        <span className={`${styles.brand} ${styles.brandFull}`}>Boka Verde</span>
-        <span className={`${styles.brand} ${styles.brandMark}`}>BV</span>
+        {/* Spec 0042: logo oficial; colapsada, solo la rana. */}
+        <img
+          src="/brand/logo-hueso.png"
+          alt="Boka Verde"
+          width={720}
+          height={256}
+          className={`${styles.brand} ${styles.brandFull}`}
+        />
+        <img
+          src="/brand/mark-hueso.png"
+          alt="Boka Verde"
+          width={96}
+          height={72}
+          className={`${styles.brand} ${styles.brandMark}`}
+        />
         <button
           type="button"
           onClick={() => setCollapsedPref(!collapsed)}
@@ -71,6 +86,8 @@ export function AdminSidebar({
             key={item.href}
             href={item.href}
             data-primary={item.primary}
+            data-active={isActive(item.href)}
+            aria-current={isActive(item.href) ? 'page' : undefined}
             className={styles.navLink}
             title={item.label}
             aria-label={item.label}

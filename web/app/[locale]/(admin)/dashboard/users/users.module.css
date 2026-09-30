@@ -20,8 +20,8 @@
   display: inline-block;
   padding: var(--space-sm) var(--space-lg);
   background: var(--color-primary);
-  color: var(--color-surface);
-  border-radius: var(--radius-md);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-full);
   font-size: var(--text-sm);
   font-weight: 500;
   text-decoration: none;
@@ -53,7 +53,7 @@
   font-size: var(--text-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: var(--color-surface-raised);
   color: var(--color-text);
   min-width: 160px;
 }

@@ -1,31 +1,119 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 5vw, 4rem);
+}
+
+/* Tarjeta de héroe a lo ancho del contenedor, con el recorte redondeado de la landing. */
 .hero {
-  margin-bottom: var(--space-2xl);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  min-height: clamp(280px, 46vh, 520px);
+  padding: clamp(1.75rem, 5vw, 4.5rem);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(60% 80% at 78% 18%, #1b3b2b 0%, transparent 70%),
+    radial-gradient(50% 70% at 12% 100%, rgba(74, 124, 89, 0.45) 0%, transparent 70%),
+    var(--color-night);
+}
+
+.heroText {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
 }
 
 .eyebrow {
-  font-size: var(--text-sm);
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-xs);
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
-  color: var(--color-accent-dark);
-  margin: 0 0 var(--space-sm);
+  text-transform: uppercase;
+  color: var(--color-sun);
 }
 
 .title {
-  font-size: var(--text-4xl);
   margin: 0;
-  color: var(--color-text);
+  font-size: var(--text-5xl);
+  line-height: 0.98;
+  color: var(--color-bone);
 }
 
 .lead {
-  font-size: var(--text-lg);
-  line-height: var(--leading-snug);
+  margin: var(--space-lg) 0 0;
+  max-width: 46ch;
+  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+  font-weight: 300;
+  line-height: var(--leading-normal);
   color: var(--color-text-muted);
-  max-width: 52ch;
-  margin: var(--space-md) 0 0;
+}
+
+/* Sol y luna: la historia día → noche de la landing, reducida a dos astros que flotan. */
+.sun,
+.moon {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.sun {
+  top: clamp(-5rem, -6vw, -2rem);
+  right: clamp(6rem, 22vw, 22rem);
+  width: clamp(7rem, 16vw, 14rem);
+  aspect-ratio: 1;
+  background: var(--color-sun);
+  opacity: 0.9;
+  box-shadow: 0 0 80px 24px rgba(233, 196, 106, 0.35);
+  animation: sunset 9s var(--ease-out-expo) both;
+}
+
+.moon {
+  top: clamp(1.5rem, 5vw, 3.5rem);
+  right: clamp(1.5rem, 5vw, 4rem);
+  width: clamp(3rem, 6vw, 5rem);
+  aspect-ratio: 1;
+  background:
+    radial-gradient(circle at 30% 38%, rgba(13, 31, 23, 0.12) 0 9%, transparent 10%),
+    radial-gradient(circle at 62% 60%, rgba(13, 31, 23, 0.1) 0 13%, transparent 14%),
+    var(--color-bone);
+  box-shadow: 0 0 50px 10px rgba(244, 241, 222, 0.25);
+  animation: moonrise 9s var(--ease-out-expo) both;
+}
+
+/* El sol baja y se esconde mientras la luna sube: una sola vez, al cargar. */
+@keyframes sunset {
+  from {
+    transform: translateY(-30%);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(30%);
+    opacity: 0.85;
+  }
+}
+
+@keyframes moonrise {
+  from {
+    transform: translateY(140%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 .empty {
   color: var(--color-text-muted);
   font-size: var(--text-base);
+}
+
+@media (max-width: 640px) {
+  .sun {
+    right: 35%;
+  }
 }
