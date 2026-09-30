@@ -58,7 +58,10 @@ export async function reconcileRows(
     // El payload viene de mapPricing/mapSchedules (tipado por tabla); el genérico sobre
     // `table` no deja expresar la unión al builder — cast puntual, mismo criterio que
     // FilterBuilder en lib/booking/repository.ts.
-    const { error } = await db.from(table).upsert(rows as never);
+    // defaultToNull: false — al mezclar filas existentes (con id) y nuevas (sin id), supabase-js
+    // arma las columnas con la unión de claves y mandaba id: null en las nuevas (NOT NULL del PK):
+    // editar un tour y agregarle un horario o un precio fallaba. Así la base usa el DEFAULT.
+    const { error } = await db.from(table).upsert(rows as never, { defaultToNull: false });
     if (error) return writeErrorCode(error as PgError, fallback);
   }
   return null;
