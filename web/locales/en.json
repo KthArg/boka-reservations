@@ -313,7 +313,10 @@
     "detail-requirements": "Requirements",
     "detail-child-ages": "The child ticket applies from {min} to {max} years old.",
     "detail-not-bookable": "This tour is not available for online booking yet.",
-    "price-season-range": "{startMonth} {startDay} to {endMonth} {endDay}"
+    "price-season-range": "{startMonth} {startDay} to {endMonth} {endDay}",
+    "shift-day": "Day",
+    "shift-night": "Night",
+    "shift-both": "Day & night"
   },
   "bookings": {
     "nav-label": "Bookings",

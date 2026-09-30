@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crDate, crDayStartIso, crNextDayStartIso } from './cr-date';
+import { crClockTime, crDate, crDayStartIso, crNextDayStartIso } from './cr-date';
 
 // Bordes del "día del negocio" (spec 0028, B4): un instante entre 18:00 y 23:59 CR
 // pertenece al día CR aunque en UTC ya sea el día siguiente.
@@ -30,5 +30,15 @@ describe('límites [inicio día CR, inicio día CR siguiente)', () => {
     const startsAt = '2026-07-07T01:00:00Z'; // 19:00 CR del 2026-07-06
     expect(startsAt >= crDayStartIso('2026-07-06')).toBe(true);
     expect(startsAt < crNextDayStartIso('2026-07-06')).toBe(true);
+  });
+});
+
+describe('crClockTime (spec 0042)', () => {
+  it('las 06:00 UTC son las 00:00 de Costa Rica, en formato de 24 h', () => {
+    expect(crClockTime(new Date('2026-10-07T06:00:00Z'))).toBe('00:00');
+  });
+
+  it('las 23:30 UTC son las 17:30 de Costa Rica', () => {
+    expect(crClockTime(new Date('2026-10-06T23:30:00Z'))).toBe('17:30');
   });
 });

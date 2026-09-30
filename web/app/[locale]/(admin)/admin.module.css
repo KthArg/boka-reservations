@@ -4,9 +4,12 @@
   min-height: 100vh;
 }
 
+/* Barra lateral en verde noche con el logo hueso (spec 0042). Colores fijos: no cambia con el tema. */
 .sidebar {
-  background: var(--color-text);
-  color: var(--color-surface);
+  background:
+    radial-gradient(120% 40% at 0% 100%, rgba(74, 124, 89, 0.28), transparent 70%),
+    var(--color-night);
+  color: var(--color-bone);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
@@ -26,15 +29,16 @@
 }
 
 .brand {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 400;
-  letter-spacing: var(--tracking-tight);
-  color: var(--color-primary-light);
-  white-space: nowrap;
+  display: block;
+  width: auto;
+  height: 40px;
 }
 
 .brandMark {
+  height: 26px;
+}
+
+.brandRow .brandMark {
   display: none;
 }
 
@@ -57,7 +61,7 @@
 
 .toggleBtn:hover {
   background: rgba(255, 255, 255, 0.12);
-  color: var(--color-surface);
+  color: var(--color-bone);
 }
 
 .nav {
@@ -72,11 +76,11 @@
   align-items: center;
   gap: 0.85rem;
   padding: 0.7rem var(--space-sm);
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(244, 241, 222, 0.72);
   text-decoration: none;
   font-size: var(--text-sm);
   font-weight: 500;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   white-space: nowrap;
   transition:
     background var(--transition-base),
@@ -84,8 +88,14 @@
 }
 
 .navLink:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--color-surface);
+  background: rgba(244, 241, 222, 0.08);
+  color: var(--color-bone);
+}
+
+/* Sección actual en amarillo sol, como los acentos de la landing. */
+.navLink[data-active='true'] {
+  background: var(--color-sun);
+  color: var(--color-night);
 }
 
 .navIcon {
@@ -121,8 +131,8 @@
   gap: var(--space-sm);
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--color-surface);
-  border-radius: var(--radius-md);
+  color: var(--color-bone);
+  border-radius: var(--radius-full);
   padding: var(--space-sm);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -143,8 +153,8 @@
 }
 
 .content {
-  padding: var(--space-2xl) var(--space-xl);
-  background: var(--color-surface-alt);
+  padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 3vw, 3rem);
+  background: var(--color-surface);
   min-width: 0;
 }
 
@@ -180,7 +190,7 @@
   }
 
   .sidebar[data-collapsed='true'] .brandMark {
-    display: inline;
+    display: block;
   }
 
   .sidebar[data-collapsed='true'] .navLabel,
@@ -207,6 +217,8 @@
     position: sticky;
     top: 0;
     z-index: 20;
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
     height: auto;
     min-width: 0;
     overflow: visible;
@@ -223,7 +235,7 @@
   }
 
   .brand {
-    font-size: var(--text-lg);
+    height: 30px;
   }
 
   .toggleBtn {
@@ -261,7 +273,7 @@
     border: none;
     border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.08);
-    color: var(--color-surface);
+    color: var(--color-bone);
     cursor: pointer;
     transition: background var(--transition-base);
   }
@@ -279,7 +291,7 @@
     right: var(--space-md);
     min-width: 256px;
     padding: var(--space-sm);
-    background: var(--color-text);
+    background: var(--color-night);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
@@ -317,7 +329,7 @@
 
   .mobileMenuLink:hover {
     background: rgba(255, 255, 255, 0.08);
-    color: var(--color-surface);
+    color: var(--color-bone);
   }
 
   .mobileEmail {

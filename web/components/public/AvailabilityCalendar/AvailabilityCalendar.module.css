@@ -12,47 +12,55 @@
 }
 
 .monthLabel {
-  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
   font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
   margin: 0;
-  text-transform: capitalize;
   color: var(--color-text);
 }
 
 .navButton {
   width: 2.5rem;
   height: 2.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: transparent;
   color: var(--color-text);
   font-size: var(--text-lg);
   line-height: 1;
   cursor: pointer;
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
 
 .navButton:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: var(--color-sun);
+  border-color: var(--color-sun);
+  color: var(--color-night);
 }
 
 .navButton:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .grid {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 2px;
+  border-spacing: 3px;
   table-layout: fixed;
 }
 
 .weekday {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   color: var(--color-text-muted);
-  text-transform: capitalize;
+  text-transform: uppercase;
   padding-bottom: var(--space-xs);
 }
 
@@ -66,35 +74,45 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 2.5rem;
-  border-radius: var(--radius-md);
+  max-width: 2.75rem;
+  margin-inline: auto;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 50%;
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .dayBookable {
-  border: 1px solid var(--color-primary-light);
+  border: 1px solid transparent;
   background: var(--color-primary-light);
-  color: var(--color-primary-dark, var(--color-primary));
+  color: var(--color-text);
   font-weight: 600;
   opacity: 1;
   cursor: pointer;
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base),
+    transform var(--transition-base);
 }
 
 .dayBookable:hover {
   border-color: var(--color-primary);
+  transform: scale(1.06);
 }
 
 .dayBookable:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
 
 .daySelected {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
 }
 
 .daySoldOut {
@@ -102,20 +120,20 @@
 }
 
 .dayToday {
-  box-shadow: inset 0 -3px 0 var(--color-primary);
+  box-shadow: inset 0 0 0 1.5px var(--color-accent);
 }
 
 .dayPanel {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  padding-top: var(--space-sm);
+  padding-top: var(--space-md);
   border-top: 1px solid var(--color-border);
 }
 
 .dayTitle {
-  font-size: var(--text-sm);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
   margin: 0;
   color: var(--color-text);
 }
@@ -130,23 +148,71 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
 }
 
 .dateItem {
   font-size: var(--text-sm);
   color: var(--color-text);
-  padding: var(--space-sm);
-  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.65rem 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-xs) var(--space-sm);
+  animation: slotIn 420ms var(--ease-out-expo) both;
+}
+
+/* Una salida de noche se ve nocturna aunque el tour sea de día y noche. Tokens de marca fijos:
+   .theme-night no los redefine. */
+.dateItemNight {
+  background: var(--color-night);
+  border-color: rgba(233, 196, 106, 0.25);
+  color: var(--color-bone);
+}
+
+.dateItemNight .seats,
+.dateItemNight .price {
+  color: rgba(244, 241, 222, 0.8);
+}
+
+.dateItemNight .seatsLow {
+  color: #f0a390;
+}
+
+@keyframes slotIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shiftIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-sun);
+  color: var(--color-night);
+}
+
+.dateItemNight .shiftIcon {
+  background: rgba(233, 196, 106, 0.16);
+  color: var(--color-sun);
 }
 
 .dateLabel {
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .price {
@@ -165,18 +231,36 @@
 }
 
 .bookLink {
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 1.1rem;
+  border-radius: var(--radius-full);
   background: var(--color-primary);
-  color: var(--color-surface);
-  font-size: var(--text-sm);
+  color: var(--color-on-primary);
+  font-size: var(--text-xs);
   font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
   white-space: nowrap;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
 }
 
 .bookLink:hover {
-  background: var(--color-primary-dark, var(--color-primary));
+  background: var(--color-sun);
+  color: var(--color-night);
+}
+
+.dateItemNight .bookLink {
+  background: var(--color-sun);
+  color: var(--color-night);
+}
+
+.dateItemNight .bookLink:hover {
+  background: var(--color-bone);
 }
 
 .empty {

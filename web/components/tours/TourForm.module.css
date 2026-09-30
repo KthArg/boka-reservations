@@ -56,7 +56,7 @@
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   color: var(--color-text);
-  background: var(--color-surface);
+  background: var(--color-surface-raised);
   outline: none;
 }
 
@@ -71,7 +71,7 @@
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   color: var(--color-text);
-  background: var(--color-surface);
+  background: var(--color-surface-raised);
   outline: none;
   resize: vertical;
   font-family: inherit;
@@ -122,9 +122,9 @@
 .submitBtn {
   padding: var(--space-sm) var(--space-xl);
   background: var(--color-primary);
-  color: var(--color-surface);
+  color: var(--color-on-primary);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-size: var(--text-base);
   font-weight: 500;
   cursor: pointer;

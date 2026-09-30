@@ -1,0 +1,42 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  height: 30px;
+  padding: 0 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Tokens de marca que .theme-night no redefine: la etiqueta se lee igual sobre una foto o en
+   cualquier tema. */
+.day {
+  background: var(--color-sun);
+  color: var(--color-night);
+}
+
+.night {
+  background: var(--color-night);
+  color: var(--color-sun);
+  box-shadow: inset 0 0 0 1px rgba(233, 196, 106, 0.35);
+}
+
+/* Medio sol detrás del ícono; el texto va sobre verde noche para mantener el contraste AA. */
+.both {
+  padding-left: 0.4rem;
+  background: var(--color-night);
+  color: var(--color-bone);
+  box-shadow: inset 0 0 0 1px rgba(233, 196, 106, 0.35);
+}
+
+.both svg {
+  box-sizing: content-box;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--color-sun);
+  color: var(--color-night);
+}

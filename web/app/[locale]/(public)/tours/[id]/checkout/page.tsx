@@ -8,7 +8,7 @@ import {
   isClosedForOnlineBooking,
 } from '@/lib/public/tours';
 import { Link } from '@/i18n/navigation';
-import { crDate } from '@/lib/dates/cr-date';
+import { crClockTime, crDate } from '@/lib/dates/cr-date';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import {
@@ -20,6 +20,8 @@ import { isOperatorIdentityComplete } from '@/lib/operator/types';
 import { CheckoutForm } from '@/components/public/CheckoutForm/CheckoutForm';
 import { DeferredCheckoutForm } from '@/components/public/CheckoutForm/DeferredCheckoutForm';
 import type { PurchaseSummaryInfo } from '@/components/public/CheckoutForm/PurchaseSummary';
+import { ShiftBadge } from '@/components/public/ShiftBadge/ShiftBadge';
+import { shiftOfTime } from '@/lib/public/shift';
 import styles from './checkout.module.css';
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ instance?: string }> };
@@ -92,6 +94,9 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     },
   );
 
+  // Spec 0042: la etiqueta de turno de la salida (sol o luna) según su hora en Costa Rica.
+  const shift = shiftOfTime(crClockTime(new Date(instance.starts_at)));
+
   const summary: PurchaseSummaryInfo = {
     tourName,
     dateLabel,
@@ -105,6 +110,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
+        <ShiftBadge shift={shift} className={styles.shift} />
         <h1 className={styles.title}>{t('title')}</h1>
         <div className={styles.summary}>
           <p>

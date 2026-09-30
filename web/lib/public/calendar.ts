@@ -1,3 +1,5 @@
+import type { Shift } from './shift';
+
 /**
  * Lógica pura del calendario de fechas del tour (spec 0039). Todo trabaja con días de Costa Rica
  * ya calculados en el servidor ('YYYY-MM-DD'), así que no depende de la zona horaria del
@@ -14,6 +16,8 @@ export type CalendarDeparture = {
   seatsLeft: number;
   /** Precio de adulto del día de la salida, ya formateado (spec 0040); null si no hay. */
   adultPrice: string | null;
+  /** Turno de la salida según su hora de inicio en Costa Rica (spec 0042). */
+  shift: Shift;
 };
 
 export type CalendarDay = {

@@ -313,7 +313,10 @@
     "detail-requirements": "Requisitos",
     "detail-child-ages": "El tiquete de niño aplica de {min} a {max} años.",
     "detail-not-bookable": "Este tour todavía no está disponible para reservar en línea.",
-    "price-season-range": "{startDay} de {startMonth} al {endDay} de {endMonth}"
+    "price-season-range": "{startDay} de {startMonth} al {endDay} de {endMonth}",
+    "shift-day": "Día",
+    "shift-night": "Noche",
+    "shift-both": "Día y noche"
   },
   "bookings": {
     "nav-label": "Reservas",
