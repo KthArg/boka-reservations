@@ -1,8 +1,21 @@
+/* Spec 0042: tarjeta con los campos en dos columnas; mensajes, aviso y botón a lo ancho. */
 .form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: var(--space-lg);
-  max-width: 480px;
+  align-items: start;
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-raised);
+}
+
+.form > :not(.label) {
+  grid-column: 1 / -1;
+}
+
+.input {
+  min-height: 44px;
 }
 
 .label {
@@ -51,7 +64,8 @@
 }
 
 .submitBtn {
-  align-self: flex-start;
+  justify-self: start;
+  min-height: 44px;
   padding: var(--space-sm) var(--space-xl);
   background: var(--color-primary);
   color: var(--color-on-primary);

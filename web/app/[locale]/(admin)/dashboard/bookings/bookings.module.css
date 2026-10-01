@@ -253,16 +253,42 @@
   color: var(--color-text-muted);
 }
 
+/* Detalle de una reserva (spec 0042): dos columnas en pantallas anchas. */
+.detailLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.detailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+@media (min-width: 1200px) {
+  .detailLayout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+  }
+}
+
+/* Pares dato/valor; en pantallas muy anchas, dos pares por fila. */
 .detailGrid {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: var(--space-sm) var(--space-lg);
-  background: var(--color-surface);
-  padding: var(--space-lg);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: var(--space-lg);
-  max-width: 640px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-md) var(--space-xl);
+  background: var(--color-surface-raised);
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+}
+
+@media (min-width: 1600px) {
+  .detailGrid {
+    grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  }
 }
 
 .detailLabel {
@@ -277,13 +303,16 @@
 }
 
 .section {
-  margin-bottom: var(--space-lg);
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-raised);
+  min-width: 0;
 }
 
 .sectionTitle {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  margin-bottom: var(--space-sm);
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-md);
 }
 
 .backLink {
@@ -426,9 +455,14 @@
   color: var(--color-text-muted);
 }
 
+.operationForm > .operationField {
+  align-self: stretch;
+}
+
 .operationField select,
 .operationField input {
-  min-width: 16rem;
+  width: 100%;
+  min-height: 42px;
   padding: var(--space-xs) var(--space-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

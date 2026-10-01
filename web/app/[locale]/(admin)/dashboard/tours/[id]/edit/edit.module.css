@@ -1,5 +1,4 @@
 .page {
-  max-width: 1000px;
 }
 
 .header {
@@ -20,7 +19,7 @@
 .reactivateBtn {
   padding: var(--space-xs) var(--space-md);
   border: 1px solid;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;

@@ -41,71 +41,80 @@ export async function BookingDetailView({ booking, isAdmin }: Props) {
         <BookingDetailActions booking={booking} locale={locale} isAdmin={isAdmin} />
       </div>
 
-      <div className={styles.detailGrid}>
-        <Row label={t('detail-customer')} value={booking.customerName} />
-        <Row label={t('detail-email')} value={booking.customerEmail} />
-        <Row label={t('detail-tour')} value={booking.tourName} />
-        <Row label={t('detail-date')} value={`${start.date} ${start.time}`} />
-        <Row label={t('detail-adult')} value={String(booking.ticketsAdult)} />
-        <Row label={t('detail-child')} value={String(booking.ticketsChild)} />
-        <Row label={t('detail-student')} value={String(booking.ticketsStudent)} />
-        <Row label={t('detail-amount')} value={`${amount} ${booking.currency}`} />
-        <Row label={t('detail-status')} value={t(`status-${booking.status}`)} />
-        <Row
-          label={t('detail-payment')}
-          value={booking.paymentStatus ? t(`payment-${booking.paymentStatus}`) : t('payment-none')}
-        />
-        <Row label={t('detail-provider')} value={booking.paymentProvider ?? '—'} />
-        {booking.cardLast4 ? (
-          <Row
-            label={t('detail-card')}
-            value={t('detail-card-value', { last4: booking.cardLast4 })}
-          />
-        ) : null}
-        {booking.hasSavedCard ? (
-          <Row label={t('detail-charge-attempts')} value={String(booking.chargeAttempts)} />
-        ) : null}
-        <Row
-          label={t('detail-checkin')}
-          value={booking.checkedInAt ? `${checkIn.date} ${checkIn.time}` : t('checkin-no')}
-        />
-        <Row label={t('detail-created')} value={`${created.date} ${created.time}`} />
+      {/* Spec 0042: datos y notificaciones a la izquierda; correcciones y operaciones a la derecha. */}
+      <div className={styles.detailLayout}>
+        <div className={styles.detailColumn}>
+          <div className={styles.detailGrid}>
+            <Row label={t('detail-customer')} value={booking.customerName} />
+            <Row label={t('detail-email')} value={booking.customerEmail} />
+            <Row label={t('detail-tour')} value={booking.tourName} />
+            <Row label={t('detail-date')} value={`${start.date} ${start.time}`} />
+            <Row label={t('detail-adult')} value={String(booking.ticketsAdult)} />
+            <Row label={t('detail-child')} value={String(booking.ticketsChild)} />
+            <Row label={t('detail-student')} value={String(booking.ticketsStudent)} />
+            <Row label={t('detail-amount')} value={`${amount} ${booking.currency}`} />
+            <Row label={t('detail-status')} value={t(`status-${booking.status}`)} />
+            <Row
+              label={t('detail-payment')}
+              value={
+                booking.paymentStatus ? t(`payment-${booking.paymentStatus}`) : t('payment-none')
+              }
+            />
+            <Row label={t('detail-provider')} value={booking.paymentProvider ?? '—'} />
+            {booking.cardLast4 ? (
+              <Row
+                label={t('detail-card')}
+                value={t('detail-card-value', { last4: booking.cardLast4 })}
+              />
+            ) : null}
+            {booking.hasSavedCard ? (
+              <Row label={t('detail-charge-attempts')} value={String(booking.chargeAttempts)} />
+            ) : null}
+            <Row
+              label={t('detail-checkin')}
+              value={booking.checkedInAt ? `${checkIn.date} ${checkIn.time}` : t('checkin-no')}
+            />
+            <Row label={t('detail-created')} value={`${created.date} ${created.time}`} />
+          </div>
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>{t('detail-notifications')}</h2>
+            {booking.notifications.length === 0 ? (
+              <p className={styles.empty}>{t('detail-no-notifications')}</p>
+            ) : (
+              <table className={styles.table}>
+                <tbody>
+                  {booking.notifications.map((n, i) => {
+                    const sent = formatOperatorDateTime(n.sentAt ?? '');
+                    return (
+                      <tr key={`${n.kind}-${i}`} className={styles.row}>
+                        <td className={styles.td}>{t(`notif-${n.kind}`)}</td>
+                        <td className={styles.td}>{t(`notif-status-${n.status}`)}</td>
+                        <td className={styles.td}>
+                          {n.sentAt ? `${sent.date} ${sent.time}` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </div>
+        <div className={styles.detailColumn}>
+          {isAdmin ? (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>{tPrivacy('contact-title')}</h2>
+              <ContactCorrectionForm
+                bookingId={booking.id}
+                name={booking.customerName}
+                email={booking.customerEmail}
+              />
+            </section>
+          ) : null}
+          <BookingOperations booking={booking} />
+          <RefundSection booking={booking} locale={locale} />
+        </div>
       </div>
-
-      {isAdmin ? (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{tPrivacy('contact-title')}</h2>
-          <ContactCorrectionForm
-            bookingId={booking.id}
-            name={booking.customerName}
-            email={booking.customerEmail}
-          />
-        </section>
-      ) : null}
-      <BookingOperations booking={booking} />
-      <RefundSection booking={booking} locale={locale} />
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t('detail-notifications')}</h2>
-        {booking.notifications.length === 0 ? (
-          <p className={styles.empty}>{t('detail-no-notifications')}</p>
-        ) : (
-          <table className={styles.table}>
-            <tbody>
-              {booking.notifications.map((n, i) => {
-                const sent = formatOperatorDateTime(n.sentAt ?? '');
-                return (
-                  <tr key={`${n.kind}-${i}`} className={styles.row}>
-                    <td className={styles.td}>{t(`notif-${n.kind}`)}</td>
-                    <td className={styles.td}>{t(`notif-status-${n.status}`)}</td>
-                    <td className={styles.td}>{n.sentAt ? `${sent.date} ${sent.time}` : '—'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </section>
     </div>
   );
 }

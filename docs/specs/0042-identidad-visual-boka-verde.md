@@ -133,6 +133,16 @@ Los 13 componentes del panel que usaban `window.confirm` y `window.alert` pasan 
 - Tonos: `danger` para las confirmaciones irreversibles (archivar, desactivar, cancelar sin cobro, quitar guía, borrar datos personales, cerrar sin reembolso, cancelar una salida por mínimo), con el foco en Cancelar; `error`, `success` e `info` para los avisos.
 - Los diálogos propios que ya existían (cancelar una salida, cancelar una reserva cobrada) toman la misma tarjeta, fondo y entrada.
 
+### 5.5.2 Formularios y detalle del panel (agregado el 2026-10-01 a pedido del usuario)
+
+Los formularios del panel estaban limitados a 480–1000 px y dejaban media pantalla vacía:
+
+- **Tour (crear/editar)**: dos columnas desde 1200 px. A la izquierda, los textos en pares español | inglés, la información que publican los términos, precios y horarios. A la derecha, la "Ficha del tour" (foto, dificultad, duración, capacidades, slug), la política del mínimo y el momento del cobro. La barra de guardar queda fija al pie. Una columna en pantallas angostas; los pares pasan a uno debajo del otro bajo 640 px.
+- **Configuración**: los datos del operador y las reglas de horas lado a lado desde 1280 px; los campos en una grilla de columnas.
+- **Usuarios (crear/editar)**: tarjeta con los campos en dos o tres columnas.
+- **Privacidad**: buscador en una sola fila (correo + botón).
+- **Detalle de una reserva**: datos y notificaciones a la izquierda, correcciones y operaciones a la derecha; los datos en dos pares por fila desde 1600 px.
+
 ### 5.6 Animaciones
 
 Solo CSS, en `globals.css` como utilidades reutilizables:

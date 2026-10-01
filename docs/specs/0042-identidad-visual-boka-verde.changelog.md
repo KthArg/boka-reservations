@@ -64,3 +64,17 @@
 
 - Suite unitaria 516 en verde; `tsc` y `eslint` limpios. No hay tests de componentes en el repo (jsdom no implementa `showModal`).
 - Manual con Playwright: confirmación peligrosa en Usuarios (foco en Cancelar, Escape cancela, clic en el fondo cancela, ningún usuario desactivado) en 1440 y 320 px. No se probó un aviso de éxito real para no mandar correos.
+
+## 2026-10-01 — Distribución del espacio en los formularios del panel
+
+**Hecho**:
+
+- Formulario de tours en dos columnas con la ficha a la derecha (`TourDetailsSection`, nuevo) y la barra de guardar fija. Los valores iniciales pasaron a `components/tours/form-values.ts` para respetar el límite de 150 líneas del componente; se quitó un import sin uso (`slugify`).
+- Precios y horarios con la misma tarjeta que el resto; el editor de horarios tenía una fila de 4 columnas fijas que desbordaba en móvil (390 px): ahora se reparte.
+- Configuración, Usuarios, Privacidad y el detalle de una reserva reacomodados (ver spec §5.5.2).
+- Texto nuevo: `tours.details-section` ("Ficha del tour" / "Tour details").
+
+**Tests**:
+
+- Suite unitaria 516 en verde; `tsc` y `eslint` sin errores.
+- Manual con Playwright en 2540, 1280/1440 y 390 px: edición y alta de tour, Configuración, alta de usuario, Privacidad y detalle de una reserva (reserva de prueba local, borrada después). Sin scroll horizontal en ninguno.

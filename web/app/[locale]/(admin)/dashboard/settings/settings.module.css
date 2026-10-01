@@ -1,23 +1,36 @@
+/* Spec 0042: en pantallas anchas, los datos del operador a la izquierda y las reglas de horas a
+   la derecha; los campos se reparten en columnas en vez de una sola fila larga. */
 .page {
   width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.page > .title {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1280px) {
+  .page {
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  }
 }
 
 .title {
   font-size: var(--text-2xl);
   font-weight: 700;
   color: var(--color-text);
-  margin: 0 0 var(--space-xl);
+  margin: 0;
 }
 
 .section {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  max-width: var(--max-width-prose);
-}
-
-.section + .section {
-  margin-top: var(--space-lg);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  background: var(--color-surface-raised);
+  min-width: 0;
 }
 
 .sectionTitle {
@@ -28,9 +41,15 @@
 }
 
 .form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: var(--space-lg) var(--space-lg);
+  align-items: start;
+}
+
+/* Introducción, casillas, mensajes y el botón ocupan la fila entera. */
+.form > :not(.field) {
+  grid-column: 1 / -1;
 }
 
 .field {
@@ -97,7 +116,7 @@
 }
 
 .submitBtn {
-  align-self: flex-start;
+  justify-self: start;
   padding: var(--space-sm) var(--space-xl);
   background: var(--color-primary);
   color: var(--color-on-primary);

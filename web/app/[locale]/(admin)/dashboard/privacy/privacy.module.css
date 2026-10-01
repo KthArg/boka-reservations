@@ -2,8 +2,8 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
-  max-width: 40rem;
+  gap: var(--space-lg);
+  max-width: 1100px;
 }
 
 .title {
@@ -13,6 +13,10 @@
   color: var(--color-text);
 }
 
+.intro {
+  max-width: 80ch;
+}
+
 .intro,
 .note {
   margin: 0;
@@ -20,18 +24,24 @@
   color: var(--color-text-muted);
 }
 
+/* Spec 0042: buscador en una sola fila (correo + botón); el resultado ocupa la fila de abajo. */
 .card {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-sm);
-  padding: var(--space-lg);
-  background: var(--color-surface);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-md);
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
+}
+
+.card > :not(.field):not(button) {
+  flex-basis: 100%;
 }
 
 .field {
+  flex: 1 1 20rem;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
@@ -40,8 +50,9 @@
 }
 
 .field input {
-  min-width: 20rem;
-  padding: var(--space-xs) var(--space-sm);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
@@ -50,6 +61,7 @@
 }
 
 .preview {
+  align-items: flex-start;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -83,8 +95,9 @@
 
 .secondaryBtn,
 .dangerBtn {
-  padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--radius-md);
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-xl);
+  border-radius: var(--radius-full);
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
@@ -98,7 +111,7 @@
 
 .dangerBtn {
   background: var(--color-error);
-  color: var(--color-surface);
+  color: var(--color-bone);
   border: none;
 }
 
