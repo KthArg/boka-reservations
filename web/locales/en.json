@@ -363,7 +363,7 @@
     "checkin-revert-confirm": "Revert check-in for this booking?",
     "checkin-error": "Could not update check-in.",
     "export-csv": "Export CSV",
-    "export-hint": "Set a date range to export.",
+    "export-hint": "Set a valid date range (up to one year) to export.",
     "pagination-prev": "Previous",
     "pagination-next": "Next",
     "pagination-page": "Page {page} of {total}",

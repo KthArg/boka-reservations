@@ -54,11 +54,7 @@ export default async function BookingsPage({ searchParams }: Props) {
         </div>
       </div>
 
-      <BookingsFilters
-        filters={filters}
-        tours={tours}
-        exportQuery={isAdmin ? filtersToSearchParams(filters) : null}
-      />
+      <BookingsFilters filters={filters} tours={tours} canExport={isAdmin} />
 
       {rows.length === 0 ? (
         <p className={styles.empty}>{t('empty')}</p>
