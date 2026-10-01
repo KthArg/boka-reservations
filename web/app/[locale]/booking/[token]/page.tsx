@@ -6,6 +6,8 @@ import { getBookingView } from '@/lib/booking/cancel';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { BookingStatus } from '@shared/constants/enums';
 import { DepartureCancellationReason } from '@shared/constants/operations';
+import { ShiftBadge } from '@/components/public/ShiftBadge/ShiftBadge';
+import { shiftOfTime } from '@/lib/public/shift';
 import styles from './booking.module.css';
 
 type Props = { params: Promise<{ locale: string; token: string }> };
@@ -32,11 +34,16 @@ export default async function BookingViewPage({ params }: Props) {
   const tourName = locale === 'es' ? view.tourNameEs : view.tourNameEn;
   const { date, time } = formatOperatorDateTime(view.startsAt);
   const people = view.ticketsAdult + view.ticketsChild + view.ticketsStudent;
+  // Spec 0042: sol o luna según la hora de inicio de la salida.
+  const shift = time ? shiftOfTime(time) : null;
 
   return (
     <main className={styles.page}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>{t('title')}</h1>
+      <div className={`bv-rise ${styles.card}`}>
+        <div className={styles.header}>
+          {shift ? <ShiftBadge shift={shift} /> : null}
+          <h1 className={styles.title}>{t('title')}</h1>
+        </div>
         <dl className={styles.meta}>
           <dt className={styles.metaLabel}>{t('tour')}</dt>
           <dd className={styles.metaValue}>{tourName}</dd>

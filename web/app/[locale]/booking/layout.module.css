@@ -1,0 +1,14 @@
+/* El pie queda abajo aunque la página tenga poco contenido (spec 0042). */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-surface);
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  padding: clamp(1.5rem, 5vw, 4rem) var(--gutter) clamp(3rem, 6vw, 6rem);
+}
