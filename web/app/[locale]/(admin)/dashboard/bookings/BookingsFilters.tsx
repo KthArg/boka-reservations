@@ -1,22 +1,21 @@
-import { getTranslations, getLocale } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import { BookingStatus } from '@shared/constants/enums';
 import type { BookingFilters } from '@/lib/booking/admin-types';
 import type { TourListItem } from '@/lib/tours/types';
+import { ExportCsvButton } from './ExportCsvButton';
 import styles from './bookings.module.css';
 
 type Props = {
   filters: BookingFilters;
   tours: TourListItem[];
-  /** null: quien mira no es admin y no puede exportar (spec 0036). */
-  exportQuery: string | null;
+  /** Solo el admin exporta datos de clientes (spec 0036). */
+  canExport: boolean;
 };
 
 const STATUS_OPTIONS = Object.values(BookingStatus);
 
-export async function BookingsFilters({ filters, tours, exportQuery }: Props) {
+export async function BookingsFilters({ filters, tours, canExport }: Props) {
   const t = await getTranslations('bookings');
-  const locale = await getLocale();
-  const canExport = Boolean(filters.dateFrom && filters.dateTo);
 
   return (
     <form className={styles.filters} method="get" action="">
@@ -101,18 +100,7 @@ export async function BookingsFilters({ filters, tours, exportQuery }: Props) {
         <button type="submit" className={styles.primaryBtn}>
           {t('filter-apply')}
         </button>
-        {exportQuery === null ? null : canExport ? (
-          <a
-            className={styles.secondaryBtn}
-            href={`/${locale}/dashboard/bookings/export${exportQuery}`}
-          >
-            {t('export-csv')}
-          </a>
-        ) : (
-          <span className={styles.exportDisabled} title={t('export-hint')}>
-            {t('export-csv')}
-          </span>
-        )}
+        {canExport ? <ExportCsvButton /> : null}
       </div>
     </form>
   );
