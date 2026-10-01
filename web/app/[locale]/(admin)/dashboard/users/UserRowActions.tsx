@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { resendInvite, setActive } from '@/lib/users/actions';
 import { UserRole } from '@shared/constants/enums';
 import type { UserActionResult } from '@/lib/users/types';
@@ -12,6 +13,7 @@ type Props = { id: string; role: UserRole; active: boolean; isSelf: boolean };
 
 export function UserRowActions({ id, role, active, isSelf }: Props) {
   const t = useTranslations('users');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
   function errorText(result: Extract<UserActionResult, { ok: false }>) {
@@ -19,19 +21,21 @@ export function UserRowActions({ id, role, active, isSelf }: Props) {
     return t.has(key) ? t(key) : t('errors.generic');
   }
 
-  function onToggle() {
-    if (active && !window.confirm(t('deactivate-confirm'))) return;
+  async function onToggle() {
+    if (active && !(await confirm(t('deactivate-confirm'), { tone: 'danger' }))) return;
     startTransition(async () => {
       const result = await setActive(id, !active);
-      if (!result.ok) window.alert(errorText(result));
+      if (!result.ok) alert(errorText(result));
     });
   }
 
   function onResend() {
     startTransition(async () => {
       const result = await resendInvite(id);
-      if (!result.ok) return window.alert(errorText(result));
-      window.alert(t(result.sent === 'password' ? 'password-link-sent' : 'invite-resent'));
+      if (!result.ok) return alert(errorText(result));
+      alert(t(result.sent === 'password' ? 'password-link-sent' : 'invite-resent'), {
+        tone: 'success',
+      });
     });
   }
 

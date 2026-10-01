@@ -2,8 +2,26 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { chargeBookingAction } from '@/lib/booking/manual-charge-action';
+import type { AlertTone } from '@/components/dialogs/DialogProvider';
+import {
+  ManualChargeOutcome,
+  type ManualChargeOutcomeValue,
+} from '@/lib/booking/manual-charge-outcomes';
 import styles from './bookings.module.css';
+
+const PENDING_OUTCOMES: ReadonlySet<ManualChargeOutcomeValue> = new Set([
+  ManualChargeOutcome.RequiresAction,
+  ManualChargeOutcome.Processing,
+  ManualChargeOutcome.InProgress,
+]);
+
+/** Tono del aviso del resultado: cobrado, en curso o fallido. */
+function chargeTone(outcome: ManualChargeOutcomeValue): AlertTone {
+  if (outcome === ManualChargeOutcome.Confirmed) return 'success';
+  return PENDING_OUTCOMES.has(outcome) ? 'info' : 'error';
+}
 
 type Props = {
   bookingId: string;
@@ -15,13 +33,14 @@ type Props = {
 /** Cobro manual de una reserva sin cobrar (spec 0029 §5.11). */
 export function ManualChargeButton({ bookingId, retry, amount }: Props) {
   const t = useTranslations('bookings');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
-  function onClick() {
-    if (!window.confirm(t('charge-confirm', { amount }))) return;
+  async function onClick() {
+    if (!(await confirm(t('charge-confirm', { amount })))) return;
     startTransition(async () => {
       const { outcome } = await chargeBookingAction(bookingId);
-      window.alert(t(`charge-result-${outcome}`));
+      alert(t(`charge-result-${outcome}`), { tone: chargeTone(outcome) });
     });
   }
 

@@ -8,7 +8,9 @@
     "cancel": "Cancel",
     "actions": "Actions",
     "toggle-sidebar": "Collapse or expand menu",
-    "menu": "Menu"
+    "menu": "Menu",
+    "confirm": "Confirm",
+    "ok": "Got it"
   },
   "tour": {
     "book-now": "Book now",

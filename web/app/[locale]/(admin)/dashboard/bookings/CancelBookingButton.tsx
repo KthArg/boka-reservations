@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { cancelByStaff } from '@/lib/booking/cancel-action';
 import { CancellationError } from '@shared/constants/cancellations';
 import styles from './bookings.module.css';
@@ -18,14 +19,15 @@ type Props = {
  */
 export function CancelBookingButton({ bookingId }: Props) {
   const t = useTranslations('bookings');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
-  function onClick() {
-    if (!window.confirm(t('cancel-confirm-no-charge'))) return;
+  async function onClick() {
+    if (!(await confirm(t('cancel-confirm-no-charge'), { tone: 'danger' }))) return;
     startTransition(async () => {
       const result = await cancelByStaff(bookingId);
       if (result.ok) return;
-      window.alert(
+      alert(
         result.error === CancellationError.ChargeInFlight
           ? t('cancel-error-in-flight')
           : t('cancel-error'),

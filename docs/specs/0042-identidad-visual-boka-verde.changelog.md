@@ -50,3 +50,17 @@
 **Pendiente**:
 
 - La página del guía (`/guide/[token]/upcoming-tours`) sigue sin verse en navegador.
+
+## 2026-10-01 — Diálogos de la marca en lugar de los del navegador
+
+**Hecho**:
+
+- `components/dialogs/DialogProvider.tsx`: `useDialogs()` con `confirm` y `alert` que devuelven promesas, sobre `<dialog>` nativo. Montado en el layout del panel.
+- Los 13 componentes que usaban `window.confirm`/`window.alert` lo usan ahora; los manejadores pasaron a `async`. Las acciones irreversibles usan el tono `danger` (botón rojo, foco en Cancelar). El cobro manual elige el tono por resultado con `ManualChargeOutcome`.
+- Los dos diálogos existentes (cancelar salida, cancelar reserva cobrada) con la misma tarjeta y entrada.
+- Textos nuevos: `common.confirm` y `common.ok` (es/en).
+
+**Tests**:
+
+- Suite unitaria 516 en verde; `tsc` y `eslint` limpios. No hay tests de componentes en el repo (jsdom no implementa `showModal`).
+- Manual con Playwright: confirmación peligrosa en Usuarios (foco en Cancelar, Escape cancela, clic en el fondo cancela, ningún usuario desactivado) en 1440 y 320 px. No se probó un aviso de éxito real para no mandar correos.

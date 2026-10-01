@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { decideReviewAction } from '@/lib/operations/booking-actions';
 import { ReviewDecision as Decision, type ReviewDecisionValue } from '@shared/constants/operations';
 import styles from '../bookings.module.css';
@@ -12,14 +13,16 @@ import styles from '../bookings.module.css';
  */
 export function ReviewDecision({ bookingId }: { bookingId: string }) {
   const t = useTranslations('operations');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
-  function decide(decision: ReviewDecisionValue) {
+  async function decide(decision: ReviewDecisionValue) {
     const ask = decision === Decision.Refund ? 'review-refund-ask' : 'review-no-refund-ask';
-    if (!window.confirm(t(ask))) return;
+    const tone = decision === Decision.Refund ? 'default' : 'danger';
+    if (!(await confirm(t(ask), { tone }))) return;
     startTransition(async () => {
       const result = await decideReviewAction(bookingId, decision);
-      if (!result.ok) window.alert(t(`error-${result.error}`));
+      if (!result.ok) alert(t(`error-${result.error}`));
     });
   }
 
