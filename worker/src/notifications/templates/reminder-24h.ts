@@ -2,6 +2,7 @@ import type { EmailLocale } from '../types.js';
 import type { RenderedEmail } from './booking-confirmation.js';
 import { escapeHtml, formatDateTime } from './format.js';
 import { wrapHtml } from './layout.js';
+import { EmailStyle } from './styles.js';
 
 export type Reminder24hProps = {
   customerName: string;
@@ -41,18 +42,18 @@ export function renderReminder24h(props: Reminder24hProps, locale: EmailLocale):
   const date = formatDateTime(props.startsAt, locale);
 
   const html = wrapHtml(`
-    <h1 style="font-size:20px;margin:0 0 16px;">${t.greeting(escapeHtml(props.customerName))}</h1>
+    <h1 style="${EmailStyle.h1}">${t.greeting(escapeHtml(props.customerName))}</h1>
     <p style="margin:0 0 16px;">${t.intro}</p>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="8" style="background:#fafafa;border-radius:6px;margin:0 0 24px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="8" style="${EmailStyle.detailTable}">
       <tr><td style="font-weight:600;">${t.tourLabel}</td><td>${escapeHtml(props.tourName)}</td></tr>
       <tr><td style="font-weight:600;">${t.dateLabel}</td><td>${escapeHtml(date)}</td></tr>
       <tr><td style="font-weight:600;">${t.meetingLabel}</td><td>${escapeHtml(props.meetingPoint)}</td></tr>
     </table>
-    <p style="margin:0 0 24px;color:#555;">${t.bring}</p>
+    <p style="margin:0 0 24px;color:${EmailStyle.muted};">${t.bring}</p>
     <p style="margin:0 0 24px;">
-      <a href="${escapeHtml(props.bookingUrl)}" style="display:inline-block;background:#1d9e75;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;">${t.cta}</a>
+      <a href="${escapeHtml(props.bookingUrl)}" style="${EmailStyle.button}">${t.cta}</a>
     </p>
-    <p style="margin:0;color:#555;">${t.farewell}</p>
+    <p style="margin:0;color:${EmailStyle.muted};">${t.farewell}</p>
   `);
 
   const text = [

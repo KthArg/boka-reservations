@@ -38,7 +38,7 @@ Este spec alinea toda la aplicación con la identidad de la landing, reacomoda l
 - No se agregan campos al esquema (ni "categoría" ni "tipo día/noche"); la clasificación se deriva de los horarios.
 - No se agrega modo oscuro por preferencia del sistema; el tema oscuro es exclusivo de los tours de noche.
 - No se replican las animaciones pesadas de la landing (zoom de 300vh, canvas de luciérnagas, scroll pinning); se toma su lenguaje, no su coreografía.
-- No se cambian las plantillas de email.
+- ~~No se cambian las plantillas de email.~~ Ampliado el 2026-10-01 a pedido del usuario: ver §5.5.3.
 - No se agregan filtros de día/noche al listado de tours (queda para otro spec si se pide).
 
 ## 4. Historias de usuario
@@ -143,6 +143,15 @@ Los formularios del panel estaban limitados a 480–1000 px y dejaban media pant
 - **Privacidad**: buscador en una sola fila (correo + botón).
 - **Detalle de una reserva**: datos y notificaciones a la izquierda, correcciones y operaciones a la derecha; los datos en dos pares por fila desde 1600 px.
 
+### 5.5.3 Correos (agregado el 2026-10-01 a pedido del usuario)
+
+Los correos de Supabase Auth (invitación y contraseña) y los del worker (confirmación, recordatorio, cancelaciones, reembolsos, guía, cobro diferido) usaban el verde anterior. Pasan a la paleta de la marca sin cambiar ningún texto ni enlace:
+
+- Fondo hueso, tarjeta clara con borde fino y radio de 20 px, banda superior verde noche con el logo hueso, títulos en Georgia (los clientes de correo no cargan Gloock), botón en píldora verde bosque y tabla de detalle sobre hueso.
+- El logo se carga de `<sitio>/brand/logo-hueso.png` con texto alternativo "Boka Verde". En el worker, `wrapHtml` deja el nombre en texto y `withLegalFooter` lo cambia por el logo al enviar, porque es el paso que conoce la URL del sitio.
+- Estilos del worker centralizados en `worker/src/notifications/templates/styles.ts`.
+- Las plantillas de Supabase de producción se pegan a mano en el dashboard (Authentication → Email Templates), igual que en el spec 0038.
+
 ### 5.6 Animaciones
 
 Solo CSS, en `globals.css` como utilidades reutilizables:
@@ -185,7 +194,7 @@ No aplica.
 ## 9. Impacto en otras áreas
 
 - Panel admin: solo visual; sin cambios de comportamiento.
-- Emails: sin cambios.
+- Emails: diseño nuevo, sin cambios de texto (§5.5.3).
 - Worker: sin cambios.
 - Reportes y métricas: sin cambios.
 - Pagos, cancelaciones y reembolsos: sin cambios (el widget de OnvoPay mantiene su propio estilo).

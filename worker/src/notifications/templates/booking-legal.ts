@@ -1,5 +1,6 @@
 import type { EmailLocale } from '../types.js';
 import { escapeHtml } from './format.js';
+import { EmailStyle } from './styles.js';
 
 // Parte legal del correo de confirmación (spec 0034; textos aprobados §3.6): el enlace personal
 // y que no se comparta, la política de cancelación, la tolerancia de llegada tarde y las
@@ -51,7 +52,7 @@ function versionUrl(input: BookingLegalInput, locale: EmailLocale, text: string,
 }
 
 function paragraph(html: string): string {
-  return `<p style="margin:0 0 16px;color:#555;font-size:14px;">${html}</p>`;
+  return `<p style="margin:0 0 16px;color:${EmailStyle.muted};font-size:14px;">${html}</p>`;
 }
 
 /** Bloques HTML y líneas de texto plano de la parte legal, en el idioma del correo. */
@@ -78,7 +79,7 @@ export function renderBookingLegal(
     const privacyUrl = versionUrl(input, locale, PRIVACY_SEGMENT, input.privacyVersion);
     html.push(
       paragraph(
-        `${t.accepted} <a href="${escapeHtml(termsUrl)}">${escapeHtml(t.terms(input.termsVersion))}</a> ${t.and} <a href="${escapeHtml(privacyUrl)}">${escapeHtml(t.privacy(input.privacyVersion))}</a>.`,
+        `${t.accepted} <a href="${escapeHtml(termsUrl)}" style="${EmailStyle.link}">${escapeHtml(t.terms(input.termsVersion))}</a> ${t.and} <a href="${escapeHtml(privacyUrl)}" style="${EmailStyle.link}">${escapeHtml(t.privacy(input.privacyVersion))}</a>.`,
       ),
     );
     text.push(
