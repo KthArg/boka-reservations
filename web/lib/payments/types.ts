@@ -40,6 +40,8 @@ export type IntentSnapshot = {
   currency?: string;
   /** URL de autenticación 3DS cuando el intent quedó en requires_action. */
   redirectUrl?: string;
+  /** `manual` si confirmarlo solo autoriza (lo crea el motor del mínimo, spec 0033). */
+  captureMethod?: string;
 };
 
 /**
@@ -49,6 +51,8 @@ export type IntentSnapshot = {
 export const PaymentIntentStatus = {
   RequiresPaymentMethod: 'requires_payment_method',
   RequiresAction: 'requires_action',
+  /** Autorizado con captura manual (spec 0033): plata retenida, todavía sin cobrar. */
+  RequiresCapture: 'requires_capture',
   Processing: 'processing',
   Succeeded: 'succeeded',
   Canceled: 'canceled',

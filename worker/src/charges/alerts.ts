@@ -28,6 +28,8 @@ export const MSG_SETTLED_ELSEWHERE =
   '[close-payment-intents] intent liquidado con el evento ya consumido y la fila sin asentar';
 export const MSG_UNCLOSED_PAST_WINDOW =
   '[close-payment-intents] intents sin cerrar tras 7 días: verificar en OnvoPay y registrar el cierre';
+export const MSG_ENGINE_OFF =
+  'motor del cobro diferido apagado con reservas esperando cobro: encender DEFERRED_CHARGE_ENABLED en el worker';
 
 // Misma alerta por reserva que el reconciliador: un solo lugar decide scope, nivel y fingerprint.
 export { alert as alertCharge, type AlertLevel } from '../reconciliation/alerts.js';

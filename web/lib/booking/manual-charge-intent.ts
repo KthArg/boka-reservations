@@ -25,6 +25,7 @@ type ServiceClient = SupabaseClient<Database>;
 // por cada click. La garantía sigue en SQL.
 const RETRY_SPACING_MS = 60 * 60 * 1000;
 const DESCRIPTION_ID_LENGTH = 8;
+const CAPTURE_MANUAL = 'manual';
 
 export type ChargeableBooking = {
   id: string;
@@ -98,27 +99,54 @@ async function resolveRetainedIntent(
     case PaymentIntentStatus.Succeeded:
       return { kind: 'settle', externalPaymentId: intentId, snapshot };
     case PaymentIntentStatus.RequiresPaymentMethod:
-      return { kind: 'ready', externalPaymentId: intentId, created: false };
+      // El intent del motor es de captura manual: reconfirmarlo solo autoriza. Se reemplaza.
+      return snapshot.captureMethod === CAPTURE_MANUAL
+        ? replaceEngineIntent(db, provider, booking, intentId)
+        : { kind: 'ready', externalPaymentId: intentId, created: false };
     case PaymentIntentStatus.Processing:
     case PaymentIntentStatus.RequiresAction:
       alertRetainedIntentActive(booking.id, intentId, snapshot.status);
       return { kind: 'wait' };
     case PaymentIntentStatus.Canceled:
-    case PaymentIntentStatus.Failed: {
-      const { data: closed, error } = await db.rpc('close_pending_payment', {
-        p_booking_id: booking.id,
-        p_external_payment_id: intentId,
-      });
-      if (error) throw new Error(`close_pending_payment: ${error.message}`);
-      if (closed) return null;
-      // Rowcount 0 (§5.6): otro actor cambió la reserva en el medio. No se crea nada.
-      alertManualChargeReview(ManualChargeReview.CloseSkipped, booking.id, intentId);
-      return { kind: 'review' };
-    }
+    case PaymentIntentStatus.Failed:
+      return closeRetained(db, booking, intentId);
     default:
       alertManualChargeReview(ManualChargeReview.UnexpectedIntent, booking.id, intentId);
       return { kind: 'review' };
   }
+}
+
+/** Cancela el intent de captura manual y cierra su pago; null habilita a crear uno nuevo. */
+async function replaceEngineIntent(
+  db: ServiceClient,
+  provider: PaymentProvider,
+  booking: ChargeableBooking,
+  intentId: string,
+): Promise<PreparedIntent | null> {
+  const cancelled = await provider.cancelPaymentSession(intentId).then(
+    () => true,
+    () => false,
+  );
+  if (cancelled) return closeRetained(db, booking, intentId);
+  alertManualChargeReview(ManualChargeReview.UnexpectedIntent, booking.id, intentId);
+  return { kind: 'review' };
+}
+
+/** Cierra el pago de un intent ya cerrado en la pasarela; null habilita a crear uno nuevo. */
+async function closeRetained(
+  db: ServiceClient,
+  booking: ChargeableBooking,
+  intentId: string,
+): Promise<PreparedIntent | null> {
+  const { data: closed, error } = await db.rpc('close_pending_payment', {
+    p_booking_id: booking.id,
+    p_external_payment_id: intentId,
+  });
+  if (error) throw new Error(`close_pending_payment: ${error.message}`);
+  if (closed) return null;
+  // Rowcount 0 (§5.6): otro actor cambió la reserva en el medio. No se crea nada.
+  alertManualChargeReview(ManualChargeReview.CloseSkipped, booking.id, intentId);
+  return { kind: 'review' };
 }
 
 export async function prepareIntent(

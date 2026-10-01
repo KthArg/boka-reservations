@@ -9,6 +9,7 @@ import {
   type UnpaidCancelReasonValue,
 } from '@shared/constants/cancellations';
 import { getPaymentProvider, type PaymentProvider } from '@/lib/payments';
+import { PaymentIntentStatus } from '@/lib/payments/types';
 import { captureAlert } from './sentry-alert';
 
 // Cancelación de una reserva con una autorización viva (spec 0033 §5.6). El orden importa, porque
@@ -84,6 +85,10 @@ async function releaseHold(
     await (provider ?? getPaymentProvider()).cancelPaymentSession(intentId);
     return true;
   } catch (err) {
+    // Un reintento tras un primer cancel que sí llegó, o una retención que venció sola: el intent
+    // ya está cerrado y no hay nada que soltar. Sin esta lectura, la reserva no se podría
+    // cancelar nunca.
+    if (await isAlreadyReleased(provider ?? getPaymentProvider(), intentId)) return true;
     captureAlert(
       '[cancel] no se pudo soltar la autorización',
       'authorization-release-failed',
@@ -105,6 +110,15 @@ async function releaseHold(
         'error',
       );
     }
+    return false;
+  }
+}
+
+async function isAlreadyReleased(provider: PaymentProvider, intentId: string): Promise<boolean> {
+  try {
+    const { status } = await provider.getPaymentIntent(intentId);
+    return status === PaymentIntentStatus.Canceled || status === PaymentIntentStatus.Failed;
+  } catch {
     return false;
   }
 }

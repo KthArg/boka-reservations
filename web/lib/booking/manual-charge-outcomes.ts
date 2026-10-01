@@ -5,6 +5,8 @@ export const ManualChargeOutcome = {
   Confirmed: 'confirmed',
   Declined: 'declined',
   RequiresAction: 'requires_action',
+  /** El intent era de captura manual (lo creó el motor): quedó autorizado y lo captura el worker. */
+  Authorized: 'authorized',
   Processing: 'processing',
   /** Hay un cobro en curso o su resultado quedó desconocido: lo resuelve watch-charges. */
   InProgress: 'in_progress',

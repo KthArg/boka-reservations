@@ -22,7 +22,7 @@ import {
   forceResolve,
   releaseDeparture,
 } from '../charges/departure-resolve.js';
-import { alertCharge } from '../charges/alerts.js';
+import { MSG_ENGINE_OFF, alertCharge, alertCount } from '../charges/alerts.js';
 
 // Motor del cobro del mínimo (spec 0033). Cada minuto: abre el ciclo de las salidas que llegaron a
 // su momento, autoriza sin capturar, y recién con los cupos autorizados a la vista captura todo o
@@ -44,14 +44,33 @@ export async function chargeDepartures(): Promise<void> {
   }
 }
 
+/**
+ * Motor apagado con reservas del cobro diferido esperando: la web las está vendiendo y nadie las
+ * va a cobrar (prueba en producción del 2026-10-01: se cancelaron solas a la hora de salida sin
+ * que nada lo avisara). Una alerta por proceso alcanza; la issue de Sentry se agrupa.
+ */
+let strandedAlerted = false;
+
+async function alertStrandedBookings(db: SupabaseClient): Promise<void> {
+  if (strandedAlerted) return;
+  const waiting = await fetchDepartureCandidates(db, new Date().toISOString());
+  if (waiting.length === 0) return;
+  strandedAlerted = true;
+  console.error(`[charge-departures] ${MSG_ENGINE_OFF} (${waiting.length} salidas)`);
+  alertCount(MSG_ENGINE_OFF, 'charge-engine-off-with-bookings', waiting.length);
+}
+
 async function runCycle(): Promise<void> {
-  if (!env.DEFERRED_CHARGE_ENABLED && !env.RELEASE_AUTHORIZATIONS_ONLY) return;
+  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!env.DEFERRED_CHARGE_ENABLED && !env.RELEASE_AUTHORIZATIONS_ONLY) {
+    await alertStrandedBookings(db);
+    return;
+  }
   if (!env.ONVOPAY_SECRET_KEY) {
     console.warn('[charge-departures] sin ONVOPAY_SECRET_KEY; se omite');
     return;
   }
 
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
   const onvopay = createOnvopayChargeClient(env.ONVOPAY_SECRET_KEY, env.ONVOPAY_API_BASE_URL);
   const departures = await fetchDepartureCandidates(db, new Date().toISOString());
 

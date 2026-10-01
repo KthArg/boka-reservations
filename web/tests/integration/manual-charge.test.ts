@@ -138,6 +138,45 @@ describe('chargeBookingAction — primer cobro', () => {
     expect((await readBooking(db, bookingId)).awaiting_action_until).not.toBeNull();
   });
 
+  // Prueba en producción del 2026-10-01: "Volver a cobrar" sobre un intent que creó el motor
+  // (captura manual) devuelve requires_capture; se mostraba "revisión manual" y alertaba.
+  it('records the authorization when the retained intent is a manual-capture one', async () => {
+    // Arrange
+    const { bookingId } = await createDeferredBooking(db, instanceId);
+    provider.confirmWithPaymentMethod.mockResolvedValue(intentIn('requires_capture'));
+
+    // Act
+    const outcome = await outcomeOf(bookingId);
+
+    // Assert
+    expect(outcome).toBe('authorized');
+    const booking = await readBooking(db, bookingId);
+    expect(booking.status).toBe('pending_payment');
+    expect(booking.authorized_at).not.toBeNull();
+  });
+
+  // El cobro manual cobra; un intent del motor (captura manual) solo autorizaría y dejaría una
+  // retención sin ciclo que la capture. Se reemplaza por uno propio.
+  it('replaces a manual-capture intent of the engine before charging', async () => {
+    // Arrange
+    const { bookingId, intent: engineIntent } = await declinedOnce();
+    await elapseRetrySpacing(db, bookingId);
+    provider.getPaymentIntent.mockResolvedValue({
+      ...intentIn('requires_payment_method'),
+      captureMethod: 'manual',
+    });
+    provider.confirmWithPaymentMethod.mockResolvedValueOnce(intentIn('succeeded'));
+
+    // Act
+    const outcome = await outcomeOf(bookingId);
+
+    // Assert
+    expect(outcome).toBe('confirmed');
+    expect(provider.cancelPaymentSession).toHaveBeenCalledWith(engineIntent);
+    const payments = await paymentsOf(db, bookingId);
+    expect(payments.map((p) => p.status).sort()).toEqual(['failed', 'succeeded']);
+  });
+
   it('leaves the charge in flight when OnvoPay does not answer the confirm', async () => {
     // Arrange
     const { bookingId } = await createDeferredBooking(db, instanceId);

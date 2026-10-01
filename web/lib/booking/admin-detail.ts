@@ -1,6 +1,6 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
-import { PaymentStatus } from '@shared/constants/enums';
+import { BookingStatus, PaymentStatus } from '@shared/constants/enums';
 import {
   REFUND_PAYMENT_MISSING_REASON,
   REFUND_UNSETTLED_REASONS,
@@ -12,7 +12,7 @@ const DETAIL_SELECT = `
   id, customer_name, customer_email,
   tickets_adult, tickets_child, tickets_student,
   total_amount_cents, currency, terms_version, status, checked_in_at, created_at, updated_at,
-  charge_attempts, card_last4, payment_method_id, operator_review_required_at,
+  charge_attempts, card_last4, payment_method_id, operator_review_required_at, authorized_at,
   tour_instances!inner (
     id, tour_id, starts_at, ends_at, cancellation_reason, tours!inner ( name_es )
   ),
@@ -53,6 +53,7 @@ interface RawDetail {
   card_last4: string | null;
   payment_method_id: string | null;
   operator_review_required_at: string | null;
+  authorized_at: string | null;
   tour_instances: {
     id: string;
     tour_id: string;
@@ -133,6 +134,7 @@ function toDetail(r: RawDetail): AdminBookingDetail {
     chargeAttempts: r.charge_attempts,
     cardLast4: r.card_last4,
     hasSavedCard: r.payment_method_id !== null,
+    authorizationHeld: r.status === BookingStatus.PendingPayment && r.authorized_at !== null,
     notifications: (r.notifications ?? []).map((n) => ({
       kind: n.kind,
       status: n.status,

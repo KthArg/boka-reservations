@@ -32,7 +32,8 @@ function reasonPreview(
 
 /**
  * Acciones del detalle de reserva según su estado: check-in y cancelación con motivo para una
- * confirmada (spec 0032); cobro manual y cancelación sin costo para una sin cobrar (spec 0029).
+ * confirmada (spec 0032); cobro manual y cancelación sin costo para una sin cobrar (spec 0029);
+ * cancelación soltando la retención para una autorizada (spec 0033 §5.6).
  */
 export function BookingDetailActions({ booking, locale, isAdmin }: Props) {
   // Una reserva en revisión (spec 0035) se decide en su propia sección, no con la cancelación.
@@ -61,7 +62,9 @@ export function BookingDetailActions({ booking, locale, isAdmin }: Props) {
           amount={formatMoneyCents(booking.totalAmountCents, booking.currency, locale)}
         />
       ) : null}
-      {isUnpaid ? <CancelBookingButton bookingId={booking.id} unpaid /> : null}
+      {isUnpaid || booking.authorizationHeld ? (
+        <CancelBookingButton bookingId={booking.id} unpaid held={booking.authorizationHeld} />
+      ) : null}
     </div>
   );
 }

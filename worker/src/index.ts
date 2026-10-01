@@ -69,6 +69,12 @@ function logAlive() {
 }
 
 logAlive();
+// Estado del motor del cobro diferido al arrancar: sin esto, "apagado" y "sin trabajo" son
+// indistinguibles en los logs.
+console.log(
+  `[worker] cobro diferido: ${env.DEFERRED_CHARGE_ENABLED ? 'encendido' : 'apagado'}` +
+    (env.RELEASE_AUTHORIZATIONS_ONLY ? ' (modo soltar autorizaciones)' : ''),
+);
 timers.push(setInterval(logAlive, ALIVE_INTERVAL_MS));
 
 // generate-tour-instances: al inicio y luego una vez al día

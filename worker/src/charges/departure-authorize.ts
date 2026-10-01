@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '../env.js';
-import type { OnvopayChargeClient } from './onvopay.js';
+import type { IntentSnapshot, OnvopayChargeClient } from './onvopay.js';
 import { IntentStatus, isClosedIntentStatus } from './decide.js';
 import { canAttempt, isStaleMark } from './departure-cycle.js';
 import {
@@ -13,12 +13,14 @@ import { closePendingPayment, recordAuthorization, startCharge } from './departu
 import { BookingState } from './statuses.js';
 import { settleSucceeded } from './settle.js';
 import { recordAttemptFailed, registerRequiresAction } from './rpc.js';
-import { alertCharge } from './alerts.js';
+import { MSG_CANCEL_INTENT_FAILED, alertCharge } from './alerts.js';
 
 // Autorización del ciclo del mínimo (spec 0033 §5.3, paso 3): se confirma con captura manual, así
 // que la plata queda reservada y todavía no cobrada.
 
 const MSG_AUTH_NOT_RECORDED = '[charge-departures] autorización viva sin registrar';
+const CAPTURE_MANUAL = 'manual';
+const SOURCE = 'charge-departures';
 
 export async function authorizePending(
   db: SupabaseClient,
@@ -87,24 +89,52 @@ async function authorizeOne(
 ): Promise<void> {
   const paymentMethodId = booking.payment_method_id as string;
   const existing = await fetchPendingIntent(db, booking.id);
+  let reused = false;
   if (existing) {
     const snapshot = await onvopay.getIntent(existing);
     const status = snapshot?.status ?? IntentStatus.NotFound;
-    if (status === IntentStatus.RequiresCapture) {
-      await record(db, booking.id, existing);
+    if (status === IntentStatus.Succeeded && snapshot) {
+      // Cobró sin que quedara asentado (webhook perdido): se asienta acá. Nadie más mira una
+      // reserva `pending_minimum` hasta que venza su plazo, y mientras tanto no contaría para
+      // el mínimo: la salida podría cancelarse con un turista cobrado.
+      await settleSucceeded(db, booking.id, pendingPayment(booking, existing), snapshot, SOURCE);
       return;
     }
-    if (isClosedIntentStatus(status)) await closePendingPayment(db, booking.id, existing);
+    if (isClosedIntentStatus(status)) {
+      await closePendingPayment(db, booking.id, existing);
+    } else if (status === IntentStatus.RequiresPaymentMethod && isManualCapture(snapshot)) {
+      // Un rechazo deja el intent así y su pago `pending`: el reintento reconfirma ESE intent
+      // (spec 0029 §5.6). Crear uno nuevo hace que charge_booking_start responda
+      // `intent_mismatch` para siempre y la reserva no se vuelva a cobrar, aunque el turista
+      // cambie la tarjeta.
+      reused = true;
+    } else if (
+      status === IntentStatus.RequiresPaymentMethod ||
+      status === IntentStatus.RequiresCapture
+    ) {
+      // Un intent de captura automática (lo crea el cobro manual del panel) cobraría al
+      // confirmarlo, antes de saber si la salida llega al mínimo. Y una retención viva sobre una
+      // reserva que volvió a `pending_minimum` no la reclama nadie. En los dos casos se suelta y
+      // se arranca de cero con un intent de captura manual.
+      if (!(await discardIntent(db, onvopay, booking.id, existing))) return;
+    } else {
+      // 3DS o en proceso: el resultado todavía no existe. Se espera.
+      return;
+    }
   }
 
-  const intentId = await onvopay.createManualCaptureIntent({
-    amountCents: booking.total_amount_cents,
-    currency: booking.currency,
-    description: `Reserva ${booking.id}`,
-  });
+  const intentId =
+    reused && existing
+      ? existing
+      : await onvopay.createManualCaptureIntent({
+          amountCents: booking.total_amount_cents,
+          currency: booking.currency,
+          description: `Reserva ${booking.id}`,
+        });
 
   if (!(await startCharge(db, booking.id, intentId, paymentMethodId))) {
-    await onvopay.cancelIntent(intentId).catch(() => undefined);
+    // Solo se cancela el intent recién creado: uno reutilizado sigue siendo el de la reserva.
+    if (!reused) await onvopay.cancelIntent(intentId).catch(() => undefined);
     return;
   }
 
@@ -120,23 +150,42 @@ async function authorizeOne(
     return;
   }
   if (snapshot.status === IntentStatus.Succeeded) {
-    await settleSucceeded(
-      db,
-      booking.id,
-      {
-        external_payment_id: intentId,
-        amount_cents: booking.total_amount_cents,
-        currency: booking.currency,
-      },
-      snapshot,
-      'charge-departures',
-    );
+    await settleSucceeded(db, booking.id, pendingPayment(booking, intentId), snapshot, SOURCE);
     return;
   }
+
+  // En proceso no es un rechazo: registrarlo como fallo le avisaría "tarjeta rechazada" a un
+  // turista cuyo cobro todavía puede entrar. Queda en vuelo y lo resuelve watch-charges.
+  if (snapshot.status === IntentStatus.Processing) return;
 
   const terminal =
     snapshot.status === IntentStatus.Canceled || snapshot.status === IntentStatus.Failed;
   await recordAttemptFailed(db, booking.id, intentId, snapshot.status, terminal);
+}
+
+const isManualCapture = (snapshot: IntentSnapshot | null): boolean =>
+  snapshot?.captureMethod === CAPTURE_MANUAL;
+
+const pendingPayment = (booking: ChargeableBooking, intentId: string) => ({
+  external_payment_id: intentId,
+  amount_cents: booking.total_amount_cents,
+  currency: booking.currency,
+});
+
+/** Cancela el intent en la pasarela y cierra su pago. `false` si no se pudo: no se crea otro. */
+async function discardIntent(
+  db: SupabaseClient,
+  onvopay: OnvopayChargeClient,
+  bookingId: string,
+  intentId: string,
+): Promise<boolean> {
+  try {
+    await onvopay.cancelIntent(intentId);
+  } catch {
+    alertCharge(MSG_CANCEL_INTENT_FAILED, 'authorize-discard-failed', bookingId, 'warning');
+    return false;
+  }
+  return closePendingPayment(db, bookingId, intentId);
 }
 
 /** Una autorización que no queda registrada es plata retenida que nadie va a soltar. */

@@ -11,19 +11,26 @@ type Props = {
   bookingId: string;
   /** Reserva sin cobrar del flujo diferido (spec 0029): no hay reembolso posible. */
   unpaid: true;
+  /** Con el monto autorizado (spec 0033): cancelar suelta la retención. */
+  held?: boolean;
 };
 
 /**
  * Cancelación sin costo de una reserva sin cobrar. Una reserva cobrada usa
  * `CancelPaidBookingDialog`, que pide el motivo (spec 0032).
  */
-export function CancelBookingButton({ bookingId }: Props) {
+export function CancelBookingButton({ bookingId, held = false }: Props) {
   const t = useTranslations('bookings');
   const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
   async function onClick() {
-    if (!(await confirm(t('cancel-confirm-no-charge'), { tone: 'danger' }))) return;
+    if (
+      !(await confirm(t(held ? 'cancel-confirm-authorized' : 'cancel-confirm-no-charge'), {
+        tone: 'danger',
+      }))
+    )
+      return;
     startTransition(async () => {
       const result = await cancelByStaff(bookingId);
       if (result.ok) return;

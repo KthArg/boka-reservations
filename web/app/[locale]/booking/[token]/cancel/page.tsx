@@ -13,6 +13,7 @@ type Props = { params: Promise<{ locale: string; token: string }> };
 type Translate = Awaited<ReturnType<typeof getTranslations<'cancellation'>>>;
 
 function refundLabel(view: BookingView, unpaid: boolean, t: Translate, locale: string): string {
+  if (view.authorizationHeld) return t('hold-release');
   if (unpaid) return t('no-charge-yet');
   if (!view.refund.eligible) return t('refund-no');
   return t('refund-yes', {
@@ -33,8 +34,9 @@ export default async function BookingCancelPage({ params }: Props) {
 
   // Cobro diferido en curso (spec 0029 §5.8): la reserva sigue activa, pero hay que esperar.
   // Cancelables: confirmadas (con la política de reembolso) y reservas sin cobrar del flujo
-  // diferido (spec 0029), que se cancelan sin costo.
-  const unpaid = view.status === BookingStatus.PendingMinimum;
+  // diferido (spec 0029), que se cancelan sin costo. Una autorización viva (spec 0033 §5.6)
+  // tampoco es un cobro: se suelta la retención y se cancela.
+  const unpaid = view.status === BookingStatus.PendingMinimum || view.authorizationHeld;
   const notice = view.chargeInFlight
     ? t('error-charge-in-flight')
     : view.underReview

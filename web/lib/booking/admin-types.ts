@@ -74,6 +74,8 @@ export interface AdminBookingDetail {
   chargeAttempts: number;
   cardLast4: string | null;
   hasSavedCard: boolean;
+  /** Monto autorizado sin capturar (spec 0033): se puede cancelar soltando la retención. */
+  authorizationHeld: boolean;
   notifications: AdminBookingNotification[];
   refund: AdminBookingRefund | null;
   /** Salida y tour: el cambio de fecha ofrece otras salidas del mismo tour (spec 0035). */
