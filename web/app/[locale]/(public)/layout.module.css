@@ -7,85 +7,6 @@
   transition: background-color var(--transition-slow);
 }
 
-/* Barra translúcida sobre el contenido, como la navegación de la landing. */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
-  backdrop-filter: saturate(1.4) blur(14px);
-  -webkit-backdrop-filter: saturate(1.4) blur(14px);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.headerInner {
-  max-width: var(--max-width-wide);
-  margin: 0 auto;
-  padding: 0.75rem var(--gutter);
-  display: flex;
-  align-items: center;
-  gap: clamp(0.75rem, 2vw, 2rem);
-}
-
-.logo {
-  display: block;
-  margin-right: auto;
-  line-height: 0;
-  transition: opacity var(--transition-base);
-}
-
-.logo:hover {
-  opacity: 0.8;
-}
-
-.logoDay,
-.logoNight {
-  width: auto;
-  height: clamp(30px, 4vw, 42px);
-}
-
-.logoNight {
-  display: none;
-}
-
-:global(:root:has(.theme-page-night)) .logoDay {
-  display: none;
-}
-
-:global(:root:has(.theme-page-night)) .logoNight {
-  display: block;
-}
-
-.nav {
-  display: flex;
-  gap: var(--space-sm);
-}
-
-.navLink {
-  display: inline-flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 1.1rem;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text);
-  text-decoration: none;
-  transition:
-    background-color var(--transition-base),
-    color var(--transition-base),
-    border-color var(--transition-base);
-}
-
-.navLink:hover {
-  background: var(--color-sun);
-  border-color: var(--color-sun);
-  color: var(--color-night);
-}
-
 /* Cada página decide su ancho: los héroes van a sangre y el resto usa el contenedor. */
 .main {
   --main-pad-top: clamp(1.5rem, 4vw, 3.5rem);
@@ -94,18 +15,4 @@
   max-width: var(--max-width-wide);
   margin: 0 auto;
   padding: var(--main-pad-top) var(--gutter) clamp(3rem, 6vw, 6rem);
-}
-
-@media (max-width: 480px) {
-  .navLink {
-    height: 36px;
-    padding: 0 0.85rem;
-  }
-}
-
-/* Los textos legales se imprimen o se guardan en PDF sin la navegación del sitio (spec 0034). */
-@media print {
-  .header {
-    display: none;
-  }
 }

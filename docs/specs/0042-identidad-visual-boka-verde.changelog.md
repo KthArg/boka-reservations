@@ -34,3 +34,19 @@
 
 - No se pudo ver en navegador la página de reserva por enlace (`/booking/[token]`) ni la del guía: necesitan un token real. Heredan los tokens.
 - Revisar en producción con fotos reales de los tours.
+
+## 2026-09-30 — Fix: página de la reserva por enlace
+
+**Hecho**:
+
+- El usuario reportó que `/booking/[token]` quedó mal en producción: sin encabezado, tarjeta pegada arriba y el pie a media pantalla (el layout no ocupaba el alto completo).
+- El encabezado del portal pasó a `components/public/SiteHeader` y lo usan el portal y las páginas de la reserva; el layout de la reserva ocupa el alto completo con el pie abajo.
+- Tarjeta de la reserva con el lenguaje de la landing: etiqueta de turno, título en Gloock, filas con separadores finos, botones en píldora. "Cancelar reserva" va en contorno rojo; "Confirmar cancelación", en rojo lleno.
+
+**Tests**:
+
+- Verificado con Playwright en local (reserva y token de prueba, borrados después) en 1600 px y 375 px, sin scroll horizontal. Suite unitaria: 516 en verde.
+
+**Pendiente**:
+
+- La página del guía (`/guide/[token]/upcoming-tours`) sigue sin verse en navegador.

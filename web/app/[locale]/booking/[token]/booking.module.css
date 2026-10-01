@@ -1,104 +1,164 @@
+/* Páginas de la reserva por enlace (spec 0042): tarjeta centrada con el lenguaje de la landing. */
 .page {
-  max-width: 560px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: var(--space-lg, 2rem) var(--space-md, 1rem);
 }
 
 .card {
-  padding: 1.5rem;
-  border-radius: var(--radius-lg, 12px);
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.card > * {
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
 }
 
 .title {
-  font-size: 1.375rem;
-  font-weight: 600;
-  margin: 0 0 1rem;
+  font-size: var(--text-3xl);
+  margin: 0;
+  color: var(--color-text);
 }
 
 .tourLine {
-  font-size: 1.05rem;
-  font-weight: 500;
-  margin: 0 0 1rem;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  margin: 0;
+  color: var(--color-text);
 }
 
+/* Filas con separadores finos, como las listas de la landing. */
 .meta {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.5rem 1rem;
-  margin: 0 0 1.5rem;
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  margin: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.metaLabel,
+.metaValue {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .metaLabel {
-  color: var(--color-text-muted, #6b7280);
-  font-size: 0.875rem;
+  padding-right: var(--space-lg);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
 }
 
 .metaValue {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.when {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .muted {
-  color: var(--color-text-muted, #6b7280);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.refundYes,
+.refundNo {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  line-height: var(--leading-snug);
 }
 
 .refundYes {
-  color: var(--color-primary, #1d9e75);
-  font-weight: 600;
-  margin: 0 0 1.5rem;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .refundNo {
-  color: var(--color-text-muted, #6b7280);
-  font-weight: 600;
-  margin: 0 0 1.5rem;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
 }
 
 .dangerLink,
-.dangerButton {
-  display: inline-block;
-  background: var(--color-error);
-  color: var(--color-surface);
-  padding: 0.7rem 1.25rem;
+.dangerButton,
+.primaryButton,
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 1.5rem;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
-  font-size: 0.95rem;
   cursor: pointer;
-  transition: filter var(--transition-base);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base),
+    border-color var(--transition-base);
 }
 
-.dangerLink:hover,
+/* Entrar a cancelar es secundario (contorno rojo); confirmar la cancelación es el botón lleno. */
+.dangerLink {
+  background: transparent;
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+
+.dangerButton {
+  background: var(--color-error);
+  color: var(--color-bone);
+}
+
+.dangerLink:hover {
+  background: var(--color-error);
+  color: var(--color-bone);
+}
+
 .dangerButton:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.dangerButton:disabled {
-  opacity: 0.6;
-  cursor: default;
+  filter: brightness(0.9);
 }
 
 .primaryButton,
 .primaryLink {
-  display: inline-block;
   background: var(--color-primary);
   color: var(--color-on-primary);
-  padding: 0.7rem 1.25rem;
-  border: none;
-  border-radius: var(--radius-full);
-  text-decoration: none;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: filter var(--transition-base);
 }
 
 .primaryButton:hover:not(:disabled),
 .primaryLink:hover {
-  filter: brightness(0.92);
+  background: var(--color-sun);
+  color: var(--color-night);
 }
 
+.dangerButton:disabled,
 .primaryButton:disabled {
   opacity: 0.6;
   cursor: default;
@@ -109,7 +169,7 @@
   align-items: flex-start;
   gap: 0.5rem;
   margin: 1rem 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 
 .formActions {
@@ -123,12 +183,24 @@
   align-items: center;
 }
 
+.actions:empty {
+  display: none;
+}
+
 .link {
-  display: inline-block;
-  margin-top: 1rem;
-  margin-left: 1rem;
-  color: var(--color-primary, #1d9e75);
+  align-self: flex-start;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text);
   text-decoration: none;
+  border-bottom: 1px solid var(--color-border-strong);
+  padding-bottom: 2px;
+}
+
+.link:hover {
+  border-color: var(--color-sun);
 }
 
 .result {
@@ -136,8 +208,7 @@
 }
 
 .resultTitle {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: var(--text-xl);
   margin: 0 0 0.5rem;
 }
 
