@@ -55,7 +55,11 @@ export default async function BookingViewPage({ params }: Props) {
           <dd className={styles.metaValue}>{people}</dd>
           <dt className={styles.metaLabel}>{t('status')}</dt>
           <dd className={styles.metaValue}>
-            {view.underReview ? t('status-under-review') : t(`status-${view.status}`)}
+            {view.underReview
+              ? t('status-under-review')
+              : view.authorizationHeld
+                ? t('status-authorized')
+                : t(`status-${view.status}`)}
           </dd>
         </dl>
 
@@ -82,7 +86,8 @@ export default async function BookingViewPage({ params }: Props) {
             </Link>
           ) : null}
           {(view.status === BookingStatus.Confirmed && !view.underReview) ||
-          view.status === BookingStatus.PendingMinimum ? (
+          view.status === BookingStatus.PendingMinimum ||
+          view.authorizationHeld ? (
             <Link href={`/booking/${token}/cancel`} className={styles.dangerLink}>
               {t('cancel-cta')}
             </Link>

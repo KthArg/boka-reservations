@@ -53,7 +53,12 @@ export async function BookingDetailView({ booking, isAdmin }: Props) {
             <Row label={t('detail-child')} value={String(booking.ticketsChild)} />
             <Row label={t('detail-student')} value={String(booking.ticketsStudent)} />
             <Row label={t('detail-amount')} value={`${amount} ${booking.currency}`} />
-            <Row label={t('detail-status')} value={t(`status-${booking.status}`)} />
+            <Row
+              label={t('detail-status')}
+              value={
+                booking.authorizationHeld ? t('status-authorized') : t(`status-${booking.status}`)
+              }
+            />
             <Row
               label={t('detail-payment')}
               value={

@@ -28,6 +28,11 @@ export type BookingView = {
   refund: RefundEligibility;
   /** Cobro diferido en curso (spec 0029 §5.8): no se puede cancelar hasta que se resuelva. */
   chargeInFlight: boolean;
+  /**
+   * Monto autorizado y todavía sin capturar (spec 0033 §5.6). No es un cobro en curso: la
+   * retención puede vivir hasta 48 horas y el turista puede cancelar mientras tanto.
+   */
+  authorizationHeld: boolean;
   /** Sin cobrar y con un rechazo registrado (spec 0029 §5.7): puede cargar otra tarjeta. */
   canUpdateCard: boolean;
   /** Cobro esperando la autenticación 3DS del turista, con el plazo vigente. */
@@ -40,7 +45,7 @@ export type BookingView = {
 
 const VIEW_SELECT = `
   id, customer_name, status, total_amount_cents, currency, terms_version,
-  charge_started_at, charge_attempts, awaiting_action_until, recovery_deadline,
+  charge_started_at, charge_attempts, awaiting_action_until, recovery_deadline, authorized_at,
   tickets_adult, tickets_child, tickets_student, operator_review_required_at,
   tour_instances!inner ( starts_at, cancellation_reason, tours!inner ( name_es, name_en ) )
 `;
@@ -56,6 +61,7 @@ interface RawView {
   charge_attempts: number;
   awaiting_action_until: string | null;
   recovery_deadline: string | null;
+  authorized_at: string | null;
   tickets_adult: number;
   tickets_child: number;
   tickets_student: number;
@@ -82,7 +88,9 @@ function customerRefundPreview(r: RawView, startsAt: string, now: Date): RefundE
 
 function toView(r: RawView, now: Date): BookingView {
   const startsAt = r.tour_instances?.starts_at ?? '';
-  const inFlight = r.status === BookingStatus.PendingPayment && r.charge_started_at !== null;
+  const authorizationHeld = r.status === BookingStatus.PendingPayment && r.authorized_at !== null;
+  const inFlight =
+    r.status === BookingStatus.PendingPayment && r.charge_started_at !== null && !authorizationHeld;
   return {
     id: r.id,
     customerName: r.customer_name,
@@ -98,6 +106,7 @@ function toView(r: RawView, now: Date): BookingView {
     termsVersion: r.terms_version,
     refund: customerRefundPreview(r, startsAt, now),
     chargeInFlight: inFlight,
+    authorizationHeld,
     // El enlace a la página de tarjeta solo tras un rechazo; la página aplica la misma regla.
     canUpdateCard: r.charge_attempts > 0 && isCardUpdateOpen(r.status, r.recovery_deadline, now),
     awaitingAuthentication:

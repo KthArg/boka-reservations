@@ -15,9 +15,24 @@ export type IntentSnapshot = {
   status: string;
   amountCents?: number;
   currency?: string;
+  /** `manual` (autoriza y se captura después) o `automatic` (cobra al confirmar). */
+  captureMethod?: string;
 };
 
-type IntentBody = { id: string; status: string; amount?: number; currency?: string };
+type IntentBody = {
+  id: string;
+  status: string;
+  amount?: number;
+  currency?: string;
+  captureMethod?: string;
+};
+
+const toSnapshot = (body: IntentBody): IntentSnapshot => ({
+  status: body.status,
+  amountCents: body.amount,
+  currency: body.currency,
+  captureMethod: body.captureMethod,
+});
 type PaymentMethodBody = { id: string; status?: string };
 
 const DETACHED_STATUS = 'detached';
@@ -51,7 +66,7 @@ export function createOnvopayChargeClient(secretKey: string, baseUrl = ONVOPAY_A
       if (res.status === NOT_FOUND) return null;
       if (!res.ok) return fail('getIntent', res);
       const body = (await res.json()) as IntentBody;
-      return { status: body.status, amountCents: body.amount, currency: body.currency };
+      return toSnapshot(body);
     },
 
     /**
@@ -92,7 +107,7 @@ export function createOnvopayChargeClient(secretKey: string, baseUrl = ONVOPAY_A
       }
       if (!res.ok) return fail('confirmIntent', res);
       const body = (await res.json()) as IntentBody;
-      return { status: body.status, amountCents: body.amount, currency: body.currency };
+      return toSnapshot(body);
     },
 
     /** Cobra una autorización. El único momento en que se mueve plata (spec 0033). */
@@ -100,7 +115,7 @@ export function createOnvopayChargeClient(secretKey: string, baseUrl = ONVOPAY_A
       const res = await request('POST', `/payment-intents/${externalPaymentId}/capture`);
       if (!res.ok) return fail('captureIntent', res);
       const body = (await res.json()) as IntentBody;
-      return { status: body.status, amountCents: body.amount, currency: body.currency };
+      return toSnapshot(body);
     },
 
     async cancelIntent(externalPaymentId: string): Promise<void> {

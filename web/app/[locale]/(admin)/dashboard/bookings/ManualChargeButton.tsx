@@ -13,6 +13,7 @@ import styles from './bookings.module.css';
 
 const PENDING_OUTCOMES: ReadonlySet<ManualChargeOutcomeValue> = new Set([
   ManualChargeOutcome.RequiresAction,
+  ManualChargeOutcome.Authorized,
   ManualChargeOutcome.Processing,
   ManualChargeOutcome.InProgress,
 ]);

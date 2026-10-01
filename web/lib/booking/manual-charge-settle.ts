@@ -114,6 +114,18 @@ export async function recordConfirmResult(
       );
       return recorded ? ManualChargeOutcome.RequiresAction : skipped(booking.id, intentId);
     }
+    case PaymentIntentStatus.RequiresCapture: {
+      // Reconfirmar un intent que creó el motor (captura manual) lo deja autorizado, no cobrado:
+      // se registra la autorización y el worker la captura con las reglas del mínimo.
+      const recorded = await applied(
+        db.rpc('record_authorization', {
+          p_booking_id: booking.id,
+          p_external_payment_id: intentId,
+        }),
+        'record_authorization',
+      );
+      return recorded ? ManualChargeOutcome.Authorized : skipped(booking.id, intentId);
+    }
     case PaymentIntentStatus.Processing:
       return ManualChargeOutcome.Processing;
     default:

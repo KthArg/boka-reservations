@@ -2,7 +2,12 @@
 // cliente HTTP de OnvoPay, Sentry y la llave de entorno. No es un test. El estado vive en este
 // módulo: las fábricas de vi.mock y los tests lo importan y comparten la misma instancia.
 
-export type IntentState = { status: string; amountCents?: number; currency?: string };
+export type IntentState = {
+  status: string;
+  amountCents?: number;
+  currency?: string;
+  captureMethod?: string;
+};
 export type RecordedAlert = { fingerprint: string; level: string };
 
 const DEFAULT_SECRET_KEY = 'onvo_test_integration';
@@ -75,6 +80,7 @@ export function fakeChargeClient() {
         status: 'requires_payment_method',
         amountCents: input.amountCents,
         currency: input.currency,
+        captureMethod: 'manual',
       });
       return Promise.resolve(id);
     },

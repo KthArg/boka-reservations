@@ -122,6 +122,27 @@ describe('getBookingView — enlaces del cobro diferido', () => {
     // Assert
     expect(view).toMatchObject({ chargeInFlight: true, awaitingAuthentication: false });
   });
+
+  // Prueba en producción del 2026-10-01: una autorización viva se mostraba como cobro en curso y
+  // ninguna pantalla dejaba cancelarla, aunque la retención puede durar 48 horas (spec 0033 §5.6).
+  it('treats a live authorization as cancellable, not as a charge in flight', async () => {
+    // Arrange
+    const { bookingId } = await createDeferredBooking(db, instanceId);
+    const intent = await startCharge(db, bookingId);
+    ok(
+      await db.rpc('record_authorization', {
+        p_booking_id: bookingId,
+        p_external_payment_id: intent,
+      }),
+      'authorize',
+    );
+
+    // Act
+    const view = await viewOf(bookingId);
+
+    // Assert
+    expect(view).toMatchObject({ authorizationHeld: true, chargeInFlight: false });
+  });
 });
 
 describe('loadAuthenticationTarget — reserva cancelada', () => {

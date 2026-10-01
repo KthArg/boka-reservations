@@ -3,6 +3,54 @@
 Spec: [0033-cobro-automatico-del-minimo.md](./0033-cobro-automatico-del-minimo.md)
 Rama: feat/0033-cobro-automatico-minimo
 
+## 2026-10-01 — Arreglos tras la prueba en producción (modo prueba de OnvoPay)
+
+Primera corrida del motor contra producción, con plazos comprimidos. Pasaron: reserva sin cobro,
+autorización al llegar el plazo, captura al alcanzar el mínimo, soltado y cancelación al no
+alcanzarlo, 3DS y cancelación antes del cobro. Fallaron dos caminos, que se arreglan acá.
+
+**Hecho**:
+
+- **El reintento de una reserva rechazada no ocurría nunca** (`departure-authorize.ts`). Un rechazo
+  deja el intent en `requires_payment_method` con su pago `pending`; el motor creaba un intent
+  nuevo, `charge_booking_start` respondía `intent_mismatch` y lo cancelaba en silencio, cada
+  minuto. El turista cambiaba la tarjeta y no se le cobraba. Ahora reconfirma el mismo intent
+  (spec 0029 §5.6). Los tests existentes simulaban el rechazo con `failed` (terminal), por eso no
+  lo cazaban; se agrega el caso no terminal.
+- **Cancelar con la autorización viva no era alcanzable desde ninguna pantalla** (§5.6). La página
+  del turista y el panel trataban toda `pending_payment` con cobro iniciado como cobro en curso.
+  La vista ahora distingue `authorizationHeld`; el turista ve "Reservada, con el monto retenido" y
+  puede cancelar, y el panel muestra "Autorizada (monto retenido)" con su botón de cancelar.
+- **"Volver a cobrar" del panel sobre un intent de captura manual** devolvía `requires_capture`,
+  que el cobro manual no conocía: mostraba "revisión manual" y alertaba. Ahora registra la
+  autorización (`record_authorization`) y responde `authorized`; la captura la hace el worker.
+- **Motor apagado con reservas esperando**: con la web vendiendo en diferido y el flag del worker
+  apagado, las reservas se cancelaban solas a la hora de salida sin ningún aviso. El job alerta a
+  Sentry (una vez por proceso) y el worker escribe al arrancar el estado del flag.
+
+**Ronda de revisión** (payment-flow-auditor, sin bloqueantes ni caminos de doble cobro). Lo que
+señaló y se corrigió antes del push:
+
+- **El motor no reconfirma un intent de captura automática** (los crea el cobro manual del panel):
+  cobraría antes de saber si la salida llega al mínimo. Lee `captureMethod` del intent; si no es
+  `manual`, lo cancela, cierra su pago y arranca con uno propio.
+- **El cobro manual del panel no reconfirma un intent de captura manual del motor**: solo
+  autorizaría, y la retención quedaría sin ciclo que la capture. Lo reemplaza por uno propio.
+- **Un intent ya cobrado sobre una `pending_minimum`** (webhook perdido) se asienta en el acto:
+  nadie más miraba esa reserva hasta su plazo y mientras tanto no contaba para el mínimo.
+- **`processing` tras el confirm ya no se registra como rechazo**: le avisaba "tarjeta rechazada"
+  a un turista cuyo cobro todavía podía entrar.
+- **Cancelar con la autorización viva es idempotente**: si soltar falla porque el intent ya está
+  cancelado, se da por soltada y la cancelación sigue.
+
+**Pendiente** (hallazgos de la misma prueba, sin arreglar):
+
+- El CSP bloquea `api.ipify.org`, `api.my-ip.io` y `h.online-metrix.net`, que usa el SDK de
+  OnvoPay en la página de 3DS (señales antifraude). Decidir si se permiten antes del modo live.
+- Los correos de rechazo y de 3DS prometen el plazo de recuperación (24 h antes de la salida), que
+  puede ser posterior al plazo del ciclo, cuando la salida se suelta y se cancela.
+- El formulario del tour no tiene vigencia de horario ni el interruptor de cancelación automática.
+
 ## 2026-09-23 — Implementación completa
 
 **Hecho**:

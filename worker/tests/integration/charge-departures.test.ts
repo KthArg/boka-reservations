@@ -11,7 +11,7 @@ vi.mock('../../src/charges/onvopay.js', async () => ({
   createOnvopayChargeClient: (await import('./charge-mocks.js')).fakeChargeClient,
 }));
 
-const { envState, onvo, resetChargeMocks } = await import('./charge-mocks.js');
+const { alertFor, envState, onvo, resetChargeMocks } = await import('./charge-mocks.js');
 const { chargeDepartures } = await import('../../src/jobs/charge-departures.js');
 const {
   createDeferredBooking,
@@ -27,7 +27,9 @@ const {
   must,
   ok,
   readBooking,
+  recordDecline,
   startCharge,
+  updateBooking,
 } = await import('./deferred-fixtures.js');
 
 type Timing = 'on_minimum' | 'before_departure';
@@ -330,6 +332,8 @@ describe('charge-departures — interruptores', () => {
     // Assert
     expect(onvo.created).toEqual([]);
     expect(await statusesOf(bookings)).toEqual(['pending_minimum', 'pending_minimum']);
+    // Web vendiendo en diferido con el motor apagado: nadie cobraría esas reservas.
+    expect(alertFor('charge-engine-off-with-bookings')?.level).toBe('error');
   });
 
   it('does nothing without the OnvoPay key', async () => {
@@ -410,6 +414,94 @@ describe('charge-departures — los caminos donde se pierde plata', () => {
       .single();
     expect(payment?.status).toBe('failed');
     expect((await readBooking(bookingId)).status).toBe('pending_minimum');
+  });
+
+  // Prueba en producción del 2026-10-01: un rechazo deja el intent en requires_payment_method con
+  // su pago pending. El reintento creaba un intent nuevo, charge_booking_start respondía
+  // intent_mismatch y la reserva no se volvía a cobrar nunca, aunque el turista cambiara la tarjeta.
+  it('retries a declined booking on the same intent once the tourist fixes the card', async () => {
+    // Arrange
+    await configureTour({ minimum: 1, timing: 'before_departure', leadHours: 720 });
+    const bookingId = await seat();
+    const card = (await readBooking(bookingId)).payment_method_id as string;
+    onvo.declineOnConfirm.set(card, 'requires_payment_method');
+    await chargeDepartures();
+    expect((await readBooking(bookingId)).charge_attempts).toBe(1);
+    const [intent] = onvo.created;
+    onvo.declineOnConfirm.clear();
+    ok(
+      await db
+        .from('bookings')
+        .update({
+          charge_started_at: isoFromNow(-2 * HOUR_MS),
+          charge_next_attempt_at: isoFromNow(-60 * 1000),
+        })
+        .eq('id', bookingId),
+      'make retry due',
+    );
+
+    // Act
+    await chargeDepartures();
+
+    // Assert
+    expect(onvo.created).toEqual([intent]);
+    expect(onvo.cancelled).toEqual([]);
+    expect(onvo.confirmed).toEqual([intent, intent]);
+    expect(onvo.captured).toEqual([intent]);
+    expect((await readBooking(bookingId)).status).toBe('confirmed');
+  });
+
+  /** Reserva rechazada con el intent de un cobro manual del panel, y el reintento ya vencido. */
+  async function declinedOnPanelIntent(): Promise<{ bookingId: string; intent: string }> {
+    const bookingId = await seat();
+    const intent = await startCharge(bookingId);
+    await recordDecline(bookingId, intent);
+    await updateBooking(bookingId, {
+      charge_started_at: isoFromNow(-2 * HOUR_MS),
+      charge_next_attempt_at: isoFromNow(-60 * 1000),
+    });
+    return { bookingId, intent };
+  }
+
+  // El intent del panel es de captura automática: reconfirmarlo cobraría antes de saber si la
+  // salida llega al mínimo, que es justo lo que el motor existe para evitar.
+  it('replaces an automatic-capture intent instead of charging before the minimum', async () => {
+    // Arrange
+    await configureTour({ minimum: 3, timing: 'before_departure', leadHours: 720 });
+    const { bookingId, intent } = await declinedOnPanelIntent();
+    onvo.intents.set(intent, { status: 'requires_payment_method', captureMethod: 'automatic' });
+
+    // Act
+    await chargeDepartures();
+
+    // Assert
+    expect(onvo.cancelled).toEqual([intent]);
+    expect(onvo.confirmed).toEqual(onvo.created);
+    expect(onvo.captured).toEqual([]);
+    const booking = await readBooking(bookingId);
+    expect(booking.status).toBe('pending_payment');
+    expect(booking.authorized_at).not.toBeNull();
+  });
+
+  // Webhook perdido: nadie más mira una pending_minimum hasta que vence su plazo, y mientras
+  // tanto no cuenta para el mínimo.
+  it('settles a charge that already went through instead of leaving it unclaimed', async () => {
+    // Arrange
+    await configureTour({ minimum: 3, timing: 'before_departure', leadHours: 720 });
+    const { bookingId, intent } = await declinedOnPanelIntent();
+    extraEvents.push(intent);
+    onvo.intents.set(intent, {
+      status: 'succeeded',
+      amountCents: MANDATE_CENTS,
+      currency: MANDATE_CURRENCY,
+    });
+
+    // Act
+    await chargeDepartures();
+
+    // Assert
+    expect(onvo.created).toEqual([]);
+    expect((await readBooking(bookingId)).status).toBe('confirmed');
   });
 
   // El recuento del §5.6: si al descartar la reclamada la salida no alcanza el mínimo, no se
