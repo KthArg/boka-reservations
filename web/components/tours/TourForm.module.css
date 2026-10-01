@@ -1,8 +1,37 @@
+/* Spec 0042: en pantallas anchas, textos/precios/horarios a la izquierda y la ficha a la derecha;
+   la barra de guardar queda fija abajo. En pantallas angostas, una sola columna. */
 .form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.form > :not(.mainCol):not(.sideCol) {
+  grid-column: 1 / -1;
+}
+
+.mainCol,
+.sideCol {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
-  max-width: 960px;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+@media (min-width: 1200px) {
+  .form {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  }
+}
+
+/* Foto, dificultad, duración y capacidades en dos columnas dentro de la ficha. */
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  align-items: end;
+  margin: var(--space-md) 0;
 }
 
 .formError {
@@ -16,28 +45,38 @@
 
 .section {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 2vw, 1.75rem);
   margin: 0;
+  background: var(--color-surface-raised);
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sectionTitle {
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 400;
   color: var(--color-text);
   padding: 0 var(--space-sm);
 }
 
+/* Campos en pares español | inglés; en pantallas angostas, uno debajo del otro. */
 .grid2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-md);
   margin-bottom: var(--space-md);
 }
 
 .grid3 {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: var(--space-md);
 }
 
@@ -52,12 +91,14 @@
 
 .input {
   padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   color: var(--color-text);
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
   outline: none;
+  min-height: 44px;
+  width: 100%;
 }
 
 .input:focus {
@@ -67,13 +108,14 @@
 
 .textarea {
   padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   color: var(--color-text);
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
   outline: none;
   resize: vertical;
+  min-height: 6.5rem;
   font-family: inherit;
 }
 
@@ -112,11 +154,18 @@
   font-weight: 400;
 }
 
+/* Barra de guardar fija al pie de la pantalla mientras se edita. */
 .footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   justify-content: flex-end;
-  padding-top: var(--space-md);
+  padding: var(--space-md) 0;
   border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .submitBtn {
@@ -125,10 +174,13 @@
   color: var(--color-on-primary);
   border: none;
   border-radius: var(--radius-full);
-  font-size: var(--text-base);
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  min-width: 140px;
+  min-width: 180px;
+  min-height: 48px;
 }
 
 .submitBtn:hover:not(:disabled) {
@@ -142,9 +194,36 @@
 
 /* Foto del tour (spec 0036): vista previa del archivo subido al almacenamiento propio. */
 .coverPreview {
-  max-width: 16rem;
-  border-radius: var(--radius-md);
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+}
+
+/* Selector de archivo con el botón en píldora de la marca. */
+.label input[type='file'] {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  max-width: 100%;
+}
+
+.label input[type='file']::file-selector-button {
+  margin-right: var(--space-sm);
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.label input[type='file']::file-selector-button:hover {
+  background: var(--color-sun);
+  border-color: var(--color-sun);
+  color: var(--color-night);
 }
 
 .linkButton {

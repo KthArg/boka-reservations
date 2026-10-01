@@ -1,10 +1,16 @@
+/* Misma tarjeta que las demás secciones del formulario (spec 0042). */
 .editor {
-  margin-top: var(--space-xl);
+  padding: clamp(1rem, 2vw, 1.75rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-raised);
+  min-width: 0;
 }
 
 .sectionTitle {
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 400;
   margin: 0 0 var(--space-md);
   color: var(--color-text);
 }
@@ -28,11 +34,11 @@
 .row {
   display: grid;
   /* Se acomoda al ancho: una temporada tiene más campos que un precio base (spec 0040). */
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
   gap: var(--space-sm);
   align-items: end;
   padding: var(--space-md);
-  background: var(--color-surface);
+  background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
@@ -53,11 +59,13 @@
 .input,
 .select {
   padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--color-border);
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   color: var(--color-text);
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
 }
 
 .input:focus,
@@ -78,8 +86,8 @@
 
 .addBtn {
   background: transparent;
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-full);
   padding: var(--space-sm) var(--space-md);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
