@@ -4,7 +4,11 @@ import {
   FooterAudience,
   withLegalFooter,
 } from '../../../src/notifications/templates/legal-footer.js';
-import { LEGAL_FOOTER_MARKER, wrapHtml } from '../../../src/notifications/templates/layout.js';
+import {
+  BRAND_TEXT_HEADER,
+  LEGAL_FOOTER_MARKER,
+  wrapHtml,
+} from '../../../src/notifications/templates/layout.js';
 import { renderBookingLegal } from '../../../src/notifications/templates/booking-legal.js';
 import { vatIncludedCents } from '../../../src/notifications/templates/format.js';
 import { vatIncludedCents as sharedVatIncludedCents } from '../../../../shared/constants/policies.js';
@@ -54,6 +58,17 @@ describe('withLegalFooter', () => {
     const out = footer({ audience: FooterAudience.Guide });
     expect(out.text).not.toContain('hiciste una reserva');
     expect(out.text).toContain('cédula jurídica 3-101-123456');
+  });
+
+  it('cambia el nombre en texto del encabezado por el logo servido por la app (spec 0042)', () => {
+    const out = footer();
+    expect(out.html).not.toContain(BRAND_TEXT_HEADER);
+    expect(out.html).toContain('src="https://example.com/brand/logo-hueso.png"');
+    expect(out.html).toContain('alt="Boka Verde"');
+  });
+
+  it('sin el paso de envío, el encabezado queda con el nombre en texto', () => {
+    expect(EMAIL.html).toContain(BRAND_TEXT_HEADER);
   });
 
   it('en inglés usa el texto traducido', () => {

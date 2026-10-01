@@ -78,3 +78,19 @@
 
 - Suite unitaria 516 en verde; `tsc` y `eslint` sin errores.
 - Manual con Playwright en 2540, 1280/1440 y 390 px: edición y alta de tour, Configuración, alta de usuario, Privacidad y detalle de una reserva (reserva de prueba local, borrada después). Sin scroll horizontal en ninguno.
+
+## 2026-10-01 — Correos con la identidad de la marca
+
+**Hecho**:
+
+- `supabase/templates/invite.html` y `recovery.html`: solo cambian estilos y el encabezado (logo en vez del nombre en texto); la lógica de `{{ }}`, los enlaces y los textos quedan iguales.
+- Worker: `styles.ts` nuevo; `layout.ts` con banda verde noche y tarjeta hueso; las 9 plantillas con estilos en línea usan los estilos compartidos; `withLegalFooter` cambia el nombre en texto del encabezado por el logo y el pie toma el color de la marca. Los enlaces de términos y privacidad del pie de la reserva, en verde bosque.
+
+**Tests**:
+
+- Worker: 2 casos nuevos en `legal-footer.test.ts` (logo con la URL del sitio; sin el paso de envío queda el texto). Suite del worker 273 en verde; `tsc` limpio.
+- Vista previa local de la confirmación, la invitación y la recuperación en el navegador.
+
+**Pendiente**:
+
+- Pegar `invite.html` y `recovery.html` en el dashboard de Supabase de producción (Authentication → Email Templates → "Invite user" y "Reset password"). Los correos del worker toman el diseño con el deploy del worker.

@@ -1,7 +1,8 @@
 import type { EmailLocale, RenderedEmail } from '../types.js';
 import { isFooterIdentityComplete, type OperatorIdentity } from '../operator.js';
 import { escapeHtml } from './format.js';
-import { LEGAL_FOOTER_MARKER } from './layout.js';
+import { BRAND_TEXT_HEADER, LEGAL_FOOTER_MARKER } from './layout.js';
+import { EmailColor } from './styles.js';
 
 // Pie de todos los correos (spec 0034; textos aprobados §3.5). Se inserta en un solo punto, al
 // enviar, para que ninguna de las plantillas quede sin él: `wrapHtml` deja el marcador y
@@ -49,22 +50,33 @@ function footerLines({ operator, locale, audience }: FooterInput): string[] {
   return lines;
 }
 
-/** Devuelve el correo con el pie legal en el HTML (en el marcador) y al final del texto plano. */
+/** Logo de la marca servido por la app (spec 0042); el texto alternativo cubre a quien bloquea imágenes. */
+function brandLogo(appUrl: string): string {
+  const src = escapeHtml(`${appUrl}/brand/logo-hueso.png`);
+  return `<img src="${src}" width="132" height="47" alt="Boka Verde" style="display:block;width:132px;height:auto;border:0;font-family:Georgia,serif;font-size:22px;color:${EmailColor.bone};">`;
+}
+
+/**
+ * Devuelve el correo con el pie legal en el HTML (en el marcador) y al final del texto plano, y
+ * con el logo en el encabezado (spec 0042).
+ */
 export function withLegalFooter(email: RenderedEmail, input: FooterInput): RenderedEmail {
   const t = COPY[input.locale];
   const termsUrl = `${input.appUrl}/${input.locale}/terms`;
   const privacyUrl = `${input.appUrl}/${input.locale}/privacy`;
   const lines = footerLines(input);
 
-  const html = `<div style="text-align:center;font-size:12px;color:#888;margin-top:16px;line-height:1.5;">
+  const html = `<div style="max-width:560px;margin:16px auto 0;text-align:center;font-size:12px;color:${EmailColor.muted};line-height:1.6;">
       ${lines.map((line) => `<p style="margin:0 0 6px;">${escapeHtml(line)}</p>`).join('')}
-      <p style="margin:0;"><a href="${escapeHtml(termsUrl)}" style="color:#888;">${t.terms}</a> · <a href="${escapeHtml(privacyUrl)}" style="color:#888;">${t.privacy}</a></p>
+      <p style="margin:0;"><a href="${escapeHtml(termsUrl)}" style="color:${EmailColor.muted};">${t.terms}</a> · <a href="${escapeHtml(privacyUrl)}" style="color:${EmailColor.muted};">${t.privacy}</a></p>
     </div>`;
   const text = [...lines, `${t.terms}: ${termsUrl}`, `${t.privacy}: ${privacyUrl}`].join('\n');
 
   return {
     subject: email.subject,
-    html: email.html.replace(LEGAL_FOOTER_MARKER, html),
+    html: email.html
+      .replace(LEGAL_FOOTER_MARKER, html)
+      .replace(BRAND_TEXT_HEADER, brandLogo(input.appUrl)),
     text: `${email.text}\n\n--\n${text}`,
   };
 }

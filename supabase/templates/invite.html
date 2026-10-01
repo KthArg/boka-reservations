@@ -1,6 +1,7 @@
 <!--
   Invitación de usuario interno (specs 0010 y 0038). Es la misma plantilla que está pegada en el
   dashboard de Supabase de producción: si se cambia acá, hay que pegarla también allá.
+  Diseño Boka Verde (spec 0042): el logo sale de {{ .SiteURL }}/brand/logo-hueso.png.
   Apunta a /auth/confirm (verifyOtp con token_hash), no a /auth/callback (PKCE), para que el
   enlace funcione sin depender del navegador que lo abre. .Data.locale viene del user_metadata
   que setea inviteUserByEmail; sin locale, cae a español.
@@ -12,29 +13,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boka Verde</title>
 </head>
-<body style="margin:0;padding:0;background:#f5f5f5;">
+<body style="margin:0;padding:0;background:#f4f1de;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ if and .Data.locale (eq .Data.locale "en") }}Set your password to access the Boka Verde operations panel.{{ else }}Fijá tu contraseña para entrar al panel de operaciones de Boka Verde.{{ end }}</div>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f5f5;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f1de;">
 <tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;">
-<tr><td style="background:#1d9e75;padding:20px 32px;">
-<span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">Boka Verde</span>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffdf6;border:1px solid #e3dec3;border-radius:20px;overflow:hidden;font-family:Montserrat,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0d1f17;">
+<tr><td style="background:#0d1f17;padding:24px 32px;">
+<img src="{{ .SiteURL }}/brand/logo-hueso.png" width="132" height="47" alt="Boka Verde" style="display:block;width:132px;height:auto;border:0;outline:none;text-decoration:none;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#f4f1de;">
 </td></tr>
-<tr><td style="padding:32px;">
-<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;font-weight:700;">{{ if and .Data.locale (eq .Data.locale "en") }}You've been invited to Boka Verde{{ else }}Te invitaron a Boka Verde{{ end }}</h1>
+<tr><td style="padding:36px 32px 32px;">
+<h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.15;font-weight:400;letter-spacing:-0.01em;color:#0d1f17;">{{ if and .Data.locale (eq .Data.locale "en") }}You've been invited to Boka Verde{{ else }}Te invitaron a Boka Verde{{ end }}</h1>
 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">{{ if and .Data.locale (eq .Data.locale "en") }}{{ if .Data.full_name }}Hi {{ .Data.full_name }}, you{{ else }}You{{ end }} now have an account in the Boka Verde operations panel, where tours, departures and bookings are managed.{{ else }}{{ if .Data.full_name }}Hola {{ .Data.full_name }}, ya{{ else }}Ya{{ end }} tenés una cuenta en el panel de operaciones de Boka Verde, donde se administran los tours, las salidas y las reservas.{{ end }}</p>
 <p style="margin:0 0 28px;font-size:15px;line-height:1.6;">{{ if and .Data.locale (eq .Data.locale "en") }}To get started, set your password:{{ else }}Para empezar, fijá tu contraseña:{{ end }}</p>
 <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 28px;">
-<tr><td style="background:#1d9e75;border-radius:6px;">
-<a href="{{ .SiteURL }}/{{ if .Data.locale }}{{ .Data.locale }}{{ else }}es{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">{{ if and .Data.locale (eq .Data.locale "en") }}Set my password{{ else }}Fijar mi contraseña{{ end }}</a>
+<tr><td style="background:#1b3b2b;border-radius:999px;">
+<a href="{{ .SiteURL }}/{{ if .Data.locale }}{{ .Data.locale }}{{ else }}es{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password" style="display:inline-block;padding:15px 30px;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#f4f1de;text-decoration:none;border-radius:999px;">{{ if and .Data.locale (eq .Data.locale "en") }}Set my password{{ else }}Fijar mi contraseña{{ end }}</a>
 </td></tr>
 </table>
-<p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#555555;">{{ if and .Data.locale (eq .Data.locale "en") }}If the button doesn't work, copy this link into your browser:{{ else }}Si el botón no funciona, copiá este enlace en el navegador:{{ end }}</p>
-<p style="margin:0 0 24px;font-size:13px;line-height:1.5;word-break:break-all;"><a href="{{ .SiteURL }}/{{ if .Data.locale }}{{ .Data.locale }}{{ else }}es{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password" style="color:#1d9e75;">{{ .SiteURL }}/{{ if .Data.locale }}{{ .Data.locale }}{{ else }}es{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/reset-password</a></p>
-<p style="margin:0;font-size:13px;line-height:1.5;color:#555555;">{{ if and .Data.locale (eq .Data.locale "en") }}The link can only be used once and expires after a while. If it has expired, ask the administrator to send you a new one.{{ else }}El enlace se puede usar una sola vez y vence al cabo de un tiempo. Si ya venció, pedile al administrador que te envíe uno nuevo.{{ end }}</p>
+<p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#43564b;">{{ if and .Data.locale (eq .Data.locale "en") }}If the button doesn't work, copy this link into your browser:{{ else }}Si el botón no funciona, copiá este enlace en el navegador:{{ end }}</p>
+<p style="margin:0 0 24px;font-size:13px;line-height:1.5;word-break:break-all;"><a href="{{ .SiteURL }}/{{ if .Data.locale }}{{ .Data.locale }}{{ else }}es{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/reset-password" style="color:#1b3b2b;">{{ .SiteURL }}/{{ if .Data.locale }}{{ .Data.locale }}{{ else }}es{{ end }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/reset-password</a></p>
+<p style="margin:0;font-size:13px;line-height:1.5;color:#43564b;">{{ if and .Data.locale (eq .Data.locale "en") }}The link can only be used once and expires after a while. If it has expired, ask the administrator to send you a new one.{{ else }}El enlace se puede usar una sola vez y vence al cabo de un tiempo. Si ya venció, pedile al administrador que te envíe uno nuevo.{{ end }}</p>
 </td></tr>
-<tr><td style="padding:20px 32px;border-top:1px solid #eeeeee;background:#fafafa;">
-<p style="margin:0;font-size:12px;line-height:1.6;color:#777777;">Boka Verde · <a href="https://reservas.bokaverdecr.com" style="color:#777777;">reservas.bokaverdecr.com</a> · <a href="mailto:help@bokaverdecr.com" style="color:#777777;">help@bokaverdecr.com</a><br>{{ if and .Data.locale (eq .Data.locale "en") }}If you weren't expecting this invitation, you can ignore this email.{{ else }}Si no esperabas esta invitación, podés ignorar este correo.{{ end }}</p>
+<tr><td style="padding:20px 32px;border-top:1px solid #e3dec3;background:#f4f1de;">
+<p style="margin:0;font-size:12px;line-height:1.6;color:#43564b;">Boka Verde · <a href="https://reservas.bokaverdecr.com" style="color:#43564b;">reservas.bokaverdecr.com</a> · <a href="mailto:help@bokaverdecr.com" style="color:#43564b;">help@bokaverdecr.com</a><br>{{ if and .Data.locale (eq .Data.locale "en") }}If you weren't expecting this invitation, you can ignore this email.{{ else }}Si no esperabas esta invitación, podés ignorar este correo.{{ end }}</p>
 </td></tr>
 </table>
 </td></tr>

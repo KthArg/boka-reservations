@@ -1,6 +1,7 @@
 import type { RenderedEmail } from '../types.js';
 import { escapeHtml } from './format.js';
 import { wrapHtml } from './layout.js';
+import { EmailStyle } from './styles.js';
 
 // Composición común de los emails del cobro diferido (spec 0029): saludo, párrafos, tabla de
 // detalle, botón y cierre, con la misma estética que las plantillas existentes. Cada plantilla
@@ -17,9 +18,8 @@ export type EmailContent = {
   closing: string;
 };
 
-const TABLE_STYLE = 'background:#fafafa;border-radius:6px;margin:0 0 24px;';
-const BUTTON_STYLE =
-  'display:inline-block;background:#1d9e75;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;';
+const TABLE_STYLE = EmailStyle.detailTable;
+const BUTTON_STYLE = EmailStyle.button;
 
 function rowsHtml(rows: readonly DetailRow[]): string {
   return rows
@@ -36,13 +36,13 @@ export function composeEmail(content: EmailContent): RenderedEmail {
     .join('');
 
   const html = wrapHtml(`
-    <h1 style="font-size:20px;margin:0 0 16px;">${escapeHtml(content.greeting)}</h1>
+    <h1 style="${EmailStyle.h1}">${escapeHtml(content.greeting)}</h1>
     ${paragraphs}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="8" style="${TABLE_STYLE}">${rowsHtml(content.rows)}</table>
     <p style="margin:0 0 24px;">
       <a href="${escapeHtml(content.cta.url)}" style="${BUTTON_STYLE}">${escapeHtml(content.cta.label)}</a>
     </p>
-    <p style="margin:0;color:#555;">${escapeHtml(content.closing)}</p>
+    <p style="margin:0;color:${EmailStyle.muted};">${escapeHtml(content.closing)}</p>
   `);
 
   const text = [
