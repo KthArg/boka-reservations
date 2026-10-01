@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { decideDeparture } from '@/lib/departures/decision-action';
 import {
   DepartureDecision as Decision,
@@ -24,13 +25,16 @@ type Props = { instanceId: string };
  */
 export function DepartureDecision({ instanceId }: Props) {
   const t = useTranslations('departures');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
-  function decide(decision: typeof Decision.Confirm | typeof Decision.Cancel) {
-    if (!window.confirm(t(decision === Decision.Confirm ? 'confirm-ask' : 'cancel-ask'))) return;
+  async function decide(decision: typeof Decision.Confirm | typeof Decision.Cancel) {
+    const confirming = decision === Decision.Confirm;
+    const ask = t(confirming ? 'confirm-ask' : 'cancel-ask');
+    if (!(await confirm(ask, { tone: confirming ? 'default' : 'danger' }))) return;
     startTransition(async () => {
       const result = await decideDeparture(instanceId, decision);
-      if (!result.ok) window.alert(t(ERROR_MESSAGE[result.error] ?? 'decision-error'));
+      if (!result.ok) alert(t(ERROR_MESSAGE[result.error] ?? 'decision-error'));
     });
   }
 

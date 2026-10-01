@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { rescheduleBookingAction } from '@/lib/operations/booking-actions';
 import styles from '../bookings.module.css';
 
@@ -15,16 +16,17 @@ type Props = { bookingId: string; options: RescheduleOption[] };
  */
 export function RescheduleForm({ bookingId, options }: Props) {
   const t = useTranslations('operations');
+  const { confirm, alert } = useDialogs();
   const [target, setTarget] = useState('');
   const [pending, startTransition] = useTransition();
 
   if (options.length === 0) return <p className={styles.empty}>{t('reschedule-empty')}</p>;
 
-  function submit() {
-    if (!target || !window.confirm(t('reschedule-ask'))) return;
+  async function submit() {
+    if (!target || !(await confirm(t('reschedule-ask')))) return;
     startTransition(async () => {
       const result = await rescheduleBookingAction(bookingId, target);
-      if (!result.ok) window.alert(t(`error-${result.error}`));
+      if (!result.ok) alert(t(`error-${result.error}`));
     });
   }
 

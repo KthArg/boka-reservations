@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { toggleCheckIn } from '@/lib/booking/checkin-action';
 import { CheckInAction } from '@shared/constants/bookings';
 import { Icon } from '@/components/admin/icons';
@@ -14,17 +15,18 @@ type Props = {
 
 export function CheckInButton({ bookingId, checkedIn }: Props) {
   const t = useTranslations('bookings');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
   const action = checkedIn ? CheckInAction.Revert : CheckInAction.CheckIn;
   const label = checkedIn ? t('checkin-revert') : t('checkin-mark');
   const confirmText = checkedIn ? t('checkin-revert-confirm') : t('checkin-confirm');
 
-  function onClick() {
-    if (!window.confirm(confirmText)) return;
+  async function onClick() {
+    if (!(await confirm(confirmText))) return;
     startTransition(async () => {
       const result = await toggleCheckIn(bookingId, action);
-      if (!result.ok) window.alert(t('checkin-error'));
+      if (!result.ok) alert(t('checkin-error'));
     });
   }
 

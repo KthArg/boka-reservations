@@ -3,7 +3,7 @@
 - **Estado**: implemented
 - **Autor**: Claude (con decisiones del usuario del 2026-09-30)
 - **Creado**: 2026-09-30
-- **Última actualización**: 2026-09-30
+- **Última actualización**: 2026-10-01
 - **Rama**: feat/0042-identidad-visual-boka-verde
 - **PR**: (push directo a `main`, autorizado por el usuario el 2026-09-30)
 
@@ -66,6 +66,7 @@ Este spec alinea toda la aplicación con la identidad de la landing, reacomoda l
 
 - [ ] La barra lateral usa el verde noche con el logo hueso; el contenido usa el fondo hueso.
 - [ ] Las tablas, formularios y diálogos del panel heredan la nueva paleta sin perder legibilidad (contraste AA en texto).
+- [ ] Ninguna acción del panel usa los popups del navegador (`window.confirm`, `window.alert`): las confirmaciones y los avisos son diálogos de la marca, con Cancelar enfocado en las acciones destructivas.
 
 ## 5. Diseño técnico
 
@@ -122,6 +123,15 @@ Un tour `'both'` usa el tema claro con la etiqueta "Día y noche"; sus salidas n
 - **Éxito / cancelación / reserva por enlace / guía**: tarjetas centradas con el mismo lenguaje.
 - **Autenticación**: pantalla dividida; panel de marca en verde noche con el logo hueso, sol y luna, y el formulario sobre hueso. En móvil (< 860 px), el panel de marca queda arriba y compacto.
 - **Panel**: barra lateral verde noche, logo hueso (colapsada, solo la rana), ítem activo en amarillo; contenido sobre hueso con encabezados en Gloock; botones primarios en píldora. En Salidas, cada fila lleva el ícono de sol o de luna según su hora de inicio.
+
+### 5.5.1 Diálogos (agregado el 2026-10-01 a pedido del usuario)
+
+Los 13 componentes del panel que usaban `window.confirm` y `window.alert` pasan a `useDialogs()` (`web/components/dialogs/DialogProvider.tsx`), montado en el layout del panel:
+
+- `confirm(mensaje, { tone })` devuelve `Promise<boolean>`; `alert(mensaje, { tone })` devuelve `Promise<void>`. Los textos no cambian; solo se agregan los botones `common.confirm` y `common.ok`.
+- Usa `<dialog>` nativo (foco atrapado, Escape y fondo del navegador). Escape o clic en el fondo cuentan como cancelar.
+- Tonos: `danger` para las confirmaciones irreversibles (archivar, desactivar, cancelar sin cobro, quitar guía, borrar datos personales, cerrar sin reembolso, cancelar una salida por mínimo), con el foco en Cancelar; `error`, `success` e `info` para los avisos.
+- Los diálogos propios que ya existían (cancelar una salida, cancelar una reserva cobrada) toman la misma tarjeta, fondo y entrada.
 
 ### 5.6 Animaciones
 

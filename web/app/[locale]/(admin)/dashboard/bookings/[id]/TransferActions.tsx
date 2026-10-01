@@ -2,6 +2,7 @@
 
 import { useActionState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { requestTransferAction, settleTransferAction } from '@/lib/operations/transfer-actions';
 import {
   TRANSFER_REFERENCE_MAX_LENGTH,
@@ -17,13 +18,14 @@ type SettleProps = Props & { refundAmount: string };
 /** Pedirle al turista los datos de una cuenta (spec 0035): la tarjeta no aceptó el reembolso. */
 export function RequestTransferButton({ refundId, bookingId }: Props) {
   const t = useTranslations('operations');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
 
-  function request() {
-    if (!window.confirm(t('transfer-request-ask'))) return;
+  async function request() {
+    if (!(await confirm(t('transfer-request-ask')))) return;
     startTransition(async () => {
       const result = await requestTransferAction(refundId, bookingId);
-      if (!result.ok) window.alert(t(`error-${result.error}`));
+      if (!result.ok) alert(t(`error-${result.error}`));
     });
   }
 

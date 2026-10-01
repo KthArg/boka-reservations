@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import { assignGuide, unassignGuide } from '@/lib/guides/assign-action';
 import type { AssignableGuide } from '@/lib/guides/types';
 import { Icon } from '@/components/admin/icons';
@@ -15,6 +16,7 @@ type Props = {
 
 export function GuideAssigner({ instanceId, guides, assignedGuideId }: Props) {
   const t = useTranslations('guides');
+  const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState(assignedGuideId ?? '');
 
@@ -22,15 +24,15 @@ export function GuideAssigner({ instanceId, guides, assignedGuideId }: Props) {
     if (!selected) return;
     startTransition(async () => {
       const result = await assignGuide(instanceId, selected);
-      if (!result.ok) window.alert(t('assign-error'));
+      if (!result.ok) alert(t('assign-error'));
     });
   }
 
-  function onUnassign() {
-    if (!window.confirm(t('unassign-confirm'))) return;
+  async function onUnassign() {
+    if (!(await confirm(t('unassign-confirm'), { tone: 'danger' }))) return;
     startTransition(async () => {
       const result = await unassignGuide(instanceId);
-      if (!result.ok) window.alert(t('assign-error'));
+      if (!result.ok) alert(t('assign-error'));
       else setSelected('');
     });
   }

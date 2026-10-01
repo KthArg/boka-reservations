@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
+import { useDialogs } from '@/components/dialogs/DialogProvider';
 import {
   anonymizeCustomerByEmail,
   previewCustomerErasure,
@@ -16,6 +17,7 @@ import styles from './privacy.module.css';
  */
 export function PrivacyErasure() {
   const t = useTranslations('privacy');
+  const { confirm } = useDialogs();
   const [email, setEmail] = useState('');
   const [preview, setPreview] = useState<ErasurePreview | null>(null);
   const [result, setResult] = useState<AnonymizeResult | null>(null);
@@ -32,8 +34,8 @@ export function PrivacyErasure() {
     });
   }
 
-  function erase() {
-    if (!window.confirm(t('erase-ask', { email }))) return;
+  async function erase() {
+    if (!(await confirm(t('erase-ask', { email }), { tone: 'danger' }))) return;
     startTransition(async () => {
       const outcome = await anonymizeCustomerByEmail(email);
       if (outcome.ok) {

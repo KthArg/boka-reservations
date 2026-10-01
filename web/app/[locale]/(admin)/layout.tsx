@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { UserRole } from '@shared/constants/enums';
 import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
+import { DialogProvider } from '@/components/dialogs/DialogProvider';
 import { AdminSidebar } from './AdminSidebar';
 import styles from './admin.module.css';
 
@@ -68,7 +69,10 @@ export default async function AdminLayout({ children }: Props) {
         menuLabel={tCommon('menu')}
         signOut={signOut}
       />
-      <main className={styles.content}>{children}</main>
+      {/* Spec 0042: confirmaciones y avisos con la identidad de la marca (sin window.confirm). */}
+      <main className={styles.content}>
+        <DialogProvider>{children}</DialogProvider>
+      </main>
     </div>
   );
 }
