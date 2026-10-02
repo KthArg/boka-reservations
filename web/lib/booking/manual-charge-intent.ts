@@ -7,6 +7,7 @@ import {
   type PaymentProvider,
 } from '@/lib/payments/types';
 import { BookingStatus, PaymentStatus } from '@shared/constants/enums';
+import { closeRetained, replaceRetained } from './manual-charge-retained';
 import {
   alertIntentCreationFailed,
   alertManualChargeReview,
@@ -15,9 +16,9 @@ import {
 } from './manual-charge-alerts';
 
 // Intent del cobro manual (spec 0029 §5.6): un solo intent vivo por reserva. Si la reserva conserva
-// uno, primero el GET: solo se re-confirma sobre requires_payment_method; succeeded se asienta y
-// nunca se re-confirma; processing o requires_action esperan. Solo canceled o failed habilitan uno
-// nuevo, y antes se cierra su fila con close_pending_payment.
+// uno, primero el GET: succeeded se asienta y nunca se re-confirma; processing o requires_action
+// esperan; uno rechazado (requires_payment_method) se cancela y se reemplaza, porque puede ser de
+// captura manual (spec 0033). Antes de crear otro se cierra su fila con close_pending_payment.
 
 type ServiceClient = SupabaseClient<Database>;
 
@@ -25,7 +26,6 @@ type ServiceClient = SupabaseClient<Database>;
 // por cada click. La garantía sigue en SQL.
 const RETRY_SPACING_MS = 60 * 60 * 1000;
 const DESCRIPTION_ID_LENGTH = 8;
-const CAPTURE_MANUAL = 'manual';
 
 export type ChargeableBooking = {
   id: string;
@@ -93,16 +93,18 @@ async function resolveRetainedIntent(
   provider: PaymentProvider,
   booking: ChargeableBooking,
   intentId: string,
+  now: Date,
 ): Promise<PreparedIntent | null> {
   const snapshot = await provider.getPaymentIntent(intentId);
   switch (snapshot.status) {
     case PaymentIntentStatus.Succeeded:
       return { kind: 'settle', externalPaymentId: intentId, snapshot };
     case PaymentIntentStatus.RequiresPaymentMethod:
-      // El intent del motor es de captura manual: reconfirmarlo solo autoriza. Se reemplaza.
-      return snapshot.captureMethod === CAPTURE_MANUAL
-        ? replaceEngineIntent(db, provider, booking, intentId)
-        : { kind: 'ready', externalPaymentId: intentId, created: false };
+      // OnvoPay no devuelve el modo de captura (verificado en producción, 2026-10-01): este
+      // intent puede ser del motor del mínimo, y reconfirmarlo solo autorizaría. El cobro manual
+      // cobra, así que lo reemplaza por uno propio; dentro de la hora no toca nada.
+      if (withinRetrySpacing(booking, now)) return { kind: 'too_soon' };
+      return replaceRetained(db, provider, booking, intentId);
     case PaymentIntentStatus.Processing:
     case PaymentIntentStatus.RequiresAction:
       alertRetainedIntentActive(booking.id, intentId, snapshot.status);
@@ -116,39 +118,6 @@ async function resolveRetainedIntent(
   }
 }
 
-/** Cancela el intent de captura manual y cierra su pago; null habilita a crear uno nuevo. */
-async function replaceEngineIntent(
-  db: ServiceClient,
-  provider: PaymentProvider,
-  booking: ChargeableBooking,
-  intentId: string,
-): Promise<PreparedIntent | null> {
-  const cancelled = await provider.cancelPaymentSession(intentId).then(
-    () => true,
-    () => false,
-  );
-  if (cancelled) return closeRetained(db, booking, intentId);
-  alertManualChargeReview(ManualChargeReview.UnexpectedIntent, booking.id, intentId);
-  return { kind: 'review' };
-}
-
-/** Cierra el pago de un intent ya cerrado en la pasarela; null habilita a crear uno nuevo. */
-async function closeRetained(
-  db: ServiceClient,
-  booking: ChargeableBooking,
-  intentId: string,
-): Promise<PreparedIntent | null> {
-  const { data: closed, error } = await db.rpc('close_pending_payment', {
-    p_booking_id: booking.id,
-    p_external_payment_id: intentId,
-  });
-  if (error) throw new Error(`close_pending_payment: ${error.message}`);
-  if (closed) return null;
-  // Rowcount 0 (§5.6): otro actor cambió la reserva en el medio. No se crea nada.
-  alertManualChargeReview(ManualChargeReview.CloseSkipped, booking.id, intentId);
-  return { kind: 'review' };
-}
-
 export async function prepareIntent(
   db: ServiceClient,
   provider: PaymentProvider,
@@ -156,7 +125,13 @@ export async function prepareIntent(
   now: Date = new Date(),
 ): Promise<PreparedIntent> {
   if (booking.pendingIntentId) {
-    const resolved = await resolveRetainedIntent(db, provider, booking, booking.pendingIntentId);
+    const resolved = await resolveRetainedIntent(
+      db,
+      provider,
+      booking,
+      booking.pendingIntentId,
+      now,
+    );
     if (resolved) return resolved;
   }
   if (withinRetrySpacing(booking, now)) return { kind: 'too_soon' };

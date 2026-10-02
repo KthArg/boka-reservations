@@ -40,8 +40,6 @@ export type IntentSnapshot = {
   currency?: string;
   /** URL de autenticación 3DS cuando el intent quedó en requires_action. */
   redirectUrl?: string;
-  /** `manual` si confirmarlo solo autoriza (lo crea el motor del mínimo, spec 0033). */
-  captureMethod?: string;
 };
 
 /**

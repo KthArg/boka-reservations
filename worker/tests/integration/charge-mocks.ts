@@ -6,7 +6,6 @@ export type IntentState = {
   status: string;
   amountCents?: number;
   currency?: string;
-  captureMethod?: string;
 };
 export type RecordedAlert = { fingerprint: string; level: string };
 
@@ -80,7 +79,6 @@ export function fakeChargeClient() {
         status: 'requires_payment_method',
         amountCents: input.amountCents,
         currency: input.currency,
-        captureMethod: 'manual',
       });
       return Promise.resolve(id);
     },

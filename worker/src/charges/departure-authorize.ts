@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '../env.js';
-import type { IntentSnapshot, OnvopayChargeClient } from './onvopay.js';
+import type { OnvopayChargeClient } from './onvopay.js';
 import { IntentStatus, isClosedIntentStatus } from './decide.js';
 import { canAttempt, isStaleMark } from './departure-cycle.js';
 import {
@@ -19,7 +19,6 @@ import { MSG_CANCEL_INTENT_FAILED, alertCharge } from './alerts.js';
 // que la plata queda reservada y todavía no cobrada.
 
 const MSG_AUTH_NOT_RECORDED = '[charge-departures] autorización viva sin registrar';
-const CAPTURE_MANUAL = 'manual';
 const SOURCE = 'charge-departures';
 
 export async function authorizePending(
@@ -89,7 +88,6 @@ async function authorizeOne(
 ): Promise<void> {
   const paymentMethodId = booking.payment_method_id as string;
   const existing = await fetchPendingIntent(db, booking.id);
-  let reused = false;
   if (existing) {
     const snapshot = await onvopay.getIntent(existing);
     const status = snapshot?.status ?? IntentStatus.NotFound;
@@ -102,20 +100,16 @@ async function authorizeOne(
     }
     if (isClosedIntentStatus(status)) {
       await closePendingPayment(db, booking.id, existing);
-    } else if (status === IntentStatus.RequiresPaymentMethod && isManualCapture(snapshot)) {
-      // Un rechazo deja el intent así y su pago `pending`: el reintento reconfirma ESE intent
-      // (spec 0029 §5.6). Crear uno nuevo hace que charge_booking_start responda
-      // `intent_mismatch` para siempre y la reserva no se vuelva a cobrar, aunque el turista
-      // cambie la tarjeta.
-      reused = true;
     } else if (
       status === IntentStatus.RequiresPaymentMethod ||
       status === IntentStatus.RequiresCapture
     ) {
-      // Un intent de captura automática (lo crea el cobro manual del panel) cobraría al
-      // confirmarlo, antes de saber si la salida llega al mínimo. Y una retención viva sobre una
-      // reserva que volvió a `pending_minimum` no la reclama nadie. En los dos casos se suelta y
-      // se arranca de cero con un intent de captura manual.
+      // Un rechazo deja el intent en `requires_payment_method` con su pago `pending`. Crear otro
+      // encima hace que charge_booking_start responda `intent_mismatch` para siempre, y
+      // reconfirmarlo no es seguro: OnvoPay no devuelve el modo de captura (verificado en
+      // producción, 2026-10-01), y uno de captura automática (cobro manual del panel) cobraría
+      // antes de saber si la salida llega al mínimo. Se cancela, se cierra su pago y se arranca
+      // con uno propio de captura manual. Lo mismo con una retención viva que nadie reclama.
       if (!(await discardIntent(db, onvopay, booking.id, existing))) return;
     } else {
       // 3DS o en proceso: el resultado todavía no existe. Se espera.
@@ -123,18 +117,14 @@ async function authorizeOne(
     }
   }
 
-  const intentId =
-    reused && existing
-      ? existing
-      : await onvopay.createManualCaptureIntent({
-          amountCents: booking.total_amount_cents,
-          currency: booking.currency,
-          description: `Reserva ${booking.id}`,
-        });
+  const intentId = await onvopay.createManualCaptureIntent({
+    amountCents: booking.total_amount_cents,
+    currency: booking.currency,
+    description: `Reserva ${booking.id}`,
+  });
 
   if (!(await startCharge(db, booking.id, intentId, paymentMethodId))) {
-    // Solo se cancela el intent recién creado: uno reutilizado sigue siendo el de la reserva.
-    if (!reused) await onvopay.cancelIntent(intentId).catch(() => undefined);
+    await onvopay.cancelIntent(intentId).catch(() => undefined);
     return;
   }
 
@@ -162,9 +152,6 @@ async function authorizeOne(
     snapshot.status === IntentStatus.Canceled || snapshot.status === IntentStatus.Failed;
   await recordAttemptFailed(db, booking.id, intentId, snapshot.status, terminal);
 }
-
-const isManualCapture = (snapshot: IntentSnapshot | null): boolean =>
-  snapshot?.captureMethod === CAPTURE_MANUAL;
 
 const pendingPayment = (booking: ChargeableBooking, intentId: string) => ({
   external_payment_id: intentId,

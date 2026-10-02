@@ -15,8 +15,6 @@ export type IntentSnapshot = {
   status: string;
   amountCents?: number;
   currency?: string;
-  /** `manual` (autoriza y se captura después) o `automatic` (cobra al confirmar). */
-  captureMethod?: string;
 };
 
 type IntentBody = {
@@ -24,14 +22,12 @@ type IntentBody = {
   status: string;
   amount?: number;
   currency?: string;
-  captureMethod?: string;
 };
 
 const toSnapshot = (body: IntentBody): IntentSnapshot => ({
   status: body.status,
   amountCents: body.amount,
   currency: body.currency,
-  captureMethod: body.captureMethod,
 });
 type PaymentMethodBody = { id: string; status?: string };
 

@@ -417,9 +417,9 @@ describe('charge-departures — los caminos donde se pierde plata', () => {
   });
 
   // Prueba en producción del 2026-10-01: un rechazo deja el intent en requires_payment_method con
-  // su pago pending. El reintento creaba un intent nuevo, charge_booking_start respondía
-  // intent_mismatch y la reserva no se volvía a cobrar nunca, aunque el turista cambiara la tarjeta.
-  it('retries a declined booking on the same intent once the tourist fixes the card', async () => {
+  // su pago pending. El reintento creaba un intent nuevo SIN cerrar el anterior, charge_booking_start
+  // respondía intent_mismatch y la reserva no se volvía a cobrar nunca, aunque cambiara la tarjeta.
+  it('charges a declined booking again once the tourist fixes the card', async () => {
     // Arrange
     await configureTour({ minimum: 1, timing: 'before_departure', leadHours: 720 });
     const bookingId = await seat();
@@ -444,10 +444,10 @@ describe('charge-departures — los caminos donde se pierde plata', () => {
     await chargeDepartures();
 
     // Assert
-    expect(onvo.created).toEqual([intent]);
-    expect(onvo.cancelled).toEqual([]);
-    expect(onvo.confirmed).toEqual([intent, intent]);
-    expect(onvo.captured).toEqual([intent]);
+    const [, retry] = onvo.created;
+    expect(onvo.cancelled).toEqual([intent]);
+    expect(onvo.confirmed).toEqual([intent, retry]);
+    expect(onvo.captured).toEqual([retry]);
     expect((await readBooking(bookingId)).status).toBe('confirmed');
   });
 
@@ -463,13 +463,13 @@ describe('charge-departures — los caminos donde se pierde plata', () => {
     return { bookingId, intent };
   }
 
-  // El intent del panel es de captura automática: reconfirmarlo cobraría antes de saber si la
-  // salida llega al mínimo, que es justo lo que el motor existe para evitar.
-  it('replaces an automatic-capture intent instead of charging before the minimum', async () => {
+  // El intent retenido puede ser del cobro manual del panel (captura automática): reconfirmarlo
+  // cobraría antes de saber si la salida llega al mínimo, que es lo que el motor existe para evitar.
+  it('replaces the retained intent instead of charging before the minimum', async () => {
     // Arrange
     await configureTour({ minimum: 3, timing: 'before_departure', leadHours: 720 });
     const { bookingId, intent } = await declinedOnPanelIntent();
-    onvo.intents.set(intent, { status: 'requires_payment_method', captureMethod: 'automatic' });
+    onvo.intents.set(intent, { status: 'requires_payment_method' });
 
     // Act
     await chargeDepartures();
