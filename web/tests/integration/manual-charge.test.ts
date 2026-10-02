@@ -155,28 +155,6 @@ describe('chargeBookingAction — primer cobro', () => {
     expect(booking.authorized_at).not.toBeNull();
   });
 
-  // El cobro manual cobra; un intent del motor (captura manual) solo autorizaría y dejaría una
-  // retención sin ciclo que la capture. Se reemplaza por uno propio.
-  it('replaces a manual-capture intent of the engine before charging', async () => {
-    // Arrange
-    const { bookingId, intent: engineIntent } = await declinedOnce();
-    await elapseRetrySpacing(db, bookingId);
-    provider.getPaymentIntent.mockResolvedValue({
-      ...intentIn('requires_payment_method'),
-      captureMethod: 'manual',
-    });
-    provider.confirmWithPaymentMethod.mockResolvedValueOnce(intentIn('succeeded'));
-
-    // Act
-    const outcome = await outcomeOf(bookingId);
-
-    // Assert
-    expect(outcome).toBe('confirmed');
-    expect(provider.cancelPaymentSession).toHaveBeenCalledWith(engineIntent);
-    const payments = await paymentsOf(db, bookingId);
-    expect(payments.map((p) => p.status).sort()).toEqual(['failed', 'succeeded']);
-  });
-
   it('leaves the charge in flight when OnvoPay does not answer the confirm', async () => {
     // Arrange
     const { bookingId } = await createDeferredBooking(db, instanceId);
@@ -221,7 +199,9 @@ describe('chargeBookingAction — Volver a cobrar', () => {
     expect(provider.cancelPaymentSession).not.toHaveBeenCalled();
   });
 
-  it('re-confirms the same intent after reading it, without creating another', async () => {
+  // OnvoPay no dice si el intent retenido es de captura manual (del motor del mínimo), y
+  // reconfirmar uno de esos solo autorizaría: el cobro manual lo reemplaza por uno propio.
+  it('replaces the declined intent with a new one instead of re-confirming it', async () => {
     // Arrange
     const { bookingId, intent } = await declinedOnce();
     await elapseRetrySpacing(db, bookingId);
@@ -233,13 +213,15 @@ describe('chargeBookingAction — Volver a cobrar', () => {
 
     // Assert
     expect(outcome).toBe('confirmed');
-    expect(provider.createPaymentSession).toHaveBeenCalledTimes(1);
-    expect(provider.confirmWithPaymentMethod).toHaveBeenLastCalledWith(
+    expect(provider.cancelPaymentSession).toHaveBeenCalledWith(intent);
+    expect(provider.createPaymentSession).toHaveBeenCalledTimes(2);
+    expect(provider.confirmWithPaymentMethod).not.toHaveBeenLastCalledWith(
       intent,
       expect.any(String),
       expect.any(String),
     );
-    expect((await paymentsOf(db, bookingId)).map((p) => p.status)).toEqual(['succeeded']);
+    const statuses = (await paymentsOf(db, bookingId)).map((p) => p.status).sort();
+    expect(statuses).toEqual(['failed', 'succeeded']);
   });
 
   it('confirms without charging again when the previous intent already settled', async () => {

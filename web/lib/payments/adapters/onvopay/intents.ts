@@ -6,7 +6,6 @@ type IntentBody = {
   status: string;
   amount?: number;
   currency?: string;
-  captureMethod?: string;
   nextAction?: { redirectToUrl?: { url?: string } };
 };
 
@@ -16,7 +15,6 @@ function toSnapshot(body: IntentBody): IntentSnapshot {
     amountCents: body.amount,
     currency: body.currency,
     redirectUrl: body.nextAction?.redirectToUrl?.url,
-    captureMethod: body.captureMethod,
   };
 }
 

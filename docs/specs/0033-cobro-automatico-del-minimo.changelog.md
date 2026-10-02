@@ -14,9 +14,11 @@ alcanzarlo, 3DS y cancelación antes del cobro. Fallaron dos caminos, que se arr
 - **El reintento de una reserva rechazada no ocurría nunca** (`departure-authorize.ts`). Un rechazo
   deja el intent en `requires_payment_method` con su pago `pending`; el motor creaba un intent
   nuevo, `charge_booking_start` respondía `intent_mismatch` y lo cancelaba en silencio, cada
-  minuto. El turista cambiaba la tarjeta y no se le cobraba. Ahora reconfirma el mismo intent
-  (spec 0029 §5.6). Los tests existentes simulaban el rechazo con `failed` (terminal), por eso no
-  lo cazaban; se agrega el caso no terminal.
+  minuto. El turista cambiaba la tarjeta y no se le cobraba. Ahora cancela el intent rechazado y
+  cierra su pago antes de crear el nuevo (spec 0029 §5.6). Los tests existentes simulaban el
+  rechazo con `failed` (terminal), por eso no lo cazaban; se agrega el caso no terminal.
+  Verificado en producción: tras el cambio de tarjeta, la reserva se autorizó sola al vencer la
+  hora.
 - **Cancelar con la autorización viva no era alcanzable desde ninguna pantalla** (§5.6). La página
   del turista y el panel trataban toda `pending_payment` con cobro iniciado como cobro en curso.
   La vista ahora distingue `authorizationHeld`; el turista ve "Reservada, con el monto retenido" y
@@ -31,11 +33,13 @@ alcanzarlo, 3DS y cancelación antes del cobro. Fallaron dos caminos, que se arr
 **Ronda de revisión** (payment-flow-auditor, sin bloqueantes ni caminos de doble cobro). Lo que
 señaló y se corrigió antes del push:
 
-- **El motor no reconfirma un intent de captura automática** (los crea el cobro manual del panel):
-  cobraría antes de saber si la salida llega al mínimo. Lee `captureMethod` del intent; si no es
-  `manual`, lo cancela, cierra su pago y arranca con uno propio.
-- **El cobro manual del panel no reconfirma un intent de captura manual del motor**: solo
-  autorizaría, y la retención quedaría sin ciclo que la capture. Lo reemplaza por uno propio.
+- **Ni el motor ni el cobro manual reconfirman el intent que dejó un rechazo: lo reemplazan.** El
+  motor crea intents de captura manual y el cobro manual del panel, de captura automática;
+  reconfirmar uno ajeno cobraría antes de decidir el mínimo, o dejaría una retención sin ciclo que
+  la capture. La primera versión leía `captureMethod` del GET para decidir, como dice el OpenAPI,
+  pero **OnvoPay no devuelve ese campo** (verificado contra producción el 2026-10-01). Cada lado
+  cancela el intent retenido, cierra su pago y crea uno propio. El cobro manual respeta antes la
+  hora mínima entre intentos, para no cancelar nada si igual no va a cobrar.
 - **Un intent ya cobrado sobre una `pending_minimum`** (webhook perdido) se asienta en el acto:
   nadie más miraba esa reserva hasta su plazo y mientras tanto no contaba para el mínimo.
 - **`processing` tras el confirm ya no se registra como rechazo**: le avisaba "tarjeta rechazada"
