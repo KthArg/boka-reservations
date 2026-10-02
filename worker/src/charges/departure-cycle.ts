@@ -7,6 +7,13 @@ import type { ChargeableBooking } from './departure-repository.js';
 /** EARLY_CANCEL_FLOOR_HOURS del spec: no se cancela una salida lejana; se cierra y se reintenta. */
 const EARLY_CANCEL_FLOOR_MS = 72 * 60 * 60 * 1000;
 
+/**
+ * Aviso que prometen los términos para cancelar una salida por mínimo (cláusula del mínimo de
+ * participantes): al menos 24 horas antes del inicio. Con menos, la salida ya no se puede cancelar
+ * por mínimo (la guarda de resolve_departure_minimum, …055). Espeja a cancel_departure (…049).
+ */
+export const MINIMUM_NOTICE_MS = 24 * 60 * 60 * 1000;
+
 /** Marcas de claim o de captura más viejas que esto quedaron de un proceso que murió. */
 export const STALE_MARK_MS = 15 * 60 * 1000;
 
@@ -25,9 +32,7 @@ export type CycleActionValue = (typeof CycleAction)[keyof typeof CycleAction];
 export const ReleaseOutcome = {
   /** Falta mucho para la salida: se cierra el ciclo y se reintenta más cerca de la fecha. */
   Close: 'close',
-  /** Se cancela sola: el tour lo permite y no hay plata cobrada. */
-  AutoCancel: 'auto_cancel',
-  /** Decide una persona: el tour no cancela solo, o hay plata cobrada de por medio. */
+  /** Decide una persona, desde la bandeja de Salidas: confirmarla o cancelarla. */
   StaffDecision: 'staff_decision',
 } as const;
 
@@ -42,7 +47,6 @@ export type CycleInput = {
   minimum: number;
   deadline: Date;
   startsAt: Date;
-  autoCancelBelowMinimum: boolean;
   now: Date;
 };
 
@@ -60,22 +64,19 @@ export function decideCycle(input: CycleInput): CycleActionValue {
 }
 
 /**
- * Qué hacer después de soltar. Nunca se cancela sola una salida con plata cobrada: devolverla es
- * una decisión con consecuencias y la toma una persona (§5.5).
+ * Qué hacer después de soltar. Si una salida bajo el mínimo se cancela o se hace lo decide una
+ * persona, nunca el motor (decisión del usuario, 2026-10-02). Lo único automático es no decidir
+ * todavía: lejos de la salida, una foto de hoy no justifica molestar a nadie y el ciclo se cierra
+ * para reabrirse más cerca de la fecha.
  */
 export function decideRelease(input: CycleInput): ReleaseOutcomeValue {
-  const farFromDeparture = input.startsAt.getTime() - input.now.getTime() > EARLY_CANCEL_FLOOR_MS;
-  if (farFromDeparture) return ReleaseOutcome.Close;
-  if (input.captured > 0) return ReleaseOutcome.StaffDecision;
-  return input.autoCancelBelowMinimum ? ReleaseOutcome.AutoCancel : ReleaseOutcome.StaffDecision;
+  const untilStartMs = input.startsAt.getTime() - input.now.getTime();
+  return untilStartMs > EARLY_CANCEL_FLOOR_MS ? ReleaseOutcome.Close : ReleaseOutcome.StaffDecision;
 }
 
-/**
- * Red terminal (§5.5): sin decisión del staff, la salida no puede llegar a su fecha sin resolver.
- * Con plata cobrada no se cancela sola: se alerta y espera a una persona.
- */
-export function shouldForceResolve(input: CycleInput, marginMs: number): boolean {
-  return input.startsAt.getTime() - input.now.getTime() <= marginMs;
+/** Con menos de 24 horas ya no se puede cancelar por mínimo: el aviso prometido no llega. */
+export function isTooLateToCancelForMinimum(input: CycleInput): boolean {
+  return input.startsAt.getTime() - input.now.getTime() < MINIMUM_NOTICE_MS;
 }
 
 /** Una marca (claim o captura) de un proceso que murió deja la reserva trabada; se limpia. */

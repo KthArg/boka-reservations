@@ -15,7 +15,7 @@ export const MINIMUM_DECISION_WINDOW_HOURS_MAX = 720;
  * `business_settings.default_charge_lead_hours`. Vive acá y no en `tours.ts` porque es la
  * columna global: el rango por tour puede divergir del global sin arrastrar al otro.
  */
-export const DEFAULT_CHARGE_LEAD_HOURS_MIN = 1;
+export const DEFAULT_CHARGE_LEAD_HOURS_MIN = 32;
 export const DEFAULT_CHARGE_LEAD_HOURS_MAX = 720;
 
 /**

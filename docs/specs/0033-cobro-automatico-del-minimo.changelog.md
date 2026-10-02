@@ -3,6 +3,53 @@
 Spec: [0033-cobro-automatico-del-minimo.md](./0033-cobro-automatico-del-minimo.md)
 Rama: feat/0033-cobro-automatico-minimo
 
+## 2026-10-02 — Decide el staff, con el aviso de 24 horas, y latido del worker
+
+**Hecho**:
+
+- **El motor nunca cancela ni confirma solo una salida bajo el mínimo** (decisión del usuario).
+  Al vencer el plazo suelta las retenciones y la salida pasa a la bandeja de Salidas; el staff
+  la confirma (se cobra a todos) o la cancela. El motor deja de leer
+  `tours.auto_cancel_below_minimum`, que el formulario ya no ofrecía desde el spec 0035 (la
+  columna queda sin uso). Se elimina la red terminal que cancelaba sola a 3 horas de la salida.
+- **El plazo del ciclo vence 30 horas antes de la salida** (migración `…055`), no 3. Los términos
+  prometen avisar la cancelación por mínimo con 24 horas; en la prueba en producción el motor
+  canceló a las 13:00 una salida de las 16:00. Las 30 horas le dejan al staff 6 para decidir
+  antes de ese límite. El plazo de cobro tiene un piso de 32 horas (`departure_charge_due` y la
+  validación del panel); el aviso de plazo corto pasa a 38.
+- **`resolve_departure_minimum` no cancela por mínimo con menos de 24 horas**: devuelve
+  `minimum_too_late`, la misma regla que `cancel_departure` ya tenía para el cobro inmediato. La
+  bandeja lo explica y el staff que igual quiera cancelar elige otra causa.
+- **Alertas de la bandeja, una por salida**: espera decisión (warning), plata cobrada bajo el
+  mínimo o ya tarde para cancelar por mínimo (error).
+- **Los correos y las páginas de tarjeta rechazada y de 3DS muestran el plazo real**: el menor
+  entre el de la reserva y el del ciclo abierto de la salida.
+- **Latido del worker** (`worker/src/liveness.ts`, lo exigía el spec 0029 §11): cada ciclo de
+  `watch-charges` manda un check-in al monitor `worker-cobros` de Sentry, que alerta cuando faltan
+  dos seguidos.
+
+**Por qué / decisiones**:
+
+- Decisiones del usuario (2026-10-02): alinear el motor con el aviso de 24 horas de los términos,
+  y que si una salida se hace o se cancela lo decida siempre una persona.
+- El CSP sigue bloqueando los tres dominios de antifraude del SDK de OnvoPay (decisión del
+  usuario): permitirlos manda la IP y la huella del visitante a terceros y contradice el aviso de
+  privacidad. Se revisa con los datos de la fase 6b.
+- El plazo de 30 horas es un valor elegido, no una exigencia legal: 24 de aviso más 6 para
+  decidir. Vive en `open_departure_charge` (…055) y se refleja en los textos del panel.
+
+**Riesgo aceptado**: si nadie decide en la bandeja, las reservas sin cobrar de esa salida se
+cancelan a la hora de la salida (`watch-charges`), y el turista se entera ahí. Las alertas a
+Sentry son la red para que eso no pase.
+
+**Pendiente**:
+
+- `business_settings.minimum_decision_window_hours` sigue llamándose "ventana de decisión" en el
+  panel, aunque hoy solo fija el plazo de recuperación de un cobro rechazado. Se corrigió la
+  ayuda; el nombre del campo queda.
+- El cobro inmediato (`resolve-minimum`, spec 0035) sigue cancelando solo, un día antes, las
+  salidas bajo el mínimo sin reservas diferidas.
+
 ## 2026-10-01 — Arreglos tras la prueba en producción (modo prueba de OnvoPay)
 
 Primera corrida del motor contra producción, con plazos comprimidos. Pasaron: reserva sin cobro,

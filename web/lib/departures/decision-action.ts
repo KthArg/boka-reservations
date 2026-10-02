@@ -54,13 +54,17 @@ export async function decideDeparture(
   });
   if (error) return { ok: false, error: DepartureDecisionError.WriteFailed };
   if (data === DepartureResolutionOutcome.AlreadyResolved) {
-    // Otra persona (o la red terminal del worker) decidió primero: la pantalla se recarga.
+    // Otra persona decidió primero: la pantalla se recarga.
     return { ok: false, error: DepartureDecisionError.AlreadyResolved };
   }
   if (data === DepartureResolutionOutcome.CaptureInProgress) {
     // El worker está cobrando una reserva de esta salida: resolver ahora podría cancelarla con
     // la plata ya cobrada. La marca vence a los 15 minutos.
     return { ok: false, error: DepartureDecisionError.CaptureInProgress };
+  }
+  if (data === DepartureResolutionOutcome.MinimumTooLate) {
+    // Los términos prometen avisar con 24 horas: más cerca, se cancela por otra causa.
+    return { ok: false, error: DepartureDecisionError.MinimumTooLate };
   }
   if (data !== DepartureResolutionOutcome.Resolved) {
     return { ok: false, error: DepartureDecisionError.NotResolvable };

@@ -61,15 +61,20 @@ export const ChargeTiming = {
 
 export type ChargeTiming = (typeof ChargeTiming)[keyof typeof ChargeTiming];
 
-/** Rango de `tours.charge_lead_hours`: espejo del CHECK de DB (1 hora a 30 días). */
-export const CHARGE_LEAD_HOURS_MIN = 1;
+/**
+ * Rango de `tours.charge_lead_hours`. El piso es de 32 horas (el CHECK de DB admite desde 1): el
+ * ciclo de cobro vence 30 horas antes de la salida, para que el staff decida con el aviso de 24
+ * horas que prometen los términos todavía por delante, y con menos no habría ventana para cobrar.
+ * Espeja el piso de departure_charge_due (…055).
+ */
+export const CHARGE_LEAD_HOURS_MIN = 32;
 export const CHARGE_LEAD_HOURS_MAX = 720;
 
 /**
- * Debajo de este plazo el formulario avisa: `charge_attempt_failed` exige 2 horas de margen
- * para agendar un reintento, así que un rechazo se queda sin segundo intento (spec 0033 §5.1).
+ * Debajo de este plazo el formulario avisa: el ciclo vence 30 horas antes de la salida, así que
+ * con menos de 38 horas el reintento de las 6 horas de una tarjeta rechazada ya no entra.
  */
-export const CHARGE_LEAD_HOURS_WARN_BELOW = 6;
+export const CHARGE_LEAD_HOURS_WARN_BELOW = 38;
 
 /** Edad máxima del tiquete de niño: 17 (espejo del CHECK `tours_child_ages_check`, spec 0034). */
 export const CHILD_AGE_MAX = 17;

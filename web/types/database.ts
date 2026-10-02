@@ -1182,7 +1182,12 @@ export type Database = {
           p_resolution: 'reached' | 'auto_cancelled' | 'staff_confirmed' | 'staff_cancelled';
           p_actor_id?: string | null;
         };
-        Returns: 'resolved' | 'already_resolved' | 'invalid_resolution' | 'capture_in_progress';
+        Returns:
+          | 'resolved'
+          | 'already_resolved'
+          | 'invalid_resolution'
+          | 'capture_in_progress'
+          | 'minimum_too_late';
       };
       cancel_departure: {
         Args: {

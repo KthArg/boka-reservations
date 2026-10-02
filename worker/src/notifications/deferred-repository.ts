@@ -17,6 +17,47 @@ export type DeferredBookingRow = BookingRow & {
 
 export type ChargeSummary = { deferred: boolean; charged: boolean };
 
+type CycleRow = {
+  tour_instance: { staff_decision_required_at: string | null; minimum_resolved_at: string | null };
+};
+
+/**
+ * Plazo del ciclo de cobro de la salida, mientras siga abierto y sin resolver (spec 0033). Es el
+ * momento en que una salida bajo el mínimo se suelta y se cancela: después de eso, cambiar la
+ * tarjeta o autenticar ya no la salva. `null` si no hay ciclo abierto.
+ */
+export async function loadOpenCycleDeadline(
+  db: SupabaseClient,
+  bookingId: string,
+): Promise<string | null> {
+  const { data, error } = await db
+    .from('bookings')
+    .select('tour_instance:tour_instances!inner(staff_decision_required_at, minimum_resolved_at)')
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  if (error) throw new Error(`load cycle deadline: ${error.message}`);
+  const instance = (data as unknown as CycleRow | null)?.tour_instance;
+  if (!instance || instance.minimum_resolved_at !== null) return null;
+  return instance.staff_decision_required_at;
+}
+
+/**
+ * El plazo que se le promete al turista: el de su reserva o el del ciclo de la salida, el que
+ * venza primero. Un plazo del ciclo ya vencido no cuenta: la salida espera a una persona y la
+ * reserva sigue viva hasta el suyo.
+ */
+export function promisedDeadline(
+  bookingDeadline: string,
+  cycleDeadline: string | null,
+  now: Date = new Date(),
+): string {
+  if (cycleDeadline === null) return bookingDeadline;
+  const cycle = new Date(cycleDeadline).getTime();
+  if (cycle <= now.getTime()) return bookingDeadline;
+  return cycle < new Date(bookingDeadline).getTime() ? cycleDeadline : bookingDeadline;
+}
+
 export async function loadDeferredBooking(
   db: SupabaseClient,
   bookingId: string,
