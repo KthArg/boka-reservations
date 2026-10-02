@@ -3,7 +3,7 @@ import type { OnvopayChargeClient } from './onvopay.js';
 import {
   ReleaseOutcome,
   decideRelease,
-  shouldForceResolve,
+  isTooLateToCancelForMinimum,
   type CycleInput,
 } from './departure-cycle.js';
 import type { DepartureCandidate } from './departure-repository.js';
@@ -19,10 +19,9 @@ import { alertCharge } from './alerts.js';
 // Cierre del ciclo del mínimo (spec 0033 §5.4 y §5.5): con los cupos autorizados a la vista, la
 // salida se captura entera o se suelta entera. Soltar no cuesta nada; reembolsar un cobro sí.
 
-/** MINIMUM_RESOLUTION_MARGIN_HOURS del spec: la red terminal corre a 3 h de la salida. */
-export const RESOLUTION_MARGIN_MS = 3 * 60 * 60 * 1000;
-
-const MSG_FORCED = '[charge-departures] salida sin resolver cerca de su fecha';
+const MSG_TOO_LATE =
+  '[charge-departures] salida bajo el mínimo a menos de 24 h: ya no se cancela por mínimo, decide el staff';
+const MSG_AWAITING = '[charge-departures] salida bajo el mínimo espera la decisión del staff';
 const MSG_MONEY_HELD = '[charge-departures] salida bajo el mínimo con plata cobrada';
 
 export async function captureDeparture(
@@ -61,32 +60,38 @@ export async function releaseDeparture(
     await closeDepartureCharge(db, departure.id);
     return;
   }
-  if (outcome === ReleaseOutcome.AutoCancel) {
-    await resolveDepartureMinimum(db, departure.id, DepartureResolution.AutoCancelled);
-    return;
-  }
-  if (shouldForceResolve(input, RESOLUTION_MARGIN_MS)) {
-    await forceResolve(db, onvopay, departure, input);
+  // Decide una persona, desde la bandeja de Salidas. Las retenciones ya se soltaron; lo que falta
+  // es que alguien lo vea. Una alerta por salida: el job vuelve a pasar por acá cada minuto.
+  if (input.captured > 0) {
+    alertOnce(MSG_MONEY_HELD, 'departure-below-minimum', departure.id, 'error');
+  } else if (isTooLateToCancelForMinimum(input)) {
+    alertOnce(MSG_TOO_LATE, 'departure-minimum-too-late', departure.id, 'error');
+  } else {
+    alertOnce(MSG_AWAITING, 'departure-awaiting-decision', departure.id, 'warning');
   }
 }
 
-/** Red terminal (§5.5): con plata cobrada no se cancela sola; se alerta y espera a una persona. */
-export async function forceResolve(
-  db: SupabaseClient,
-  onvopay: OnvopayChargeClient,
-  departure: DepartureCandidate,
-  input: CycleInput,
-): Promise<void> {
-  if (input.captured > 0) {
-    // Con plata cobrada la salida no se cancela sola, pero las retenciones de las demás reservas
-    // sí se sueltan: la salida ya no puede cobrarlas y no hay por qué dejarlas vivas.
-    await releaseAll(db, onvopay, departure.id);
-    alertCharge(MSG_MONEY_HELD, 'departure-forced-money', departure.id, 'error');
-    return;
-  }
-  await releaseAll(db, onvopay, departure.id);
-  await resolveDepartureMinimum(db, departure.id, DepartureResolution.AutoCancelled);
-  alertCharge(MSG_FORCED, 'departure-forced', departure.id, 'error');
+/**
+ * La salida queda esperando a una persona y el job vuelve a pasar por acá cada minuto, quizá por
+ * horas: una alerta por salida y por proceso alcanza (la issue de Sentry se agrupa igual).
+ */
+const alerted = new Set<string>();
+
+function alertOnce(
+  message: string,
+  fingerprint: string,
+  departureId: string,
+  level: 'warning' | 'error',
+): void {
+  const key = `${fingerprint}:${departureId}`;
+  if (alerted.has(key)) return;
+  alerted.add(key);
+  alertCharge(message, fingerprint, departureId, level);
+}
+
+/** Solo para tests: el registro de alertas es por proceso. */
+export function resetDepartureAlertsForTest(): void {
+  alerted.clear();
 }
 
 export async function cycleInput(
@@ -101,7 +106,6 @@ export async function cycleInput(
     minimum: counts.minimum,
     deadline: new Date(departure.staff_decision_required_at ?? departure.starts_at),
     startsAt: new Date(departure.starts_at),
-    autoCancelBelowMinimum: departure.tour.auto_cancel_below_minimum,
     now,
   };
 }

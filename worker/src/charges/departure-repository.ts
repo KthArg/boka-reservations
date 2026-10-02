@@ -14,7 +14,7 @@ export type DepartureCandidate = {
   minimum_resolution: string | null;
   minimum_charge_triggered_at: string | null;
   staff_decision_required_at: string | null;
-  tour: { min_participants: number; auto_cancel_below_minimum: boolean };
+  tour: { min_participants: number };
 };
 
 export type ChargeableBooking = {
@@ -34,7 +34,7 @@ export type ChargeableBooking = {
 const DEPARTURE_SELECT = `
   id, starts_at, minimum_resolved_at, minimum_resolution, minimum_charge_triggered_at,
   staff_decision_required_at,
-  tour:tours!inner ( min_participants, auto_cancel_below_minimum )
+  tour:tours!inner ( min_participants )
 `;
 
 const BOOKING_SELECT = `

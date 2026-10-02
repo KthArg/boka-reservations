@@ -23,7 +23,9 @@ export type AccessDenied = {
 const SELECT = `
   status, customer_external_id, card_last4, total_amount_cents, currency,
   recovery_deadline, awaiting_action_until,
-  tour_instances!inner ( starts_at, tours!inner ( name_es, name_en ) ),
+  tour_instances!inner (
+    starts_at, staff_decision_required_at, minimum_resolved_at, tours!inner ( name_es, name_en )
+  ),
   payments ( external_payment_id, status )
 `;
 
@@ -35,7 +37,12 @@ type Row = {
   currency: string;
   recovery_deadline: string | null;
   awaiting_action_until: string | null;
-  tour_instances: { starts_at: string; tours: { name_es: string; name_en: string } };
+  tour_instances: {
+    starts_at: string;
+    staff_decision_required_at: string | null;
+    minimum_resolved_at: string | null;
+    tours: { name_es: string; name_en: string };
+  };
   payments: { external_payment_id: string; status: string }[];
 };
 
@@ -70,6 +77,20 @@ async function loadRow(db: ServiceClient, bookingId: string): Promise<Row | null
   return data as unknown as Row | null;
 }
 
+/**
+ * El plazo que se le muestra al turista: el de su reserva o el del ciclo de cobro de la salida
+ * (spec 0033), el que venza primero. Al vencer el ciclo, una salida bajo el mínimo se suelta y se
+ * cancela, así que prometer más tiempo sería falso. Un ciclo resuelto o ya vencido no cuenta.
+ * Solo es lo que se muestra: el acceso a la página sigue rigiéndose por el plazo de la reserva.
+ */
+function promisedDeadline(bookingDeadline: string, row: Row, now: Date): string {
+  const { staff_decision_required_at: cycle, minimum_resolved_at: resolved } = row.tour_instances;
+  if (cycle === null || resolved !== null) return bookingDeadline;
+  const cycleMs = new Date(cycle).getTime();
+  if (cycleMs <= now.getTime()) return bookingDeadline;
+  return cycleMs < new Date(bookingDeadline).getTime() ? cycle : bookingDeadline;
+}
+
 function summaryOf(row: Row): BookingSummary {
   return {
     totalAmountCents: row.total_amount_cents,
@@ -96,7 +117,9 @@ export async function loadCardUpdateTarget(
       ...summaryOf(row),
       customerId: row.customer_external_id,
       cardLast4: row.card_last4,
-      recoveryDeadline: row.recovery_deadline,
+      recoveryDeadline: row.recovery_deadline
+        ? promisedDeadline(row.recovery_deadline, row, now)
+        : null,
     },
   };
 }
@@ -119,7 +142,7 @@ export async function loadAuthenticationTarget(
     target: {
       ...summaryOf(row),
       paymentIntentId: pending.external_payment_id,
-      awaitingActionUntil: awaitingUntil,
+      awaitingActionUntil: promisedDeadline(awaitingUntil, row, now),
     },
   };
 }

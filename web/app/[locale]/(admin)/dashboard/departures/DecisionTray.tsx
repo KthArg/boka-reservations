@@ -7,7 +7,8 @@ import styles from './departures.module.css';
 /**
  * Bandeja de decisión (spec 0033 §5.12): las salidas cuyo plazo venció sin alcanzar el mínimo.
  * Mientras están acá no hay plata retenida —las autorizaciones ya se soltaron— y la salida no se
- * cancela sola, salvo la red terminal del worker a 3 h de la fecha.
+ * cancela ni se confirma sola: decide el staff. Con menos de 24 horas ya no se cancela por mínimo.
+ * Si nadie decide, las reservas sin cobrar se cancelan a la hora de la salida (watch-charges).
  */
 export async function DecisionTray({ departures }: { departures: Departure[] }) {
   const t = await getTranslations('departures');

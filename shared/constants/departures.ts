@@ -27,6 +27,8 @@ export const DepartureResolutionOutcome = {
   InvalidResolution: 'invalid_resolution',
   /** El worker está capturando una reserva de la salida: resolver ahora movería plata a ciegas. */
   CaptureInProgress: 'capture_in_progress',
+  /** Faltan menos de 24 horas: ya no se cancela por mínimo, solo por otra causa (…055). */
+  MinimumTooLate: 'minimum_too_late',
 } as const;
 
 /** Ruta del panel de salidas, compartida por las acciones que la revalidan. */
@@ -34,10 +36,12 @@ export const DEPARTURES_PATH = '/dashboard/departures';
 
 export enum DepartureDecisionError {
   Unauthorized = 'departure_decision_unauthorized',
-  /** Otra persona, o la red terminal del worker, resolvió la salida primero. */
+  /** Otra persona resolvió la salida primero. */
   AlreadyResolved = 'departure_decision_already_resolved',
   NotResolvable = 'departure_decision_not_resolvable',
   /** Hay una captura en curso sobre una reserva de la salida: reintentar en unos minutos. */
   CaptureInProgress = 'departure_decision_capture_in_progress',
   WriteFailed = 'departure_decision_write_failed',
+  /** Faltan menos de 24 horas: para cancelar hay que elegir otra causa (reembolso del 100 %). */
+  MinimumTooLate = 'departure_decision_minimum_too_late',
 }

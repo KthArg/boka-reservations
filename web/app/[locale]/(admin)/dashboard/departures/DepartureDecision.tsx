@@ -10,11 +10,12 @@ import {
 } from '@shared/constants/departures';
 import styles from './departures.module.css';
 
-// Los dos errores que cambian lo que la persona tiene que hacer: esperar unos minutos, o
-// recargar porque alguien más ya decidió. El resto comparte el mensaje genérico.
+// Los errores que cambian lo que la persona tiene que hacer: esperar unos minutos, recargar
+// porque alguien más ya decidió, o cancelar por otra causa. El resto comparte el genérico.
 const ERROR_MESSAGE: Partial<Record<DepartureDecisionError, string>> = {
   [DepartureDecisionError.AlreadyResolved]: 'decision-already-resolved',
   [DepartureDecisionError.CaptureInProgress]: 'decision-capture-in-progress',
+  [DepartureDecisionError.MinimumTooLate]: 'decision-minimum-too-late',
 };
 
 type Props = { instanceId: string };

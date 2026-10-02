@@ -125,7 +125,7 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
       null,
       tourForm(slug, {
         charge_timing: ChargeTiming.BeforeDeparture,
-        charge_lead_hours: '12',
+        charge_lead_hours: '36',
       }),
     );
 
@@ -133,7 +133,7 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     expect(result).toBeUndefined();
     const saved = await chargeConfigFor(slug);
     expect(saved.charge_timing).toBe(ChargeTiming.BeforeDeparture);
-    expect(saved.charge_lead_hours).toBe(12);
+    expect(saved.charge_lead_hours).toBe(36);
   });
 
   it('leaves the lead time empty so the global default applies', async () => {
@@ -170,7 +170,7 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     const slug = newSlug();
     await createTour(
       null,
-      tourForm(slug, { charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: '12' }),
+      tourForm(slug, { charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: '36' }),
     );
     const { id } = await chargeConfigFor(slug);
 

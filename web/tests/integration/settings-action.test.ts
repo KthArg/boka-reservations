@@ -109,13 +109,13 @@ describe('updateBusinessSettings', () => {
     requireRoleMock.mockResolvedValue({ id: adminId });
 
     // Act
-    const result = await updateBusinessSettings(null, formWith('48', '24'));
+    const result = await updateBusinessSettings(null, formWith('48', '36'));
 
     // Assert
     expect(result).toEqual({ success: true });
     expect(await currentSettings()).toEqual({
       minimum_decision_window_hours: 48,
-      default_charge_lead_hours: 24,
+      default_charge_lead_hours: 36,
       updated_by: adminId,
     });
   });

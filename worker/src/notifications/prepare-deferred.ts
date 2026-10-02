@@ -1,7 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NotificationRow } from './repository.js';
 import type { PreparedEmail } from './types.js';
-import { loadDeferredBooking, type DeferredBookingRow } from './deferred-repository.js';
+import {
+  loadDeferredBooking,
+  loadOpenCycleDeadline,
+  promisedDeadline,
+  type DeferredBookingRow,
+} from './deferred-repository.js';
 import { bookingViewUrl, localizedTourName } from './prepare.js';
 import { renderBookingReserved } from './templates/booking-reserved.js';
 import { renderChargeActionRequired } from './templates/charge-action-required.js';
@@ -82,7 +87,10 @@ export async function prepareChargeActionEmail(
       totalAmountCents: booking.total_amount_cents,
       currency: booking.currency,
       cardLast4: booking.card_last4 ?? '',
-      deadline: booking.recovery_deadline,
+      deadline: promisedDeadline(
+        booking.recovery_deadline,
+        await loadOpenCycleDeadline(db, booking.id),
+      ),
       updateUrl: `${view}/${CARD_UPDATE_SEGMENT}`,
     },
     notif.locale,
@@ -115,7 +123,10 @@ export async function prepareRequiresActionEmail(
       startsAt: booking.tour_instance.starts_at,
       totalAmountCents: booking.total_amount_cents,
       currency: booking.currency,
-      deadline: booking.awaiting_action_until,
+      deadline: promisedDeadline(
+        booking.awaiting_action_until,
+        await loadOpenCycleDeadline(db, booking.id),
+      ),
       authenticateUrl: `${view}/${AUTHENTICATE_SEGMENT}`,
     },
     notif.locale,

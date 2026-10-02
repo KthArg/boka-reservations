@@ -372,3 +372,18 @@ Lo que la implementación resolvió distinto de lo escrito arriba, después de l
   worker esté capturando una reserva de la salida.
 - **`charge_attempt_failed` y `cancel_charge_in_flight` de la …044 se reemplazan** para limpiar
   las marcas de la autorización al salir de `pending_payment`.
+
+## 15. Decide el staff, con el aviso de 24 horas (2026-10-02)
+
+Lo que cambia respecto de §5.1 y §5.5, por decisión del usuario tras la prueba en producción:
+
+- `MINIMUM_RESOLUTION_MARGIN_HOURS` deja de ser 3: el plazo del ciclo vence **30 horas** antes de
+  la salida (24 de aviso que prometen los términos más 6 para decidir). Migración `…055`.
+- El plazo de cobro tiene un **piso de 32 horas**, en la aplicación (validación) y en
+  `departure_charge_due` (para valores viejos). El aviso de plazos cortos pasa a 38 horas.
+- La tabla de §5.5 se reduce a dos filas: lejos de la salida se cierra el ciclo; en el resto de
+  los casos **decide el staff**, haya o no plata cobrada. No hay cancelación automática ni
+  confirmación automática. La columna `auto_cancel_below_minimum` ya no participa.
+- No hay **red terminal**: con menos de 24 horas `resolve_departure_minimum` rechaza cualquier
+  cancelación por mínimo (`minimum_too_late`); el staff confirma o cancela por otra causa. Si
+  nadie decide, las reservas sin cobrar se cancelan a la hora de la salida (`watch-charges`).

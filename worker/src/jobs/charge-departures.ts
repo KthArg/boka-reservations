@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from '../env.js';
 import { createOnvopayChargeClient, type OnvopayChargeClient } from '../charges/onvopay.js';
-import { CycleAction, decideCycle, shouldForceResolve } from '../charges/departure-cycle.js';
+import { CycleAction, decideCycle } from '../charges/departure-cycle.js';
 import {
   fetchDeparture,
   fetchDepartureCandidates,
@@ -15,13 +15,7 @@ import {
 } from '../charges/departure-rpc.js';
 import { authorizePending } from '../charges/departure-authorize.js';
 import { captureAll, releaseAll } from '../charges/departure-settle.js';
-import {
-  RESOLUTION_MARGIN_MS,
-  captureDeparture,
-  cycleInput,
-  forceResolve,
-  releaseDeparture,
-} from '../charges/departure-resolve.js';
+import { captureDeparture, cycleInput, releaseDeparture } from '../charges/departure-resolve.js';
 import { MSG_ENGINE_OFF, alertCharge, alertCount } from '../charges/alerts.js';
 
 // Motor del cobro del mínimo (spec 0033). Cada minuto: abre el ciclo de las salidas que llegaron a
@@ -141,12 +135,8 @@ async function processDeparture(
     return;
   }
 
-  if (action === CycleAction.Wait) {
-    if (shouldForceResolve(input, RESOLUTION_MARGIN_MS)) {
-      await forceResolve(db, onvopay, current, input);
-    }
-    return;
-  }
+  // El plazo del ciclo vence 24 h 10 min antes de la salida (…055): hasta entonces se espera.
+  if (action === CycleAction.Wait) return;
 
   await releaseDeparture(db, onvopay, current, input);
 }

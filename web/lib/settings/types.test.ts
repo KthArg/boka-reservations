@@ -21,7 +21,8 @@ describe('BusinessSettingsFormSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it.each(['1', '24', '720'])('accepts a charge lead time of %s hours', (raw) => {
+  // El piso es de 32 horas (migración …055): el plazo de cobro vence 30 horas antes.
+  it.each(['32', '48', '720'])('accepts a charge lead time of %s hours', (raw) => {
     // Act
     const result = BusinessSettingsFormSchema.safeParse({
       ...VALID,
@@ -36,14 +37,14 @@ describe('BusinessSettingsFormSchema', () => {
     // Act
     const result = BusinessSettingsFormSchema.parse({
       minimum_decision_window_hours: '48',
-      default_charge_lead_hours: '24',
+      default_charge_lead_hours: '36',
       booking_cutoff_hours: '3',
     });
 
     // Assert
     expect(result).toEqual({
       minimum_decision_window_hours: 48,
-      default_charge_lead_hours: 24,
+      default_charge_lead_hours: 36,
       booking_cutoff_hours: 3,
     });
   });
@@ -62,7 +63,7 @@ describe('BusinessSettingsFormSchema', () => {
     },
   );
 
-  it.each([['0'], ['721'], ['12.5'], ['abc'], [''], [null]])(
+  it.each([['0'], ['31'], ['721'], ['36.5'], ['abc'], [''], [null]])(
     'rejects %j as a charge lead time',
     (raw) => {
       // Act

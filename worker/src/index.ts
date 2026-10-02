@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { env } from './env.js';
+import { withHeartbeat } from './liveness.js';
 import { generateTourInstances } from './jobs/generate-tour-instances.js';
 import { releaseExpiredHolds } from './jobs/release-expired-holds.js';
 import { sendNotifications } from './jobs/send-notifications.js';
@@ -91,8 +92,9 @@ schedule('reconcile-pending-payments', reconcilePendingPayments, FIVE_MINUTES_MS
 schedule('cleanup-rate-limits', cleanupRateLimits, ONE_HOUR_MS);
 // apply-retention: al inicio y luego una vez al día (retención de datos / PII, spec 0022)
 schedule('apply-retention', applyRetention, ONE_DAY_MS);
-// watch-charges: al inicio y luego cada minuto (watchdog del cobro diferido, spec 0029)
-schedule('watch-charges', watchCharges, ONE_MINUTE_MS);
+// watch-charges: al inicio y luego cada minuto (watchdog del cobro diferido, spec 0029). Es el
+// job que late: su check-in es la señal de que el worker sigue vivo.
+schedule('watch-charges', withHeartbeat(watchCharges), ONE_MINUTE_MS);
 // charge-departures: al inicio y luego cada minuto (motor del cobro del mínimo, spec 0033)
 schedule('charge-departures', chargeDepartures, ONE_MINUTE_MS);
 // close-payment-intents: al inicio y luego cada 5 minutos (barrido de intents y customers, spec 0029)

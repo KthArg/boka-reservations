@@ -10,7 +10,7 @@ import {
   decideRelease,
   canAttempt,
   isStaleMark,
-  shouldForceResolve,
+  isTooLateToCancelForMinimum,
   type CycleInput,
 } from '../../../src/charges/departure-cycle.js';
 import type { ChargeableBooking } from '../../../src/charges/departure-repository.js';
@@ -27,7 +27,6 @@ function cycle(overrides: Partial<CycleInput> = {}): CycleInput {
     minimum: 4,
     deadline: inHours(6),
     startsAt: inHours(240),
-    autoCancelBelowMinimum: true,
     now: NOW,
     ...overrides,
   };
@@ -94,46 +93,29 @@ describe('decideRelease — qué pasa con la salida después de soltar', () => {
     expect(decideRelease(cycle({ startsAt: inHours(100) }))).toBe(ReleaseOutcome.Close);
   });
 
-  it('auto-cancels near the departure when the tour allows it and no money was captured', () => {
-    expect(decideRelease(cycle({ startsAt: inHours(20) }))).toBe(ReleaseOutcome.AutoCancel);
-  });
-
-  it('asks a person when the tour does not auto-cancel', () => {
-    expect(decideRelease(cycle({ startsAt: inHours(20), autoCancelBelowMinimum: false }))).toBe(
+  // Decisión del usuario (2026-10-02): si la salida se hace o se cancela lo decide una persona.
+  it('always leaves the decision to a person near the departure', () => {
+    expect(decideRelease(cycle({ startsAt: inHours(30) }))).toBe(ReleaseOutcome.StaffDecision);
+    expect(decideRelease(cycle({ startsAt: inHours(20) }))).toBe(ReleaseOutcome.StaffDecision);
+    expect(decideRelease(cycle({ startsAt: inHours(30), captured: 2 }))).toBe(
       ReleaseOutcome.StaffDecision,
     );
   });
 
-  // Devolver plata ya cobrada es una decisión con consecuencias: no la toma el job.
-  it('asks a person whenever money was already captured', () => {
-    expect(decideRelease(cycle({ startsAt: inHours(20), captured: 2 }))).toBe(
-      ReleaseOutcome.StaffDecision,
-    );
-  });
-
-  it('closes rather than cancelling at exactly the 72 h floor', () => {
-    expect(decideRelease(cycle({ startsAt: inHours(72) }))).toBe(ReleaseOutcome.AutoCancel);
+  it('closes rather than deciding beyond the 72 h floor', () => {
+    expect(decideRelease(cycle({ startsAt: inHours(72) }))).toBe(ReleaseOutcome.StaffDecision);
     expect(decideRelease(cycle({ startsAt: inHours(73) }))).toBe(ReleaseOutcome.Close);
   });
 });
 
-describe('shouldForceResolve — red terminal', () => {
-  const MARGIN_MS = 3 * HOUR_MS;
-
-  it('forces a resolution once the departure is within the margin', () => {
-    expect(shouldForceResolve(cycle({ startsAt: inHours(2) }), MARGIN_MS)).toBe(true);
+describe('isTooLateToCancelForMinimum — el aviso de 24 horas', () => {
+  it('is not too late while 24 h or more remain', () => {
+    expect(isTooLateToCancelForMinimum(cycle({ startsAt: inHours(24) }))).toBe(false);
   });
 
-  it('forces it at the exact margin', () => {
-    expect(shouldForceResolve(cycle({ startsAt: inHours(3) }), MARGIN_MS)).toBe(true);
-  });
-
-  it('leaves the departure alone while it is beyond the margin', () => {
-    expect(shouldForceResolve(cycle({ startsAt: inHours(4) }), MARGIN_MS)).toBe(false);
-  });
-
-  it('forces it on a departure that already started', () => {
-    expect(shouldForceResolve(cycle({ startsAt: inHours(-1) }), MARGIN_MS)).toBe(true);
+  it('is too late with less than 24 h, and on a departure that already started', () => {
+    expect(isTooLateToCancelForMinimum(cycle({ startsAt: inHours(23.9) }))).toBe(true);
+    expect(isTooLateToCancelForMinimum(cycle({ startsAt: inHours(-1) }))).toBe(true);
   });
 });
 

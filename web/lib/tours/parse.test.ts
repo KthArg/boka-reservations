@@ -84,7 +84,7 @@ describe('TourFormSchema — charge_timing y charge_lead_hours', () => {
     const form = formWith({
       ...VALID_FIELDS,
       charge_timing: ChargeTiming.BeforeDeparture,
-      charge_lead_hours: '12',
+      charge_lead_hours: '36',
     });
 
     // Act
@@ -92,7 +92,7 @@ describe('TourFormSchema — charge_timing y charge_lead_hours', () => {
 
     // Assert
     expect(result.charge_timing).toBe(ChargeTiming.BeforeDeparture);
-    expect(result.charge_lead_hours).toBe(12);
+    expect(result.charge_lead_hours).toBe(36);
   });
 
   it('reads an empty lead time as null, which means the global value', () => {
@@ -130,7 +130,8 @@ describe('TourFormSchema — charge_timing y charge_lead_hours', () => {
     expect(result.charge_timing).toBe(ChargeTiming.BeforeDeparture);
   });
 
-  it.each(['0', '721', '12.5', 'abc'])('rejects %j as a lead time', (raw) => {
+  // Con menos de 32 horas el ciclo abriría sin ventana antes de su plazo (…055).
+  it.each(['0', '31', '721', '36.5', 'abc'])('rejects %j as a lead time', (raw) => {
     // Arrange
     const form = formWith({ ...VALID_FIELDS, charge_lead_hours: raw });
 
