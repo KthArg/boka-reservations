@@ -658,7 +658,7 @@
     "nav-label": "Settings",
     "page-title": "Settings",
     "section-minimum": "Minimum participants and charging",
-    "field-decision-window": "Decision window (hours before departure)",
+    "field-decision-window": "Time to fix a declined charge (hours before departure)",
     "hint-decision-window": "How many hours before the departure a tourist can still fix a declined charge (change the card or confirm with their bank). Between {min} and {max} hours.",
     "field-charge-lead-hours": "Default charge lead time (hours before departure)",
     "hint-charge-lead-hours": "How many hours before the departure tourists are charged, for tours that charge \"before the departure\" and do not set their own lead time. The charge deadline passes 30 hours before the departure, so the minimum is {min}. Between {min} and {max} hours.",

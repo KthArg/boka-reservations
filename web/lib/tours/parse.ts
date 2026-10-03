@@ -47,8 +47,6 @@ export function parseTourFields(formData: FormData): Record<string, unknown> {
     child_age_max: formData.get('child_age_max'),
     min_participants: formData.get('min_participants'),
     max_capacity: formData.get('max_capacity'),
-    // Checkbox: el navegador solo envía el campo cuando está marcado.
-    auto_cancel_below_minimum: formData.get('auto_cancel_below_minimum') !== null,
     // `?? undefined`: el .default() de Zod solo cubre undefined, y un form sin el campo
     // (tours creados antes del spec 0033) tiene que caer en "antes de la salida".
     charge_timing: formData.get('charge_timing') ?? undefined,
