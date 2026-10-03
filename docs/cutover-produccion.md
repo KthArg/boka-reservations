@@ -84,28 +84,29 @@ Si falta una requerida, el proceso **lanza al arranque** (fail-fast).
 
 ## Fase 2 — Supabase de producción
 
-- [ ] Crear proyecto Supabase de prod (región más cercana a CR; password de DB fuerte y guardada).
-- [ ] Anotar de **Settings → API**: Project URL, `anon` key, `service_role` key (esta última es secreta).
+- [x] Crear proyecto Supabase de prod (región más cercana a CR; password de DB fuerte y guardada).
+- [x] Anotar de **Settings → API**: Project URL, `anon` key, `service_role` key (esta última es secreta).
 - [ ] **Settings → Database → Backups**: confirmar backups automáticos y política de retención.
+      **Pendiente (verificado 2026-10-03): el proyecto de prod está en el plan Free, que no incluye backups automáticos. Pasar a Pro antes de lanzar.**
 
 ## Fase 3 — Desplegar la base de datos
 
 Desde la raíz del repo, con `main` checked out:
 
-- [ ] `npx supabase login`
-- [ ] `npx supabase link --project-ref <project-ref-de-prod>`
-- [ ] `npx supabase db push` — aplica las **37 migraciones** (`…001`–`…037`): schema, RLS, funciones
+- [x] `npx supabase login`
+- [x] `npx supabase link --project-ref <project-ref-de-prod>`
+- [x] `npx supabase db push` — aplica las **37 migraciones** (`…001`–`…037`): schema, RLS, funciones
       `SECURITY DEFINER` endurecidas, rate limits, retención/anonimización, prevención de sobreventa,
       guard de `payment_mismatch`. **Esto incluye todos los fixes de seguridad que la anon key pública
       requiere** (REVOKE execute a anon, etc.).
 - [ ] `npx supabase config push` — empuja settings de `config.toml` soportados (incl. password policy
       del 0023 y templates de auth).
-- [ ] **Dashboard → Authentication → Providers/Sign In → "Allow new users to sign up" = OFF**
+- [x] **Dashboard → Authentication → Providers/Sign In → "Allow new users to sign up" = OFF**
       (invite-only; `config.toml` solo gobierna local — esto NO se hereda).
-- [ ] **Dashboard → Authentication → Emails / SMTP**: configurar SMTP custom (Resend) para los emails
+- [x] **Dashboard → Authentication → Emails / SMTP**: configurar SMTP custom (Resend) para los emails
       de invitación de admin/staff y verificar que el template `invite` quede con el link a
       `/{locale}/auth/confirm?token_hash=…&type=invite&next=/reset-password`.
-- [ ] **Dashboard → Authentication → URL Configuration**: `Site URL = https://<dominio-de-prod>`;
+- [x] **Dashboard → Authentication → URL Configuration**: `Site URL = https://<dominio-de-prod>`;
       `Redirect URLs` con `https://<dominio-de-prod>/**`.
 
 ### Verificaciones post-deploy de la DB
@@ -113,20 +114,20 @@ Desde la raíz del repo, con `main` checked out:
 - [ ] Como **anon** (con la anon key de prod): `POST /rest/v1/rpc/confirm_booking` con la firma real
       → **401 permission denied** (no debe ejecutar el cuerpo). Igual para `cancel_booking`,
       `is_public_request`, etc.
-- [ ] `POST /auth/v1/signup` como anon → **422 `signup_disabled`**.
-- [ ] El login de un admin de prueba funciona (422 solo en signup, no en login).
+- [x] `POST /auth/v1/signup` como anon → **422 `signup_disabled`**.
+- [x] El login de un admin de prueba funciona (422 solo en signup, no en login).
 
 ## Fase 2b/4 — Vercel (web)
 
-- [ ] Importar el repo en Vercel; **Root Directory = `web`**; Framework = Next.js; Production branch = `main`.
-- [ ] Node 22 (Vercel respeta `engines`/`.nvmrc`).
-- [ ] Cargar todas las variables de la tabla **Vercel (web)** (arriba).
-- [ ] Deploy. Si el build falla, primer sospechoso = variable faltante (el env valida al arranque).
+- [x] Importar el repo en Vercel; **Root Directory = `web`**; Framework = Next.js; Production branch = `main`.
+- [x] Node 22 (Vercel respeta `engines`/`.nvmrc`).
+- [x] Cargar todas las variables de la tabla **Vercel (web)** (arriba).
+- [x] Deploy. Si el build falla, primer sospechoso = variable faltante (el env valida al arranque).
 
 ## Fase 2b/4 — Railway (worker)
 
-- [ ] Crear proyecto/servicio en Railway desde el repo; **Root Directory = `worker`**; Node 22.
-- [ ] El `worker/railway.json` fija `startCommand = pnpm start` (corre `tsx src/index.ts`), restart
+- [x] Crear proyecto/servicio en Railway desde el repo; **Root Directory = `worker`**; Node 22.
+- [x] El `worker/railway.json` fija `startCommand = pnpm start` (corre `tsx src/index.ts`), restart
       `ON_FAILURE` y un **`buildCommand` no-op**. Install = `pnpm install` (hay `worker/pnpm-lock.yaml`
       propio; el worker es self-contained, no importa `@shared` en runtime). El worker **no compila**:
       corre TS con `tsx` en runtime.
@@ -135,9 +136,9 @@ Desde la raíz del repo, con `main` checked out:
       y con Root Directory = `worker` la carpeta `web/` no está en el contexto. Por eso el `buildCommand`
       del `railway.json` lo saltea. Si configurás por UI en vez de por archivo: **Settings → Build →
       Custom Build Command** = `echo "sin build"`.
-- [ ] **No exponer puerto/dominio**: el worker es un proceso de fondo (scheduler), no un server HTTP.
-- [ ] Cargar las variables de la tabla **Railway (worker)** (arriba).
-- [ ] Deploy y confirmar en logs `[worker] alive — <timestamp>` y que los jobs agendan
+- [x] **No exponer puerto/dominio**: el worker es un proceso de fondo (scheduler), no un server HTTP.
+- [x] Cargar las variables de la tabla **Railway (worker)** (arriba).
+- [x] Deploy y confirmar en logs `[worker] alive — <timestamp>` y que los jobs agendan
       (`generate-tour-instances`, `release-expired-holds`, `send-notifications`, `reconcile-pending-payments`,
       `cleanup-rate-limits`, `apply-retention`) sin error de env.
 
@@ -165,24 +166,24 @@ El auto-registro está OFF y **no hay trigger** que cree `public.users` al crear
 que el primer admin se siembra a mano. El hook `custom_access_token_hook` inyecta `user_role` buscando
 `public.users` **por `id`** (`WHERE id = user_id`), por eso la fila debe usar el **UUID del usuario de auth**.
 
-- [ ] **Dashboard → Authentication → Users → Add user**: email + password; marcar **Auto Confirm User**.
-- [ ] Copiar el **User UID** recién creado.
-- [ ] **Dashboard → SQL Editor**, reemplazando el UUID, email y nombre:
+- [x] **Dashboard → Authentication → Users → Add user**: email + password; marcar **Auto Confirm User**.
+- [x] Copiar el **User UID** recién creado.
+- [x] **Dashboard → SQL Editor**, reemplazando el UUID, email y nombre:
 
   ```sql
   insert into public.users (id, email, role, full_name)
   values ('<AUTH_USER_UID>', '<email>', 'admin', '<Nombre Apellido>');
   ```
 
-- [ ] Login en `https://boka-reservations.vercel.app/es/login` con esas credenciales → debe entrar al
+- [x] Login en `https://boka-reservations.vercel.app/es/login` con esas credenciales → debe entrar al
       panel (`/es/dashboard`). Si redirige a login en loop, revisar que el **Custom Access Token Hook**
       esté registrado y apunte a `public.custom_access_token_hook` (Authentication → Hooks).
 
 ## Fase 5 — Dominio, DNS, email y webhook
 
-- [ ] **Resend**: crear cuenta, agregar el dominio del cliente, cargar DKIM/SPF/return-path en DNS y
+- [x] **Resend**: crear cuenta, agregar el dominio del cliente, cargar DKIM/SPF/return-path en DNS y
       verificar. Generar API key con scope `emails:send` → es el `RESEND_API_KEY`.
-- [ ] **Vercel → Domains**: apuntar el dominio de prod (DNS del cliente). Confirmar que `APP_URL`,
+- [x] **Vercel → Domains**: apuntar el dominio de prod (DNS del cliente). Confirmar que `APP_URL`,
       `Site URL` de Supabase y el dominio de Vercel son **el mismo origen** (evita el split
       `127.0.0.1`/`localhost` que rompía cookies en dev; en prod = un solo dominio).
 - [ ] **OnvoPay (live)**: registrar la URL del webhook de prod
@@ -196,6 +197,8 @@ que el primer admin se siembra a mano. El hook `custom_access_token_hook` inyect
 - [ ] Texto definitivo de privacidad y T&C reemplazando los placeholders de `/privacy` y `/terms`.
 - [ ] Incrementar `PRIVACY_NOTICE_VERSION` en `shared/constants/legal.ts` al publicar el texto.
 - [ ] Registro de la base ante PRODHAB y acuerdos de encargado de tratamiento (Resend/Supabase/OnvoPay).
+
+> Verificado el 2026-10-03 en el dashboard de Supabase y en producción: registro abierto deshabilitado, SMTP de Resend (`smtp.resend.com`, remitente `noreply@bokaverdecr.com`), Site URL `https://reservas.bokaverdecr.com`, web y worker desplegados desde `main`, admin creado, dominio en Vercel. Las casillas sin marcar de arriba siguen pendientes o no se pudieron verificar desde afuera.
 
 ## Fase 6b — Prueba de cobro diferido con tarjeta real (spec 0029)
 
