@@ -99,8 +99,9 @@ Desde la raíz del repo, con `main` checked out:
       `SECURITY DEFINER` endurecidas, rate limits, retención/anonimización, prevención de sobreventa,
       guard de `payment_mismatch`. **Esto incluye todos los fixes de seguridad que la anon key pública
       requiere** (REVOKE execute a anon, etc.).
-- [ ] `npx supabase config push` — empuja settings de `config.toml` soportados (incl. password policy
-      del 0023 y templates de auth).
+- [x] ~~`npx supabase config push`~~ — **NO correrlo**: subiría la `site_url` local (`127.0.0.1`) y
+      `[auth.email] enable_signup = true` de `config.toml`. La política de contraseñas del 0023 se cargó
+      a mano en el dashboard (mínimo 8, minúsculas, mayúsculas y dígitos; verificado 2026-10-03).
 - [x] **Dashboard → Authentication → Providers/Sign In → "Allow new users to sign up" = OFF**
       (invite-only; `config.toml` solo gobierna local — esto NO se hereda).
 - [x] **Dashboard → Authentication → Emails / SMTP**: configurar SMTP custom (Resend) para los emails
@@ -111,7 +112,7 @@ Desde la raíz del repo, con `main` checked out:
 
 ### Verificaciones post-deploy de la DB
 
-- [ ] Como **anon** (con la anon key de prod): `POST /rest/v1/rpc/confirm_booking` con la firma real
+- [x] Como **anon** (con la anon key de prod): `POST /rest/v1/rpc/confirm_booking` con la firma real
       → **401 permission denied** (no debe ejecutar el cuerpo). Igual para `cancel_booking`,
       `is_public_request`, etc.
 - [x] `POST /auth/v1/signup` como anon → **422 `signup_disabled`**.
@@ -131,7 +132,7 @@ Desde la raíz del repo, con `main` checked out:
       `ON_FAILURE` y un **`buildCommand` no-op**. Install = `pnpm install` (hay `worker/pnpm-lock.yaml`
       propio; el worker es self-contained, no importa `@shared` en runtime). El worker **no compila**:
       corre TS con `tsx` en runtime.
-- [ ] **Gotcha (build):** Railpack (builder default de Railway) corre `pnpm run build` (`tsc`) por
+- [x] **Gotcha (build):** Railpack (builder default de Railway) corre `pnpm run build` (`tsc`) por
       defecto, que **falla** porque los tests de integración importan `../../../web/types/database.js`
       y con Root Directory = `worker` la carpeta `web/` no está en el contexto. Por eso el `buildCommand`
       del `railway.json` lo saltea. Si configurás por UI en vez de por archivo: **Settings → Build →
@@ -249,7 +250,7 @@ que el primer admin se siembra a mano. El hook `custom_access_token_hook` inyect
       cancelación y reembolso.
 - [ ] Validar que los **reportes financieros** cuadran: ingreso neto = pagos `succeeded` − refunds
       `succeeded` (consulta manual al menos una vez).
-- [ ] Confirmar Sentry recibe eventos (web y worker) si se cargaron los DSN.
+- [x] Confirmar Sentry recibe eventos (web y worker) si se cargaron los DSN.
 - [ ] **Tag de release**: `git tag v0.1.0 && git push origin v0.1.0` (punto de retorno).
 - [ ] Recién con el legal cerrado: difundir la URL pública.
 
