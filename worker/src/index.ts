@@ -76,6 +76,11 @@ console.log(
   `[worker] cobro diferido: ${env.DEFERRED_CHARGE_ENABLED ? 'encendido' : 'apagado'}` +
     (env.RELEASE_AUTHORIZATIONS_ONLY ? ' (modo soltar autorizaciones)' : ''),
 );
+// El modo de la llave, nunca la llave: el día del paso a live, el log confirma que el worker
+// cobra en el mismo modo que la web (que valida sus dos llaves al arrancar).
+console.log(
+  `[worker] OnvoPay: modo ${/^onvo_(test|live)_/.exec(env.ONVOPAY_SECRET_KEY ?? '')?.[1] ?? 'desconocido'}`,
+);
 timers.push(setInterval(logAlive, ALIVE_INTERVAL_MS));
 
 // generate-tour-instances: al inicio y luego una vez al día

@@ -81,7 +81,6 @@ export const TourFormSchema = z
     ),
     min_participants: z.coerce.number().int().min(1),
     max_capacity: z.coerce.number().int().positive(),
-    auto_cancel_below_minimum: z.boolean().default(false),
     charge_timing: z.nativeEnum(ChargeTiming).default(ChargeTiming.BeforeDeparture),
     // Vacío o ausente (el campo solo se muestra con "antes de la salida") → null, que en DB
     // significa "usar business_settings.default_charge_lead_hours".

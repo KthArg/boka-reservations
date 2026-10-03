@@ -39,11 +39,28 @@ const envSchema = z.object({
   NEXT_PUBLIC_ONVOPAY_API_BASE_URL: z.string().url().optional(),
 });
 
+/** Modo de una llave de OnvoPay por su prefijo (`onvo_test_…` / `onvo_live_…`); null si no lo dice. */
+export function onvopayKeyMode(key: string): 'test' | 'live' | null {
+  const match = /^onvo_(test|live)_/.exec(key);
+  return match ? (match[1] as 'test' | 'live') : null;
+}
+
 // El aviso de privacidad promete la IP cifrada: en producción no se arranca sin la clave.
-const envSchemaWithRules = envSchema.refine(
-  (e) => e.NODE_ENV !== 'production' || e.IDENTIFIER_HASH_SECRET !== undefined,
-  { path: ['IDENTIFIER_HASH_SECRET'] },
-);
+// Deuda del spec 0029: las dos llaves de OnvoPay tienen que ser del mismo modo. Con una de prueba y
+// otra live, el navegador tokeniza la tarjeta en un modo y el servidor la cobra en el otro: el
+// checkout falla con cada turista. El deploy muere al arrancar en vez de llegar a ese punto.
+const envSchemaWithRules = envSchema
+  .refine((e) => e.NODE_ENV !== 'production' || e.IDENTIFIER_HASH_SECRET !== undefined, {
+    path: ['IDENTIFIER_HASH_SECRET'],
+  })
+  .refine(
+    (e) => {
+      const secret = onvopayKeyMode(e.ONVOPAY_SECRET_KEY);
+      const publishable = onvopayKeyMode(e.NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY);
+      return secret === null || publishable === null || secret === publishable;
+    },
+    { path: ['NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY'] },
+  );
 
 function parseEnv() {
   const result = envSchemaWithRules.safeParse(process.env);

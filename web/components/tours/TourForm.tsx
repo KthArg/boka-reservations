@@ -119,7 +119,7 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
 
       <div className={styles.sideCol}>
         <TourDetailsSection values={basic} onChange={setBasicField} errors={errors} />
-        <TourMinimumPolicyField checked={defaultValues?.auto_cancel_below_minimum ?? false} />
+        <TourMinimumPolicyField />
         <TourChargeTimingField
           timing={chargeTiming}
           leadHours={chargeLeadHours}

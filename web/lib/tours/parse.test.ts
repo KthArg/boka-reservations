@@ -32,52 +32,6 @@ function formWith(fields: Record<string, string>): FormData {
   return form;
 }
 
-describe('parseTourFields — auto_cancel_below_minimum', () => {
-  it('reads a checked box as true', () => {
-    // Arrange
-    const form = formWith({ ...VALID_FIELDS, auto_cancel_below_minimum: 'on' });
-
-    // Act
-    const fields = parseTourFields(form);
-
-    // Assert
-    expect(fields.auto_cancel_below_minimum).toBe(true);
-  });
-
-  it('reads an unchecked box, which the browser omits, as false', () => {
-    // Act
-    const fields = parseTourFields(formWith(VALID_FIELDS));
-
-    // Assert
-    expect(fields.auto_cancel_below_minimum).toBe(false);
-  });
-});
-
-describe('TourFormSchema — auto_cancel_below_minimum', () => {
-  it('keeps the toggle when the form enables it', () => {
-    // Arrange
-    const form = formWith({ ...VALID_FIELDS, auto_cancel_below_minimum: 'on' });
-
-    // Act
-    const result = TourFormSchema.parse(parseTourFields(form));
-
-    // Assert
-    expect(result.auto_cancel_below_minimum).toBe(true);
-  });
-
-  it('defaults to staff decision when the field is absent', () => {
-    // Arrange
-    const fields = parseTourFields(formWith(VALID_FIELDS));
-    delete fields.auto_cancel_below_minimum;
-
-    // Act
-    const result = TourFormSchema.parse(fields);
-
-    // Assert
-    expect(result.auto_cancel_below_minimum).toBe(false);
-  });
-});
-
 describe('TourFormSchema — charge_timing y charge_lead_hours', () => {
   it('keeps the timing and the lead time the form sends', () => {
     // Arrange

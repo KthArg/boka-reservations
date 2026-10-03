@@ -658,7 +658,7 @@
     "nav-label": "Configuración",
     "page-title": "Configuración",
     "section-minimum": "Mínimo de participantes y cobro",
-    "field-decision-window": "Ventana de decisión (horas antes de la salida)",
+    "field-decision-window": "Plazo para resolver un cobro rechazado (horas antes de la salida)",
     "hint-decision-window": "Hasta cuántas horas antes de la salida puede un turista resolver un cobro rechazado (cambiar la tarjeta o confirmar con su banco). Entre {min} y {max} horas.",
     "field-charge-lead-hours": "Plazo de cobro por defecto (horas antes de la salida)",
     "hint-charge-lead-hours": "Cuántas horas antes de la salida se cobra a los turistas, para los tours que cobran «antes de la salida» y no fijan su propio plazo. El plazo de cobro vence 30 horas antes de la salida, así que el mínimo es {min}. Entre {min} y {max} horas.",
