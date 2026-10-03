@@ -5,7 +5,15 @@ import { formatDateTime, formatMoney } from './format.js';
 // Aviso de salida cancelada por el operador (spec 0035). Nombra el motivo y dice qué pasa con la
 // plata: reembolso del 100 %, reserva en revisión (clima o seguridad) o nada que devolver.
 
-export type DepartureReason = 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other';
+// schedule_withdrawn (spec 0044) solo se usa en salidas sin reservas, así que no debería llegar a
+// un correo; si llega, se lee como una cancelación sin causa detallada.
+export type DepartureReason =
+  | 'minimum'
+  | 'weather'
+  | 'safety'
+  | 'force_majeure'
+  | 'other'
+  | 'schedule_withdrawn';
 
 export type DepartureOutcome =
   | { kind: 'refund'; amountCents: number; currency: string }
@@ -31,6 +39,7 @@ const COPY = {
       safety: 'Tuvimos que cancelar la salida por razones de seguridad.',
       force_majeure: 'Tuvimos que cancelar la salida por una causa de fuerza mayor.',
       other: 'Tuvimos que cancelar la salida.',
+      schedule_withdrawn: 'Tuvimos que cancelar la salida.',
     },
     refund: (amount: string) =>
       `Te devolvemos el 100 % de lo que pagaste: ${amount}, a la misma tarjeta. Según tu banco, puede tardar algunos días hábiles en verse.`,
@@ -52,6 +61,7 @@ const COPY = {
       safety: 'We had to cancel the departure for safety reasons.',
       force_majeure: 'We had to cancel the departure due to force majeure.',
       other: 'We had to cancel the departure.',
+      schedule_withdrawn: 'We had to cancel the departure.',
     },
     refund: (amount: string) =>
       `We are refunding 100% of what you paid: ${amount}, to the same card. Depending on your bank, it may take a few business days to appear.`,

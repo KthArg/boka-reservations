@@ -10,6 +10,8 @@ export const DepartureCancellationReason = {
   /** Fuerza mayor (cierre de ruta, actividad volcánica): se trata como clima o seguridad. */
   ForceMajeure: 'force_majeure',
   Other: 'other',
+  /** Retirada al guardar el tour: su horario se desactivó o quedó fuera de vigencia (spec 0044). */
+  ScheduleWithdrawn: 'schedule_withdrawn',
 } as const;
 
 export type DepartureCancellationReasonValue =

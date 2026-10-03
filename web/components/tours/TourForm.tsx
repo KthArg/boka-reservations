@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { createTour, updateTour } from '@/lib/tours/actions';
 import { useSubmitWithoutReset } from '@/lib/forms/use-submit-without-reset';
 import { hasInvalidNumbers } from '@/lib/tours/number-rules';
@@ -103,6 +104,13 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
           {e}
         </p>
       ))}
+      {/* Spec 0044: quedaron salidas fuera de vigencia con reservas; el admin las resuelve. */}
+      {state?.success && state.kept ? (
+        <p className={styles.formError} data-error>
+          {t('schedules-withdrawn-notice', { withdrawn: state.withdrawn ?? 0, kept: state.kept })}{' '}
+          <Link href="/dashboard/departures">{t('schedules-go-to-departures')}</Link>
+        </p>
+      ) : null}
 
       {/* Spec 0042: textos, precios y horarios a la izquierda; la ficha y las reglas a la derecha. */}
       <div className={styles.mainCol}>

@@ -8,6 +8,8 @@ import { ChargeStatus } from './ChargeStatus';
 import { DecisionTray } from './DecisionTray';
 import { MinimumTray } from './MinimumTray';
 import { ReviewTray } from './ReviewTray';
+import { GuidelessTray } from './GuidelessTray';
+import { needsGuide } from '@/lib/guides/needs-guide';
 import { RefundTray } from './RefundTray';
 import { CancelDepartureDialog } from './CancelDepartureDialog';
 import { listRefundsToResolve, listReviewBookings } from '@/lib/operations/repository';
@@ -25,12 +27,15 @@ export default async function SalidasPage() {
     listRefundsToResolve(),
   ]);
 
+  const now = new Date();
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>{t('departures-title')}</h1>
       </div>
 
+      <GuidelessTray departures={departures} guides={guides} now={now} />
       <RefundTray refunds={refunds} />
       <ReviewTray bookings={reviews} />
       <MinimumTray departures={departures} />
@@ -85,6 +90,9 @@ export default async function SalidasPage() {
                     <ChargeStatus charge={dep.charge} />
                   </td>
                   <td className={styles.td}>
+                    {needsGuide(dep, now) ? (
+                      <span className={styles.noGuide}>{t('guideless-mark')}</span>
+                    ) : null}
                     <GuideAssigner
                       instanceId={dep.id}
                       guides={guides}

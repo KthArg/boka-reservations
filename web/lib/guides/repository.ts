@@ -14,7 +14,8 @@ type RawBooking = {
   tickets_student: number;
 };
 
-type RawAssignment = { users: { id: string; full_name: string } | null };
+type RawGuide = { id: string; full_name: string; active: boolean };
+type RawAssignment = { users: RawGuide | null };
 
 type RawDeparture = {
   id: string;
@@ -40,7 +41,7 @@ const DEPARTURES_SELECT = `
   minimum_charge_triggered_at, minimum_charge_closed_at, minimum_resolved_at,
   minimum_resolution, staff_decision_required_at, min_participants_at_trigger,
   tours!inner ( name_es, min_participants ),
-  tour_instance_guides ( users!guide_id ( id, full_name ) ),
+  tour_instance_guides ( users!guide_id ( id, full_name, active ) ),
   bookings (
     status, payment_method_id, authorized_at, cancel_claimed_at,
     tickets_adult, tickets_child, tickets_student
@@ -62,6 +63,19 @@ const DEFERRED_LIVE_STATUSES: readonly string[] = [
 /** Reserva viva del cobro diferido: la salida la decide el motor del spec 0033. */
 function isDeferredLive(b: RawBooking): boolean {
   return b.payment_method_id !== null && DEFERRED_LIVE_STATUSES.includes(b.status);
+}
+
+/** Reservas que pueden terminar con un turista en el punto de encuentro (spec 0043). */
+const GUIDE_LIVE_STATUSES: readonly string[] = [
+  BookingStatus.Confirmed,
+  BookingStatus.PendingMinimum,
+  BookingStatus.PendingPayment,
+];
+
+function liveTickets(bookings: RawBooking[] | null): number {
+  return (bookings ?? [])
+    .filter((b) => GUIDE_LIVE_STATUSES.includes(b.status))
+    .reduce((s, b) => s + ticketsOf(b), 0);
 }
 
 function ticketsOf(b: RawBooking): number {
@@ -106,18 +120,21 @@ function toCharge(r: RawDeparture, now: Date): Departure['charge'] {
   };
 }
 
-function toGuide(users: { id: string; full_name: string } | null): AssignableGuide | null {
+function toGuide(users: RawGuide | null): AssignableGuide | null {
   return users ? { id: users.id, fullName: users.full_name } : null;
 }
 
 function toDeparture(r: RawDeparture, now: Date): Departure {
+  const guide = r.tour_instance_guides?.[0]?.users ?? null;
   return {
     id: r.id,
     tourName: r.tours?.name_es ?? '',
     startsAt: r.starts_at,
     capacityTotal: r.capacity_total,
     confirmedTickets: confirmedTickets(r.bookings),
-    assignedGuide: toGuide(r.tour_instance_guides?.[0]?.users ?? null),
+    liveTickets: liveTickets(r.bookings),
+    assignedGuide: toGuide(guide),
+    assignedGuideActive: guide?.active ?? false,
     charge: toCharge(r, now),
     minimum: minimumView({
       startsAt: r.starts_at,

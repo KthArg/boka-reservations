@@ -132,6 +132,7 @@ describe('listUpcomingDepartures / listGuides (integration)', () => {
 
     expect(dep).toBeDefined();
     expect(dep!.assignedGuide).toEqual({ id: guideId, fullName: 'Guía Salidas' });
+    expect(dep!.assignedGuideActive).toBe(true);
     expect(dep!.confirmedTickets).toBe(3);
   });
 
@@ -144,6 +145,72 @@ describe('listUpcomingDepartures / listGuides (integration)', () => {
 
     expect(dep).toBeDefined();
     expect(dep!.assignedGuide).toBeNull();
+  });
+
+  // Spec 0043: cuentan los cupos que podrían presentarse, no solo los cobrados.
+  it('counts live tickets across confirmed, pending and claimed bookings', async () => {
+    const instanceId = await seedInstance(new Date(Date.now() + 2 * DAY_MS).toISOString());
+    const base = {
+      tour_instance_id: instanceId,
+      customer_name: 'C',
+      customer_email: 'c@example.com',
+      total_amount_cents: 5000,
+    };
+    await admin.from('bookings').insert([
+      { ...base, tickets_adult: 1, status: 'confirmed' },
+      { ...base, tickets_adult: 2, status: 'pending_payment' },
+      { ...base, tickets_adult: 4, status: 'cancelled' },
+    ]);
+
+    const dep = (await listUpcomingDepartures()).find((d) => d.id === instanceId);
+
+    expect(dep!.liveTickets).toBe(3);
+    expect(dep!.confirmedTickets).toBe(1);
+  });
+
+  // Spec 0043: un guía desactivado no va a ir; la salida tiene que volver a la bandeja.
+  it('reports a deactivated guide as not active', async () => {
+    const instanceId = await seedInstance(new Date(Date.now() + 2 * DAY_MS).toISOString());
+    const { data: inactive } = await admin
+      .from('users')
+      .insert({
+        email: `dep-guide-off-${crypto.randomUUID()}@example.com`,
+        role: 'guide',
+        full_name: 'Guía Inactivo',
+        phone: '+506 8000-0004',
+        active: false,
+      })
+      .select('id')
+      .single();
+    await admin.from('tour_instance_guides').insert({
+      tour_instance_id: instanceId,
+      guide_id: inactive!.id,
+      assigned_by: staffId,
+    });
+
+    const dep = (await listUpcomingDepartures()).find((d) => d.id === instanceId);
+
+    expect(dep!.assignedGuide?.id).toBe(inactive!.id);
+    expect(dep!.assignedGuideActive).toBe(false);
+    await deleteToursDeep(admin, createdTourIds.splice(0));
+    await admin.from('users').delete().eq('id', inactive!.id);
+  });
+
+  it('does not return a cancelled departure even with bookings', async () => {
+    const instanceId = await seedInstance(new Date(Date.now() + 2 * DAY_MS).toISOString());
+    await admin.from('bookings').insert({
+      tour_instance_id: instanceId,
+      customer_name: 'C',
+      customer_email: 'c@example.com',
+      tickets_adult: 1,
+      total_amount_cents: 5000,
+      status: 'confirmed',
+    });
+    await admin.from('tour_instances').update({ status: 'cancelled' }).eq('id', instanceId);
+
+    const departures = await listUpcomingDepartures();
+
+    expect(departures.some((d) => d.id === instanceId)).toBe(false);
   });
 
   it('listGuides incluye al guía sembrado', async () => {

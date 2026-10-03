@@ -31,6 +31,14 @@ export const DepartureResolutionOutcome = {
   MinimumTooLate: 'minimum_too_late',
 } as const;
 
+/**
+ * Aviso de salidas con turistas y sin guía (spec 0043): cuántos días hacia adelante se mira, desde
+ * cuántas horas la salida es urgente y cuántas muestra la bandeja como mucho. Solo los usa la web.
+ */
+export const GUIDE_WARNING_HORIZON_DAYS = 14;
+export const GUIDE_WARNING_URGENT_HOURS = 24;
+export const GUIDE_WARNING_TRAY_LIMIT = 30;
+
 /** Ruta del panel de salidas, compartida por las acciones que la revalidan. */
 export const DEPARTURES_PATH = '/dashboard/departures';
 

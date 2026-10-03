@@ -25,6 +25,8 @@ export enum TourActionError {
   ScheduleRangeInvalid = 'tour_schedule_range_invalid',
   /** No se puede eliminar un horario con salidas ya generadas (FK); desactivarlo. */
   ScheduleInUse = 'tour_schedule_in_use',
+  /** Los horarios se guardaron pero el retiro de salidas fuera de vigencia falló (spec 0044). */
+  ScheduleWithdrawFailed = 'tour_schedule_withdraw_failed',
   /** No se archiva un tour con reservas activas en salidas futuras (spec 0028, B12). */
   ArchiveHasBookings = 'tour_archive_has_bookings',
   /** El tour vende tiquete de niño y no publica las edades (spec 0034, cláusula 3). */
