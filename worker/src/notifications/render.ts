@@ -22,7 +22,14 @@ export type BookingRow = {
   tour_instance: {
     starts_at: string;
     /** Motivo de cancelación de la salida (spec 0035); null si no se canceló. */
-    cancellation_reason: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
+    cancellation_reason:
+      | 'minimum'
+      | 'weather'
+      | 'safety'
+      | 'force_majeure'
+      | 'other'
+      | 'schedule_withdrawn'
+      | null;
     tour: {
       name_es: string;
       name_en: string;

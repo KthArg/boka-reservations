@@ -1,4 +1,5 @@
 import { TourActionError } from '@shared/constants/tours';
+import { crDate } from '@/lib/dates/cr-date';
 import { isValidMonthDay, seasonsOverlap } from '@/lib/pricing/season';
 import type { PricingRow, ScheduleRow } from './types';
 
@@ -46,12 +47,11 @@ export function hasUnlabeledSeason(rows: PricingRow[]): boolean {
  * Horarios con vigencia invertida (review pre-PR del workstream C): un rango
  * `valid_from > valid_until` hace que el generador no cree salidas SILENCIOSAMENTE
  * (lucro cesante sin alerta). tour_schedules no tiene CHECK propio en DB.
+ * Spec 0044: se compara contra el "Desde" efectivo (vacío = hoy en Costa Rica, que es lo que
+ * guarda mapSchedules), y en todas las filas, activas o no.
  */
-export function hasInvalidScheduleRange(rows: ScheduleRow[]): boolean {
-  return rows.some(
-    (r) =>
-      r.active && r.valid_from != null && r.valid_until != null && r.valid_from > r.valid_until,
-  );
+export function hasInvalidScheduleRange(rows: ScheduleRow[], today: string = crDate()): boolean {
+  return rows.some((r) => r.valid_until != null && (r.valid_from ?? today) > r.valid_until);
 }
 
 /**

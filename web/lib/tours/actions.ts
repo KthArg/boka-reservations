@@ -19,6 +19,7 @@ import { slugExists } from './repository';
 import { parseTourFields } from './parse';
 import { mapPricing, mapSchedules, mapTourColumns } from './map';
 import { reconcileRows, writeErrorCode } from './reconcile';
+import { withdrawOutOfValidity } from './withdraw';
 
 async function guardAdmin(): Promise<ActionResult | null> {
   try {
@@ -165,6 +166,14 @@ export async function updateTour(
     TourActionError.SchedulesWriteFailed,
   );
   if (schedulesError) return { success: false, errors: { _form: [schedulesError] } };
+
+  // Los horarios ya quedaron guardados: si el retiro falla, se informa y volver a guardar lo
+  // reintenta (es idempotente).
+  const withdrawal = await withdrawOutOfValidity(id);
+  if (!withdrawal) {
+    return { success: false, errors: { _form: [TourActionError.ScheduleWithdrawFailed] } };
+  }
+  if (withdrawal.kept > 0) return { success: true, id, ...withdrawal };
 
   const locale = await getLocale();
   redirect(`/${locale}/dashboard/tours`);

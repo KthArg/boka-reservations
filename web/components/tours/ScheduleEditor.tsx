@@ -86,6 +86,26 @@ export default function ScheduleEditor({ value, onChange, showErrors }: Props) {
                 />
               </label>
 
+              <label className={styles.fieldLabel}>
+                {t('schedules-valid-from')}
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={row.valid_from ?? ''}
+                  onChange={(e) => update(i, { valid_from: e.target.value || undefined })}
+                />
+              </label>
+
+              <label className={styles.fieldLabel}>
+                {t('schedules-valid-until')}
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={row.valid_until ?? ''}
+                  onChange={(e) => update(i, { valid_until: e.target.value || null })}
+                />
+              </label>
+
               <label className={styles.checkLabel}>
                 <input
                   type="checkbox"
@@ -98,6 +118,12 @@ export default function ScheduleEditor({ value, onChange, showErrors }: Props) {
           ))}
         </div>
       )}
+
+      {/* Spec 0044: las fechas en día de Costa Rica; cambiar día u hora no retira salidas viejas. */}
+      <p className={styles.hint}>{t('schedules-validity-hint')}</p>
+      {value.some((row) => row.id) ? (
+        <p className={styles.hint}>{t('schedules-existing-hint')}</p>
+      ) : null}
 
       <button type="button" className={styles.addBtn} onClick={addRow}>
         + {t('schedules-add-row')}

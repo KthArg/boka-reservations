@@ -1,6 +1,6 @@
 # 0044 — Vigencia de los horarios del tour desde el formulario
 
-- **Estado**: in-review
+- **Estado**: approved
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-10-03
 - **Última actualización**: 2026-10-03
@@ -53,7 +53,7 @@ Actores: **admin**, el único que edita tours (`updateTour` exige el rol admin);
 - **Retiro de salidas**: función SQL nueva `withdraw_schedule_instances(p_tour_id uuid, p_actor_id uuid) RETURNS jsonb`, con el patrón de las funciones privilegiadas (`SECURITY DEFINER`, `search_path = ''`, guard `is_public_request()`, `REVOKE` a `PUBLIC, anon, authenticated`, `GRANT` a `service_role`). Exige que `p_actor_id` sea un admin activo.
   - **Candidatas**: salidas del tour con `starts_at > now()` y `status <> 'cancelled'` (incluye `full`), cuyo horario está inactivo o cuyo día `(starts_at AT TIME ZONE 'America/Costa_Rica')::date` cae fuera de `valid_from`/`valid_until`, con bordes inclusivos (espejo exacto de `withinValidity` del generador).
   - Se bloquean con un solo `SELECT … ORDER BY id FOR UPDATE`, el mismo orden que usa `reschedule_booking`, para no producir un deadlock con una reprogramación entre dos salidas del tour.
-  - **Se retira** una candidata solo si, bajo el lock: no tiene reservas vivas (`confirmed`, `pending_minimum`, `pending_payment`); no tiene apartados vivos (`active` con `expires_at > now()`, o `paying`, el mismo criterio que `create_hold_atomic`); y no tiene un ciclo del mínimo abierto (`minimum_charge_triggered_at IS NULL`, o con `minimum_resolved_at` o `minimum_charge_closed_at` no nulos). Esta última condición es la misma que protege el archivado (`hasChargingDeparture`): el motor del cobro diferido no mira salidas canceladas, y un ciclo abierto podría tener retenciones vivas que nadie soltaría.
+  - **Se retira** una candidata solo si, bajo el lock: no tiene reservas vivas (`confirmed`, `pending_minimum`, `pending_payment`, y también `payment_mismatch`, que espera revisión manual); no tiene apartados vivos (`active` con `expires_at > now()`, o `paying`, el mismo criterio que `create_hold_atomic`); y no tiene un ciclo del mínimo abierto (`minimum_charge_triggered_at IS NULL`, o con `minimum_resolved_at` o `minimum_charge_closed_at` no nulos). Esta última condición es la misma que protege el archivado (`hasChargingDeparture`): el motor del cobro diferido no mira salidas canceladas, y un ciclo abierto podría tener retenciones vivas que nadie soltaría.
   - Retirar = `status = 'cancelled'`, `cancellation_reason = 'schedule_withdrawn'` (explícito: el trigger de …049 pondría `other` si llegara nulo) y una fila de auditoría `departure.withdrawn` con `actor_type` admin.
   - Devuelve `{ "withdrawn": n, "kept": m }`.
 - **Llamada**: `updateTour` (`web/lib/tours/actions.ts`) la llama después de guardar los horarios, con el cliente de servicio y el admin como actor. El `ActionResult` de éxito se amplía con los conteos opcionales; la acción redirige solo si `kept = 0` y no hubo error.
@@ -81,7 +81,7 @@ Salida (`tour_instances.status`): `available` o `full` → `cancelled` con motiv
 - **Fecha puntual cercana**: la salida aparece recién después de la próxima corrida del generador (al arrancar el worker y cada 24 horas), y puede quedar dentro de la anticipación mínima para reservar (spec 0041).
 - **El generador corre mientras se guarda el tour**: puede insertar salidas con la vigencia vieja después del retiro. Se corrige volviendo a guardar el tour, que es idempotente.
 - **Guía asignado a una salida retirada**: la salida desaparece de su vista (solo muestra salidas vigentes). No tenía turistas.
-- **Salida de un horario borrado**: no puede existir; un horario con salidas no se puede borrar (FK), se desactiva.
+- **Horario borrado**: `tour_instances.schedule_id` es `ON DELETE CASCADE`, así que borrar un horario cuyas salidas no tienen reservas borra esas salidas; con reservas, el borrado falla (FK de `bookings`) y el formulario pide desactivarlo. El retiro de este spec actúa sobre lo que queda.
 - **Error al retirar**: los horarios ya se guardaron; el formulario muestra el error y se puede volver a guardar.
 
 ## 9. Impacto en otras áreas

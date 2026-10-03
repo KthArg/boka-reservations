@@ -45,7 +45,14 @@ export type Departure = {
   startsAt: string;
   capacityTotal: number;
   confirmedTickets: number;
+  /**
+   * Participantes de reservas vivas (`confirmed`, `pending_minimum`, `pending_payment`, incluidas
+   * las que tienen una cancelación en curso): los que podrían presentarse (spec 0043).
+   */
+  liveTickets: number;
   assignedGuide: AssignableGuide | null;
+  /** El guía asignado sigue activo. Uno desactivado no va a ir: cuenta como sin guía. */
+  assignedGuideActive: boolean;
   charge: DepartureCharge;
   /** Mínimo del cobro inmediato (spec 0035): bandeja y cancelación por mínimo. */
   minimum: MinimumView;

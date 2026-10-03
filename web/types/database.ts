@@ -419,7 +419,14 @@ export type Database = {
           staff_decision_required_at: string | null;
           minimum_resolved_at: string | null;
           minimum_resolved_by: string | null;
-          cancellation_reason: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
+          cancellation_reason:
+            | 'minimum'
+            | 'weather'
+            | 'safety'
+            | 'force_majeure'
+            | 'other'
+            | 'schedule_withdrawn'
+            | null;
           minimum_resolution:
             | 'reached'
             | 'staff_confirmed'
@@ -445,7 +452,14 @@ export type Database = {
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
-          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
+          cancellation_reason?:
+            | 'minimum'
+            | 'weather'
+            | 'safety'
+            | 'force_majeure'
+            | 'other'
+            | 'schedule_withdrawn'
+            | null;
           minimum_resolution?:
             | 'reached'
             | 'staff_confirmed'
@@ -471,7 +485,14 @@ export type Database = {
           staff_decision_required_at?: string | null;
           minimum_resolved_at?: string | null;
           minimum_resolved_by?: string | null;
-          cancellation_reason?: 'minimum' | 'weather' | 'safety' | 'force_majeure' | 'other' | null;
+          cancellation_reason?:
+            | 'minimum'
+            | 'weather'
+            | 'safety'
+            | 'force_majeure'
+            | 'other'
+            | 'schedule_withdrawn'
+            | null;
           minimum_resolution?:
             | 'reached'
             | 'staff_confirmed'
@@ -1175,6 +1196,10 @@ export type Database = {
       cancel_booking_for_departure: {
         Args: { p_booking_id: string; p_resolution: string };
         Returns: 'cancelled' | 'not_cancellable';
+      };
+      withdraw_schedule_instances: {
+        Args: { p_tour_id: string; p_actor_id: string };
+        Returns: { withdrawn: number; kept: number };
       };
       resolve_departure_minimum: {
         Args: {

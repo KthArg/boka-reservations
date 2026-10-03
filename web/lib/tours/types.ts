@@ -160,4 +160,11 @@ export type TourBasicValues = {
 
 export type FieldErrors = { _form?: string[] } & Partial<Record<string, string[]>>;
 
-export type ActionResult = { success: true; id: string } | { success: false; errors: FieldErrors };
+/**
+ * Resultado de crear o editar un tour. Al editar, `withdrawn`/`kept` cuentan las salidas fuera de
+ * vigencia que se retiraron y las que quedaron por tener reservas (spec 0044); con `kept > 0` la
+ * acción no redirige, para que el admin lo vea.
+ */
+export type ActionResult =
+  | { success: true; id: string; withdrawn?: number; kept?: number }
+  | { success: false; errors: FieldErrors };

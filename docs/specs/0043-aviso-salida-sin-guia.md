@@ -1,6 +1,6 @@
 # 0043 — Aviso en el panel de las salidas con reservas y sin guía
 
-- **Estado**: in-review
+- **Estado**: approved
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-10-03
 - **Última actualización**: 2026-10-03
