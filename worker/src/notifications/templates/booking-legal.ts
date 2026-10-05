@@ -9,7 +9,7 @@ import { EmailStyle } from './styles.js';
 // Espejo de las versiones publicadas en web/content/legal/registry.ts (el worker no importa
 // @shared ni la web en runtime). Una versión que no está acá no tiene página: el correo no la
 // enlaza, para no mandar al turista a un 404 ni mostrarle un marcador de borrador.
-const PUBLISHED_TERMS_VERSIONS: readonly string[] = ['2026-09-27'];
+const PUBLISHED_TERMS_VERSIONS: readonly string[] = ['2026-09-27', '2026-10-05'];
 const PUBLISHED_PRIVACY_VERSIONS: readonly string[] = ['2026-09-27'];
 const TERMS_SEGMENT = 'terms';
 const PRIVACY_SEGMENT = 'privacy';

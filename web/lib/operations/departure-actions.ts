@@ -23,6 +23,7 @@ const CancelSchema = z.object({
     DepartureCancellationReason.Minimum,
     DepartureCancellationReason.Weather,
     DepartureCancellationReason.Safety,
+    DepartureCancellationReason.ForceMajeure,
     DepartureCancellationReason.Other,
   ]),
 });

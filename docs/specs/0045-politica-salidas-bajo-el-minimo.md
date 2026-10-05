@@ -137,4 +137,4 @@ Sin estados nuevos. Cambia cuándo ocurre `tour_instances.status → cancelled` 
 
 ## 13. Preguntas abiertas
 
-- [ ] **Pregunta**: ¿se ajusta la cláusula 7 de los términos para decir que una salida bajo el mínimo puede hacerse igual? **Dueño**: Kenneth (con la abogada) **Antes de**: el lanzamiento.
+- [x] **Pregunta**: ¿se ajusta la cláusula 7 de los términos para decir que una salida bajo el mínimo puede hacerse igual? **Resuelta (2026-10-05)**: sí. El operador redacta los términos para que digan lo que hace el programa y la abogada los confirma. Se publicó la versión 2026-10-05 (ver el changelog).
