@@ -103,3 +103,16 @@ banco pide confirmar un cobro (cierra el pendiente (e) de la prueba del 2026-10-
 
 **Pendiente**: verificar con un 3DS real (fase 6b) que el componente ya no reporta bloqueos; el
 plazo de conservación de esos datos en ThreatMetrix y los servicios de IP no lo conocemos.
+
+## 2026-10-05 — Aviso 2026-10-05: plazos y países remiten a las políticas de cada empresa
+
+Decisión del usuario: el aviso no fija plazos ni países de los servicios antifraude; remite a la
+política de privacidad de cada empresa, para no quedar desactualizado si la cambian. Párrafo nuevo
+en §2 con las direcciones de OnvoPay, LexisNexis (ThreatMetrix), ipify y my-ip.io. Se editó la
+versión 2026-10-05 en lugar de publicar otra porque ninguna reserva la había aceptado todavía
+(verificado en producción: 0 reservas con esa versión).
+
+Hallazgos de la investigación: ipify declara que no registra nada; my-ip.io (Workshell Ltd) no
+publica política de privacidad; ThreatMetrix no da plazo fijo, lista varios países y cruza los
+identificadores entre sus clientes; la política de ONVO (2022) no menciona antifraude. Pendiente:
+preguntarle a OnvoPay por escrito.
