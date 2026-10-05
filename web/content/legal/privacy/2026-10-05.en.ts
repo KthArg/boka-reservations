@@ -50,6 +50,9 @@ export const privacyEn: LegalDocumentFactory = (op) => ({
           'Payment fraud prevention. If your bank asks you to confirm a charge, the confirmation page loads an OnvoPay component that looks up your IP address and collects technical data about your browser and device to assess the fraud risk of the payment. That data is received directly by OnvoPay and the services it uses for this purpose: ipify and my-ip.io (IP address lookup) and ThreatMetrix, by LexisNexis Risk Solutions (device identification), which may use its own cookies or identifiers. We do not receive or store that data.',
         ),
         p(
+          'How long those companies keep that data and where they store it is defined by each of them in its own privacy policy, which you can read on their sites: OnvoPay (onvopay.com/policies), LexisNexis Risk Solutions, for ThreatMetrix (risk.lexisnexis.com/corporate/processing-notices/threatmetrix), ipify (ipify.org) and my-ip.io (my-ip.io). To exercise your rights over that data you can contact them directly.',
+        ),
+        p(
           'Refunds by transfer. If we need to return money to you by bank transfer or SINPE Móvil because it cannot be returned to your card, we ask you by email for the details of an account in your name and use them only for that refund.',
         ),
         p(
