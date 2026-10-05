@@ -17,6 +17,7 @@ import { authorizePending } from '../charges/departure-authorize.js';
 import { captureAll, releaseAll } from '../charges/departure-settle.js';
 import { captureDeparture, cycleInput, releaseDeparture } from '../charges/departure-resolve.js';
 import { MSG_ENGINE_OFF, alertCharge, alertCount } from '../charges/alerts.js';
+import { loadBelowMinimumPolicy, type BelowMinimumPolicyValue } from '../charges/minimum-policy.js';
 
 // Motor del cobro del mínimo (spec 0033). Cada minuto: abre el ciclo de las salidas que llegaron a
 // su momento, autoriza sin capturar, y recién con los cupos autorizados a la vista captura todo o
@@ -67,10 +68,12 @@ async function runCycle(): Promise<void> {
 
   const onvopay = createOnvopayChargeClient(env.ONVOPAY_SECRET_KEY, env.ONVOPAY_API_BASE_URL);
   const departures = await fetchDepartureCandidates(db, new Date().toISOString());
+  // Una lectura por corrida: un cambio en Configuración rige desde la corrida siguiente.
+  const policy = await loadBelowMinimumPolicy(db);
 
   for (const departure of departures) {
     try {
-      await processDeparture(db, onvopay, departure, new Date());
+      await processDeparture(db, onvopay, departure, new Date(), policy);
     } catch (err) {
       // Una salida que falla no frena a las demás: el ciclo es por salida y se reintenta al minuto.
       console.error(
@@ -92,6 +95,7 @@ async function processDeparture(
   onvopay: OnvopayChargeClient,
   departure: DepartureCandidate,
   now: Date,
+  policy: BelowMinimumPolicyValue,
 ): Promise<void> {
   // Modo de reversión (§11): soltar lo vivo y cerrar, sin cobrar nada.
   if (env.RELEASE_AUTHORIZATIONS_ONLY) {
@@ -138,5 +142,5 @@ async function processDeparture(
   // El plazo del ciclo vence 24 h 10 min antes de la salida (…055): hasta entonces se espera.
   if (action === CycleAction.Wait) return;
 
-  await releaseDeparture(db, onvopay, current, input);
+  await releaseDeparture(db, onvopay, current, input, policy);
 }

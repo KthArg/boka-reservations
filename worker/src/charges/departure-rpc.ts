@@ -90,6 +90,21 @@ export function resolveDepartureMinimum(
   });
 }
 
+/** Resultado de `auto_cancel_departure_minimum` cuando canceló la salida. */
+export const AUTO_CANCEL_RESOLVED = 'resolved';
+
+/**
+ * Cancelación automática de una salida bajo el mínimo (spec 0045, …057). Las guardas viven en la
+ * función, bajo el lock de la salida: política vigente, aviso de 24 horas y ningún pago en curso
+ * ni cobrado. Devuelve `resolved` si canceló; cualquier otro valor significa que decide el staff.
+ */
+export function autoCancelDepartureMinimum(
+  db: SupabaseClient,
+  instanceId: string,
+): Promise<string> {
+  return call<string>(db, 'auto_cancel_departure_minimum', { p_instance_id: instanceId });
+}
+
 /**
  * Cierra la fila `pending` de un intent que ya no puede cobrar. Sin esto,
  * `charge_booking_start` responde `intent_mismatch` para siempre y la reserva no se vuelve a

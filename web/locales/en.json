@@ -685,7 +685,8 @@
       "settings_update_failed": "Settings couldn't be saved. Please try again.",
       "settings_operator_invalid": "Check the operator details: an email is not valid or a text is too long.",
       "settings_tolerance_out_of_range": "The tolerance must be between {min} and {max} minutes.",
-      "settings_cutoff_out_of_range": "Enter a whole number of hours between {min} and {max} for the minimum booking notice."
+      "settings_cutoff_out_of_range": "Enter a whole number of hours between {min} and {max} for the minimum booking notice.",
+      "settings_policy_invalid": "Choose one of the two options for departures below the minimum."
     },
     "section-operator": "Operator details and sales",
     "operator-intro": "These details appear in the terms and conditions, the privacy notice, the site and email footers, and the summary before paying. Online sales are enabled once every field is filled in, except the ICT declaration, which is optional. Every change is logged.",
@@ -711,7 +712,11 @@
     "field-no-show-tolerance": "Late-arrival tolerance (minutes)",
     "hint-no-show-tolerance": "After these minutes, anyone who has not arrived counts as a no-show and gets no refund. It appears in the purchase summary and in the confirmation email; each booking keeps the value in force when it was made. Between {min} and {max} minutes.",
     "field-booking-cutoff": "Minimum booking notice (hours before departure)",
-    "hint-booking-cutoff": "Online bookings for each departure close this many hours before it starts. With 0, bookings are open until departure time. Between {min} and {max} hours."
+    "hint-booking-cutoff": "Online bookings for each departure close this many hours before it starts. With 0, bookings are open until departure time. Between {min} and {max} hours.",
+    "field-below-minimum-policy": "Departures below the minimum",
+    "policy-staff-decides": "Staff decides",
+    "policy-auto-cancel": "Cancelled automatically",
+    "hint-below-minimum-policy": "What happens to a departure that has bookings but does not reach the minimum. With \"Staff decides\", the departure waits in Departures until someone keeps or cancels it; if nobody decides, it runs. With \"Cancelled automatically\", it is cancelled one day before with a 100% refund and a notice to the tourist. A departure with no bookings is cancelled automatically 24 hours before in both cases."
   },
   "operations": {
     "cancel-departure": "Cancel departure",
@@ -730,7 +735,7 @@
     "minimum-tray-intro": "A departure that does not reach the minimum is cancelled automatically one day before, with a 100% refund and a notice to the tourist. Until then you can keep it or cancel it.",
     "minimum-seats": "{seats} of {minimum} minimum seats · resolves automatically on {cutoff}",
     "keep": "Keep",
-    "keep-ask": "Keep this departure even if it does not reach the minimum? It will no longer be cancelled automatically.",
+    "keep-ask": "Keep this departure even if it does not reach the minimum? It is confirmed and leaves this tray.",
     "review-tray-title": "Bookings under review",
     "review-tray-intro": "Departures cancelled because of the weather or for safety. Decide each booking from its detail: the tourist is waiting for an answer.",
     "review-open": "Decide",
@@ -787,7 +792,10 @@
     "transfer-currency": "Currency",
     "currency-USD": "US dollars (USD)",
     "currency-CRC": "Colones (CRC)",
-    "transfer-amount-hint": "In dollars, exactly the refunded amount ({amount}). In colones, what you transferred at the day's exchange rate."
+    "transfer-amount-hint": "In dollars, exactly the refunded amount ({amount}). In colones, what you transferred at the day's exchange rate.",
+    "minimum-tray-intro-staff": "These departures have bookings but do not reach the minimum. They are not cancelled automatically: you decide. You can keep one, or cancel it for the minimum up to 24 hours before departure, with a 100% refund and a notice to the tourist; after that, only for another reason. If nobody decides, the departure runs.",
+    "minimum-seats-staff": "{seats} of {minimum} minimum seats · can be cancelled for the minimum until {cutoff}",
+    "minimum-seats-late": "{seats} of {minimum} minimum seats · can no longer be cancelled for the minimum (expired {cutoff})"
   },
   "privacy": {
     "nav-label": "Privacy",

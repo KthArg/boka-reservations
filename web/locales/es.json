@@ -685,7 +685,8 @@
       "settings_update_failed": "No se pudo guardar la configuración. Intentá de nuevo.",
       "settings_operator_invalid": "Revisá los datos del operador: algún correo no es válido o algún texto es demasiado largo.",
       "settings_tolerance_out_of_range": "La tolerancia tiene que estar entre {min} y {max} minutos.",
-      "settings_cutoff_out_of_range": "Ingresá un número entero de horas entre {min} y {max} para la anticipación mínima."
+      "settings_cutoff_out_of_range": "Ingresá un número entero de horas entre {min} y {max} para la anticipación mínima.",
+      "settings_policy_invalid": "Elegí una de las dos opciones para las salidas bajo el mínimo."
     },
     "section-operator": "Datos del operador y venta",
     "operator-intro": "Estos datos aparecen en los términos y condiciones, el aviso de privacidad, el pie del sitio y de los correos, y el resumen antes de pagar. La venta en línea se habilita cuando están completos todos los campos, salvo la declaratoria del ICT, que es opcional. Cada cambio queda registrado.",
@@ -711,7 +712,11 @@
     "field-no-show-tolerance": "Tolerancia de llegada tarde (minutos)",
     "hint-no-show-tolerance": "Después de estos minutos, quien no llegó se considera no presentación y no tiene reembolso. Aparece en el resumen de compra y en el correo de confirmación; cada reserva conserva el valor vigente cuando se hizo. Entre {min} y {max} minutos.",
     "field-booking-cutoff": "Anticipación mínima para reservar (horas antes de la salida)",
-    "hint-booking-cutoff": "Las reservas en línea de cada salida cierran esta cantidad de horas antes de que empiece. Con 0 se puede reservar hasta la hora de salida. Entre {min} y {max} horas."
+    "hint-booking-cutoff": "Las reservas en línea de cada salida cierran esta cantidad de horas antes de que empiece. Con 0 se puede reservar hasta la hora de salida. Entre {min} y {max} horas.",
+    "field-below-minimum-policy": "Salidas bajo el mínimo",
+    "policy-staff-decides": "Decide el staff",
+    "policy-auto-cancel": "Se cancelan solas",
+    "hint-below-minimum-policy": "Qué pasa con una salida que tiene reservas pero no alcanza el mínimo. Con \"Decide el staff\", la salida espera en Salidas a que alguien la mantenga o la cancele; si nadie decide, se hace. Con \"Se cancelan solas\", se cancela un día antes con reembolso del 100 % y aviso al turista. Una salida sin ninguna reserva se cancela sola 24 horas antes en los dos casos."
   },
   "operations": {
     "cancel-departure": "Cancelar salida",
@@ -730,7 +735,7 @@
     "minimum-tray-intro": "Una salida que no alcanza el mínimo se cancela sola un día antes, con reembolso del 100 % y aviso al turista. Antes de eso podés mantenerla o cancelarla.",
     "minimum-seats": "{seats} de {minimum} cupos mínimos · se resuelve sola el {cutoff}",
     "keep": "Mantener",
-    "keep-ask": "¿Mantener esta salida aunque no alcance el mínimo? Ya no se va a cancelar sola.",
+    "keep-ask": "¿Mantener esta salida aunque no alcance el mínimo? Queda confirmada y sale de esta bandeja.",
     "review-tray-title": "Reservas en revisión",
     "review-tray-intro": "Salidas canceladas por clima o seguridad. Decidí cada reserva desde su detalle: el turista espera la respuesta.",
     "review-open": "Decidir",
@@ -787,7 +792,10 @@
     "transfer-currency": "Moneda",
     "currency-USD": "Dólares (USD)",
     "currency-CRC": "Colones (CRC)",
-    "transfer-amount-hint": "En dólares, exactamente lo reembolsado ({amount}). En colones, lo que transferiste al tipo de cambio del día."
+    "transfer-amount-hint": "En dólares, exactamente lo reembolsado ({amount}). En colones, lo que transferiste al tipo de cambio del día.",
+    "minimum-tray-intro-staff": "Estas salidas tienen reservas pero no alcanzan el mínimo. No se cancelan solas: decidí vos. Podés mantenerla, o cancelarla por mínimo hasta 24 horas antes de la salida, con reembolso del 100 % y aviso al turista; después, solo por otra causa. Si nadie decide, la salida se hace.",
+    "minimum-seats-staff": "{seats} de {minimum} cupos mínimos · se puede cancelar por mínimo hasta el {cutoff}",
+    "minimum-seats-late": "{seats} de {minimum} cupos mínimos · ya no se puede cancelar por mínimo (venció el {cutoff})"
   },
   "privacy": {
     "nav-label": "Privacidad",

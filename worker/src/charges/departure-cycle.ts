@@ -1,4 +1,5 @@
 import type { ChargeableBooking } from './departure-repository.js';
+import { BelowMinimumPolicy, type BelowMinimumPolicyValue } from './minimum-policy.js';
 
 // Decisiones puras del ciclo de cobro de una salida (spec 0033 §5.3 a §5.5). Sin DB ni red: el
 // job trae los datos, esto decide y el job ejecuta. Igual que charges/decide.ts, mantenerlo puro
@@ -13,6 +14,12 @@ const EARLY_CANCEL_FLOOR_MS = 72 * 60 * 60 * 1000;
  * por mínimo (la guarda de resolve_departure_minimum, …055). Espeja a cancel_departure (…049).
  */
 export const MINIMUM_NOTICE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Margen sobre las 24 horas para cancelar sin una persona delante: el correo sale al minuto
+ * siguiente y tiene que llegar con 24 horas o más. El mismo de cancel_departure (…049).
+ */
+const AUTO_CANCEL_NOTICE_MS = MINIMUM_NOTICE_MS + 10 * 60 * 1000;
 
 /** Marcas de claim o de captura más viejas que esto quedaron de un proceso que murió. */
 export const STALE_MARK_MS = 15 * 60 * 1000;
@@ -34,6 +41,8 @@ export const ReleaseOutcome = {
   Close: 'close',
   /** Decide una persona, desde la bandeja de Salidas: confirmarla o cancelarla. */
   StaffDecision: 'staff_decision',
+  /** Política `auto_cancel` (spec 0045): la salida se cancela sola, con el aviso de 24 horas. */
+  AutoCancel: 'auto_cancel',
 } as const;
 
 export type ReleaseOutcomeValue = (typeof ReleaseOutcome)[keyof typeof ReleaseOutcome];
@@ -64,14 +73,24 @@ export function decideCycle(input: CycleInput): CycleActionValue {
 }
 
 /**
- * Qué hacer después de soltar. Si una salida bajo el mínimo se cancela o se hace lo decide una
- * persona, nunca el motor (decisión del usuario, 2026-10-02). Lo único automático es no decidir
- * todavía: lejos de la salida, una foto de hoy no justifica molestar a nadie y el ciclo se cierra
- * para reabrirse más cerca de la fecha.
+ * Qué hacer después de soltar. Lejos de la salida, una foto de hoy no justifica molestar a nadie
+ * y el ciclo se cierra para reabrirse más cerca de la fecha. Más cerca manda la política del
+ * negocio (spec 0045): con `staff_decides` decide una persona, nunca el motor; con `auto_cancel`
+ * el motor cancela, pero solo si no quedó ningún cupo cobrado ni autorizado y el aviso de 24
+ * horas todavía llega. En cualquier otro caso decide una persona.
  */
-export function decideRelease(input: CycleInput): ReleaseOutcomeValue {
+export function decideRelease(
+  input: CycleInput,
+  policy: BelowMinimumPolicyValue = BelowMinimumPolicy.StaffDecides,
+): ReleaseOutcomeValue {
   const untilStartMs = input.startsAt.getTime() - input.now.getTime();
-  return untilStartMs > EARLY_CANCEL_FLOOR_MS ? ReleaseOutcome.Close : ReleaseOutcome.StaffDecision;
+  if (untilStartMs > EARLY_CANCEL_FLOOR_MS) return ReleaseOutcome.Close;
+  const nothingHeld = input.captured === 0 && input.authorized === 0;
+  const noticeArrives = untilStartMs > AUTO_CANCEL_NOTICE_MS;
+  if (policy === BelowMinimumPolicy.AutoCancel && nothingHeld && noticeArrives) {
+    return ReleaseOutcome.AutoCancel;
+  }
+  return ReleaseOutcome.StaffDecision;
 }
 
 /** Con menos de 24 horas ya no se puede cancelar por mínimo: el aviso prometido no llega. */

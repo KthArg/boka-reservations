@@ -15,6 +15,7 @@ const FIELD_ERRORS = [
   ['minimum_decision_window_hours', SettingsActionError.WindowOutOfRange],
   ['default_charge_lead_hours', SettingsActionError.LeadHoursOutOfRange],
   ['booking_cutoff_hours', SettingsActionError.CutoffOutOfRange],
+  ['below_minimum_policy', SettingsActionError.PolicyInvalid],
 ] as const;
 
 export async function updateBusinessSettings(
@@ -28,6 +29,7 @@ export async function updateBusinessSettings(
     minimum_decision_window_hours: formData.get('minimum_decision_window_hours'),
     default_charge_lead_hours: formData.get('default_charge_lead_hours'),
     booking_cutoff_hours: formData.get('booking_cutoff_hours'),
+    below_minimum_policy: formData.get('below_minimum_policy'),
   });
   if (!parsed.success) {
     // Un solo error por respuesta (el formulario lo muestra arriba del botón), pero distinguido

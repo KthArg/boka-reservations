@@ -1,11 +1,14 @@
 import * as Sentry from '@sentry/node';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from '../env.js';
+import { BelowMinimumPolicy, loadBelowMinimumPolicy } from '../charges/minimum-policy.js';
 
-// Cierre por mínimo del cobro inmediato (spec 0035). Los términos prometen avisar con al menos
-// 24 h si una salida no alcanza su mínimo y devolver el 100 %. Cada 5 minutos se resuelven las
-// salidas que empiezan dentro de 24 a 25 horas: la hora extra es margen para que el aviso salga
-// antes del límite. Con menos de 24 h ya no se cancela por mínimo: la salida se hace y se alerta.
+// Cierre por mínimo del cobro inmediato (spec 0035) y de las salidas vacías (spec 0045). Los
+// términos prometen avisar con al menos 24 h si una salida se cancela por mínimo y devolver el
+// 100 %. Cada 5 minutos se resuelven las salidas que empiezan dentro de 24 a 25 horas: la hora
+// extra es margen para que el aviso salga antes del límite. Una salida sin reservas se cancela
+// sola; una con reservas, solo si la política del negocio es `auto_cancel` (si no, decide el
+// staff). Con menos de 24 h ya no se cancela por mínimo: la salida se hace y se alerta.
 // Espeja las horas de resolve_immediate_minimum (…049); si cambia uno, cambian los dos.
 
 const MINUTE_MS = 60 * 1000;
@@ -80,7 +83,11 @@ async function fetchDue(db: SupabaseClient, now: Date): Promise<DueInstance[]> {
   return data ?? [];
 }
 
-/** Salidas que llegaron a menos de 24 h sin resolverse y bajo el mínimo (worker caído). */
+/**
+ * Salidas que llegaron a menos de 24 h sin resolverse y bajo el mínimo. Con cupos cobrados y la
+ * política `staff_decides` es una decisión que nadie tomó (warning); en cualquier otro caso el
+ * proceso tendría que haberla cancelado (worker caído: error).
+ */
 async function alertOverdue(db: SupabaseClient, now: Date): Promise<void> {
   const { data, error } = await db
     .from('tour_instances')
@@ -114,11 +121,13 @@ async function alertOverdue(db: SupabaseClient, now: Date): Promise<void> {
   if (deferredError) throw new Error(`resolve-minimum deferred: ${deferredError.message}`);
   const deferredIds = new Set((deferred ?? []).map((row) => row.tour_instance_id as string));
 
+  const staffDecides = (await loadBelowMinimumPolicy(db)) === BelowMinimumPolicy.StaffDecides;
+
   for (const row of below) {
     if (deferredIds.has(row.id)) continue;
     alerted.add(row.id);
     Sentry.withScope((scope) => {
-      scope.setLevel('error');
+      scope.setLevel(staffDecides && row.capacity_reserved > 0 ? 'warning' : 'error');
       scope.setFingerprint(['resolve-minimum-overdue', row.id]);
       scope.setExtra('instanceId', row.id);
       scope.setExtra('seats', row.capacity_reserved);

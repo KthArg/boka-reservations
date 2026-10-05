@@ -277,11 +277,21 @@ describe('resolve_immediate_minimum', () => {
     expect(data).toBe('reached');
   });
 
+  // Spec 0045: con reservas solo se cancela sola con la política `auto_cancel`.
   it('bajo el mínimo la cancela con reembolso total y sin actor', async () => {
     const instanceId = await createInstance(db, await tour(4), IN_WINDOW_MS);
     const bookingId = await createPaidBooking(db, instanceId, 2);
+    await db.from('business_settings').update({ below_minimum_policy: 'auto_cancel' }).eq('id', 1);
 
-    const { data } = await db.rpc('resolve_immediate_minimum', { p_instance_id: instanceId });
+    const { data } = await db
+      .rpc('resolve_immediate_minimum', { p_instance_id: instanceId })
+      .then(async (result) => {
+        await db
+          .from('business_settings')
+          .update({ below_minimum_policy: 'staff_decides' })
+          .eq('id', 1);
+        return result;
+      });
 
     expect(data).toBe('cancelled');
     const instance = await readInstance(db, instanceId);

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireRole } from '@/lib/auth/server';
 import { getBusinessSettings } from '@/lib/settings/repository';
 import { UserRole } from '@shared/constants/enums';
+import type { BelowMinimumPolicy } from '@shared/constants/settings';
 import { SettingsForm } from './SettingsForm';
 import { OperatorSettingsForm } from './OperatorSettingsForm';
 import styles from './settings.module.css';
@@ -46,6 +47,7 @@ export default async function SettingsPage({ params }: Props) {
           decisionWindowHours={settings.minimum_decision_window_hours}
           chargeLeadHours={settings.default_charge_lead_hours}
           bookingCutoffHours={settings.booking_cutoff_hours}
+          belowMinimumPolicy={settings.below_minimum_policy as BelowMinimumPolicy}
         />
       </section>
     </div>

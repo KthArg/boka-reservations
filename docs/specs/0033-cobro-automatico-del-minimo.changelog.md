@@ -3,6 +3,14 @@
 Spec: [0033-cobro-automatico-del-minimo.md](./0033-cobro-automatico-del-minimo.md)
 Rama: feat/0033-cobro-automatico-minimo
 
+## 2026-10-05 — La cancelación automática vuelve como política global (spec 0045)
+
+El §15 retiró `auto_cancel_below_minimum` y dejó que decida siempre una persona. Eso sigue siendo
+el comportamiento por defecto (`below_minimum_policy = staff_decides`). El spec
+[0045](./0045-politica-salidas-bajo-el-minimo.md) suma la opción global `auto_cancel`: el motor
+cancela al vencer el plazo de cobro, solo si soltó todo, no hay cupos cobrados ni autorizados y
+faltan más de 24 horas 10 minutos.
+
 ## 2026-10-02 — Decide el staff, con el aviso de 24 horas, y latido del worker
 
 **Hecho**:

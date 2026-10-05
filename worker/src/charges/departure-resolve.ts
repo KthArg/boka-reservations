@@ -7,8 +7,11 @@ import {
   type CycleInput,
 } from './departure-cycle.js';
 import type { DepartureCandidate } from './departure-repository.js';
+import { BelowMinimumPolicy, type BelowMinimumPolicyValue } from './minimum-policy.js';
 import {
+  AUTO_CANCEL_RESOLVED,
   DepartureResolution,
+  autoCancelDepartureMinimum,
   closeDepartureCharge,
   departureSeatCounts,
   resolveDepartureMinimum,
@@ -52,17 +55,39 @@ export async function releaseDeparture(
   onvopay: OnvopayChargeClient,
   departure: DepartureCandidate,
   input: CycleInput,
+  policy: BelowMinimumPolicyValue = BelowMinimumPolicy.StaffDecides,
 ): Promise<void> {
-  await releaseAll(db, onvopay, departure.id);
-  const outcome = decideRelease(input);
+  const released = await releaseAll(db, onvopay, departure.id);
+  // Con algo sin soltar no se cancela sola: una reserva con el cobro ya hecho y sin asentar
+  // terminaría cobrada y reembolsada. La foto se relee después de soltar por lo mismo.
+  const counts = await departureSeatCounts(db, departure.id);
+  // Reloj nuevo: soltar habla con la pasarela y puede tardar.
+  const after = {
+    ...input,
+    captured: counts.captured,
+    authorized: counts.authorized,
+    now: new Date(),
+  };
+  const outcome = decideRelease(after, released ? policy : BelowMinimumPolicy.StaffDecides);
 
   if (outcome === ReleaseOutcome.Close) {
     await closeDepartureCharge(db, departure.id);
     return;
   }
+  // Una salida sin cupos vendidos no espera a nadie: la cancela el proceso de las salidas
+  // vacías (resolve_immediate_minimum, …057).
+  if (counts.sold === 0) return;
+
+  if (outcome === ReleaseOutcome.AutoCancel) {
+    const result = await autoCancelDepartureMinimum(db, departure.id);
+    if (result === AUTO_CANCEL_RESOLVED) return;
+    // Un pago en curso, plata cobrada, aviso que ya no llega o política cambiada: decide una
+    // persona.
+    console.warn(`[charge-departures] ${departure.id}: no se canceló sola (${result})`);
+  }
   // Decide una persona, desde la bandeja de Salidas. Las retenciones ya se soltaron; lo que falta
   // es que alguien lo vea. Una alerta por salida: el job vuelve a pasar por acá cada minuto.
-  if (input.captured > 0) {
+  if (after.captured > 0) {
     alertOnce(MSG_MONEY_HELD, 'departure-below-minimum', departure.id, 'error');
   } else if (isTooLateToCancelForMinimum(input)) {
     alertOnce(MSG_TOO_LATE, 'departure-minimum-too-late', departure.id, 'error');

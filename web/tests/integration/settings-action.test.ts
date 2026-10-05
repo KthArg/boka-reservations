@@ -26,6 +26,7 @@ const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 type Settings = {
   minimum_decision_window_hours: number;
   default_charge_lead_hours: number;
+  below_minimum_policy: 'staff_decides' | 'auto_cancel';
   updated_by: string | null;
 };
 
@@ -57,18 +58,26 @@ async function userId(email: string): Promise<string> {
 async function currentSettings(): Promise<Settings> {
   const { data, error } = await service
     .from('business_settings')
-    .select('minimum_decision_window_hours, default_charge_lead_hours, updated_by')
+    .select(
+      'minimum_decision_window_hours, default_charge_lead_hours, below_minimum_policy, updated_by',
+    )
     .eq('id', BUSINESS_SETTINGS_ID)
     .single();
   if (error) throw new Error(`currentSettings: ${error.message}`);
   return data;
 }
 
-function formWith(hours: string, leadHours = '48', cutoffHours = '3'): FormData {
+function formWith(
+  hours: string,
+  leadHours = '48',
+  cutoffHours = '3',
+  policy = 'staff_decides',
+): FormData {
   const form = new FormData();
   form.append('minimum_decision_window_hours', hours);
   form.append('default_charge_lead_hours', leadHours);
   form.append('booking_cutoff_hours', cutoffHours);
+  form.append('below_minimum_policy', policy);
   return form;
 }
 
@@ -116,6 +125,7 @@ describe('updateBusinessSettings', () => {
     expect(await currentSettings()).toEqual({
       minimum_decision_window_hours: 48,
       default_charge_lead_hours: 36,
+      below_minimum_policy: 'staff_decides',
       updated_by: adminId,
     });
   });
@@ -187,5 +197,29 @@ describe('updateBusinessSettings', () => {
     requireRoleMock.mockResolvedValue({ id: adminId });
     const result = await updateBusinessSettings(null, formWith('0', '48', '73'));
     expect(result).toEqual({ success: false, error: SettingsActionError.WindowOutOfRange });
+  });
+
+  // Spec 0045: la política de las salidas bajo el mínimo la cambia el admin, sin deploy.
+  it('saves the below-minimum policy chosen by the admin', async () => {
+    // Arrange
+    requireRoleMock.mockResolvedValue({ id: adminId });
+    session.client = adminSession;
+
+    // Act
+    const result = await updateBusinessSettings(null, formWith('24', '48', '3', 'auto_cancel'));
+
+    // Assert
+    expect(result).toEqual({ success: true });
+    expect((await currentSettings()).below_minimum_policy).toBe('auto_cancel');
+  });
+
+  it('rejects an unknown below-minimum policy without writing', async () => {
+    requireRoleMock.mockResolvedValue({ id: adminId });
+    session.client = adminSession;
+
+    const result = await updateBusinessSettings(null, formWith('24', '48', '3', 'whatever'));
+
+    expect(result).toEqual({ success: false, error: SettingsActionError.PolicyInvalid });
+    expect((await currentSettings()).below_minimum_policy).toBe(original.below_minimum_policy);
   });
 });

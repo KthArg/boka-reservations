@@ -14,6 +14,7 @@ import {
   type CycleInput,
 } from '../../../src/charges/departure-cycle.js';
 import type { ChargeableBooking } from '../../../src/charges/departure-repository.js';
+import { BelowMinimumPolicy } from '../../../src/charges/minimum-policy.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 const NOW = new Date('2026-10-01T12:00:00Z');
@@ -93,7 +94,8 @@ describe('decideRelease — qué pasa con la salida después de soltar', () => {
     expect(decideRelease(cycle({ startsAt: inHours(100) }))).toBe(ReleaseOutcome.Close);
   });
 
-  // Decisión del usuario (2026-10-02): si la salida se hace o se cancela lo decide una persona.
+  // Política `staff_decides` (el valor inicial): si la salida se hace o se cancela lo decide una
+  // persona.
   it('always leaves the decision to a person near the departure', () => {
     expect(decideRelease(cycle({ startsAt: inHours(30) }))).toBe(ReleaseOutcome.StaffDecision);
     expect(decideRelease(cycle({ startsAt: inHours(20) }))).toBe(ReleaseOutcome.StaffDecision);
@@ -105,6 +107,36 @@ describe('decideRelease — qué pasa con la salida después de soltar', () => {
   it('closes rather than deciding beyond the 72 h floor', () => {
     expect(decideRelease(cycle({ startsAt: inHours(72) }))).toBe(ReleaseOutcome.StaffDecision);
     expect(decideRelease(cycle({ startsAt: inHours(73) }))).toBe(ReleaseOutcome.Close);
+  });
+
+  describe('con la política auto_cancel (spec 0045)', () => {
+    const auto = (overrides: Partial<CycleInput>) =>
+      decideRelease(cycle({ authorized: 0, ...overrides }), BelowMinimumPolicy.AutoCancel);
+
+    it('cancels on its own once everything was released and the notice still arrives', () => {
+      expect(auto({ startsAt: inHours(30) })).toBe(ReleaseOutcome.AutoCancel);
+      expect(auto({ startsAt: inHours(72) })).toBe(ReleaseOutcome.AutoCancel);
+    });
+
+    it('still closes the cycle while the departure is far away', () => {
+      expect(auto({ startsAt: inHours(100) })).toBe(ReleaseOutcome.Close);
+    });
+
+    // Cobrar y reembolsar cuesta; con plata de por medio decide una persona.
+    it('leaves the decision to a person while a seat is captured or still authorized', () => {
+      expect(auto({ startsAt: inHours(30), captured: 1, authorized: 1 })).toBe(
+        ReleaseOutcome.StaffDecision,
+      );
+      expect(auto({ startsAt: inHours(30), authorized: 1 })).toBe(ReleaseOutcome.StaffDecision);
+    });
+
+    // El correo sale al minuto siguiente: con 24 h 10 min o menos el aviso prometido no llega.
+    it('leaves the decision to a person once the 24 h notice no longer arrives', () => {
+      const margin = new Date(NOW.getTime() + 24 * HOUR_MS + 10 * 60 * 1000);
+      expect(auto({ startsAt: margin })).toBe(ReleaseOutcome.StaffDecision);
+      expect(auto({ startsAt: new Date(margin.getTime() + 1) })).toBe(ReleaseOutcome.AutoCancel);
+      expect(auto({ startsAt: inHours(20) })).toBe(ReleaseOutcome.StaffDecision);
+    });
   });
 });
 

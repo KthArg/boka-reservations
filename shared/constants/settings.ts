@@ -33,6 +33,18 @@ export const BOOKING_CUTOFF_HOURS_MIN = 0;
 export const BOOKING_CUTOFF_HOURS_MAX = 72;
 export const BOOKING_CUTOFF_HOURS_DEFAULT = 3;
 
+/**
+ * Qué pasa con una salida que tiene reservas y no alcanza el mínimo (spec 0045). Espejo del CHECK
+ * de `business_settings.below_minimum_policy`. Una salida sin ninguna reserva se cancela sola con
+ * cualquiera de las dos.
+ */
+export enum BelowMinimumPolicy {
+  /** Decide el staff desde Salidas; si nadie decide, la salida se hace. */
+  StaffDecides = 'staff_decides',
+  /** Se cancela sola, con el aviso de 24 horas y reembolso del 100 %. */
+  AutoCancel = 'auto_cancel',
+}
+
 /** Largo máximo de cada dato del operador: son textos de una línea para el pie y los términos. */
 export const OPERATOR_FIELD_MAX_LENGTH = 200;
 
@@ -47,4 +59,6 @@ export enum SettingsActionError {
   ToleranceOutOfRange = 'settings_tolerance_out_of_range',
   /** Anticipación mínima fuera de rango (spec 0041). */
   CutoffOutOfRange = 'settings_cutoff_out_of_range',
+  /** Política de salidas bajo el mínimo desconocida (spec 0045). */
+  PolicyInvalid = 'settings_policy_invalid',
 }

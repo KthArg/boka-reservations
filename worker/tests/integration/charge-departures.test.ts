@@ -57,6 +57,13 @@ async function configureTour(changes: {
   );
 }
 
+async function setPolicy(policy: 'staff_decides' | 'auto_cancel'): Promise<void> {
+  ok(
+    await db.from('business_settings').update({ below_minimum_policy: policy }).eq('id', 1),
+    'setPolicy',
+  );
+}
+
 async function moveDeparture(inMs: number): Promise<void> {
   const startsAt = isoFromNow(inMs);
   ok(
@@ -135,6 +142,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  await setPolicy('staff_decides');
   await deleteDepartures([departure.tourId]);
   await deleteWebhookEvents([...onvo.created, ...extraEvents.splice(0)]);
 });
@@ -178,6 +186,53 @@ describe('charge-departures — el ciclo completo', () => {
     expect(instance.minimum_resolved_at).toBeNull();
     expect(instance.status).not.toBe('cancelled');
     expect(alertFor('departure-awaiting-decision')?.level).toBe('warning');
+  });
+
+  // Política `auto_cancel` (spec 0045): el motor cancela sin esperar a nadie, con el aviso.
+  it('cancels the departure on its own under the auto_cancel policy', async () => {
+    // Arrange
+    await setPolicy('auto_cancel');
+    await configureTour({ minimum: 3 });
+    await moveDeparture(2 * DAY_MS);
+    const bookings = await seats(2);
+    await chargeDepartures();
+    await expireDeadline();
+
+    // Act
+    await chargeDepartures();
+
+    // Assert
+    expect(onvo.captured).toEqual([]);
+    expect(onvo.cancelled).toEqual(onvo.created);
+    expect(await statusesOf(bookings)).toEqual(['cancelled', 'cancelled']);
+    const instance = await readDeparture();
+    expect(instance.status).toBe('cancelled');
+    expect(instance.minimum_resolution).toBe('auto_cancelled');
+    const { data: notifications } = await db
+      .from('notifications')
+      .select('booking_id')
+      .eq('kind', 'departure_cancelled_minimum')
+      .in('booking_id', bookings);
+    expect(notifications).toHaveLength(2);
+  });
+
+  // Con menos de 24 h el aviso prometido no llega: ni con auto_cancel se cancela sola.
+  it('leaves a late departure to the staff even under the auto_cancel policy', async () => {
+    // Arrange
+    await setPolicy('auto_cancel');
+    await configureTour({ minimum: 3 });
+    await moveDeparture(2 * DAY_MS);
+    const bookings = await seats(2);
+    await chargeDepartures();
+    await moveDeparture(20 * HOUR_MS);
+    await expireDeadline();
+
+    // Act
+    await chargeDepartures();
+
+    // Assert
+    expect(await statusesOf(bookings)).toEqual(['pending_minimum', 'pending_minimum']);
+    expect((await readDeparture()).status).not.toBe('cancelled');
   });
 
   it('emails each tourist once when the staff cancels the departure', async () => {
@@ -626,6 +681,55 @@ describe('charge-departures — los caminos donde se pierde plata', () => {
     expect((await readBooking(immediate)).status).toBe('pending_payment');
   });
 
+  // Auditoría del spec 0045: un turista del cobro inmediato pagando en el widget no tiene
+  // retención ni cupo cobrado, así que el motor lo ve "limpio". Cancelarlo dejaría un pago sin
+  // reserva; la guarda de auto_cancel_departure_minimum lo frena y decide una persona.
+  it('never auto-cancels while a tourist of the immediate flow is paying', async () => {
+    // Arrange
+    await setPolicy('auto_cancel');
+    await configureTour({ minimum: 3 });
+    await moveDeparture(2 * DAY_MS);
+    const deferred = await seat();
+    const immediate = await seat();
+    const intent = await startCharge(immediate);
+    onvo.intents.set(intent, { status: 'requires_action' });
+    ok(
+      await db.from('bookings').update({ payment_method_id: null }).eq('id', immediate),
+      'immediate flow',
+    );
+    await chargeDepartures();
+    await expireDeadline();
+
+    // Act
+    await chargeDepartures();
+
+    // Assert
+    expect((await readDeparture()).status).not.toBe('cancelled');
+    expect((await readBooking(immediate)).status).toBe('pending_payment');
+    expect((await readBooking(deferred)).status).toBe('pending_minimum');
+    const { data } = await db.rpc('auto_cancel_departure_minimum', {
+      p_instance_id: departure.instanceId,
+    });
+    expect(data).toBe('needs_staff');
+  });
+
+  // La política se relee bajo el lock: un cambio a mitad de corrida no cancela nada.
+  it('refuses to auto-cancel once the policy is back to staff_decides', async () => {
+    await configureTour({ minimum: 3 });
+    await moveDeparture(2 * DAY_MS);
+    await seats(2);
+    await chargeDepartures();
+    await expireDeadline();
+    await chargeDepartures();
+
+    const { data } = await db.rpc('auto_cancel_departure_minimum', {
+      p_instance_id: departure.instanceId,
+    });
+
+    expect(data).toBe('needs_staff');
+    expect((await readDeparture()).status).not.toBe('cancelled');
+  });
+
   // Con plata cobrada la salida no se cancela sola: decide una persona, y mientras tanto las
   // retenciones de los demás se sueltan.
   it('never auto-cancels a departure that already has captured money', async () => {
@@ -647,8 +751,10 @@ describe('charge-departures — los caminos donde se pierde plata', () => {
     expect(confirmed).toBe('confirmed');
     const pending = await seat();
     await chargeDepartures();
-    await moveDeparture(2 * HOUR_MS);
+    await moveDeparture(30 * HOUR_MS);
     await expireDeadline();
+    // Ni con la política que cancela sola: con plata cobrada decide una persona.
+    await setPolicy('auto_cancel');
 
     // Act
     await chargeDepartures();
