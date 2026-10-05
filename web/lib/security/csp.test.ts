@@ -91,3 +91,29 @@ describe('buildCsp — imágenes (spec 0036)', () => {
     expect(imgSrc.split(' ')).not.toContain('https:');
   });
 });
+
+// Decisión del usuario (2026-10-05): la prevención de fraude de OnvoPay se permite, pero solo en
+// la página donde el banco pide confirmar un cobro. El aviso de privacidad lo declara así.
+describe('buildCsp — prevención de fraude de OnvoPay en la página del 3DS', () => {
+  const RISK = ['https://api.ipify.org', 'https://api.my-ip.io', 'https://h.online-metrix.net'];
+  const AUTHENTICATE = '/es/booking/abc123/authenticate';
+
+  it('permite los tres servicios en connect-src de la página de confirmación', () => {
+    const connectSrc = directive(buildCsp(NONCE, AUTHENTICATE), 'connect-src');
+    for (const origin of RISK) expect(connectSrc).toContain(origin);
+  });
+
+  it('permite la huella del dispositivo en frame-src e img-src de esa página', () => {
+    const csp = buildCsp(NONCE, AUTHENTICATE);
+    expect(directive(csp, 'frame-src')).toContain('https://h.online-metrix.net');
+    expect(directive(csp, 'img-src')).toContain('https://h.online-metrix.net');
+  });
+
+  it.each(['', '/es', '/es/tours/x/checkout', '/es/booking/abc123', '/es/booking/abc123/card'])(
+    'no los permite en %j',
+    (pathname) => {
+      const csp = buildCsp(NONCE, pathname);
+      for (const origin of RISK) expect(csp).not.toContain(origin);
+    },
+  );
+});

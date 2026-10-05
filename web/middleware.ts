@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   // CSP con nonce por request (spec 0024). El nonce viaja en un request reconstruido (solo
   // headers) hacia next-intl/render, y el mismo nonce va en la CSP de la respuesta.
   const nonce = generateNonce();
-  const csp = buildCsp(nonce);
+  const csp = buildCsp(nonce, request.nextUrl.pathname);
   const cspHeader = cspHeaderName();
 
   const requestHeaders = new Headers(request.headers);

@@ -9,7 +9,7 @@
  * Formato `YYYY-MM-DD`, sin sufijos. Cada valor tiene que existir en el registro de textos
  * publicados (`web/content/legal/registry.ts`, spec 0034): un test lo verifica.
  */
-export const PRIVACY_NOTICE_VERSION = '2026-09-27';
+export const PRIVACY_NOTICE_VERSION = '2026-10-05';
 
 export const TERMS_VERSION = '2026-10-05';
 
