@@ -41,3 +41,37 @@ Spec: [0045-politica-salidas-bajo-el-minimo.md](./0045-politica-salidas-bajo-el-
 
 - La cláusula 7 de los términos dice "la cancelamos"; con `staff_decides` una salida bajo el
   mínimo puede hacerse igual. Queda para la revisión de la abogada.
+
+## 2026-10-05 — Términos versión 2026-10-05
+
+Decisión del usuario: los términos dicen lo que hace el programa; los redacta el operador y la
+abogada los confirma. Solo hay reembolso cuando el turista cancela una reserva cobrada con 24
+horas o más, o cuando el operador cancela y decide devolver.
+
+**Hecho**: versión nueva de los términos (`web/content/legal/terms/2026-10-05.{es,en}.ts`,
+`TERMS_VERSION`, registro y espejo del worker). La 2026-09-27 queda publicada para las reservas
+que la aceptaron. Cambios frente a la 2026-09-27:
+
+- **Cláusula 4**: el apartado de 15 minutos también vence si no se guarda la tarjeta; el sitio
+  avisa si el cobro es al reservar o después; cuándo queda confirmada la reserva en cada caso;
+  las reservas en línea cierran unas horas antes de la salida.
+- **Cláusula 5**: párrafos nuevos sobre el cobro posterior a la reserva: tarjeta guardada y
+  autorización, sin cobro al reservar, cuándo se confirma una salida y cuándo se cobra, la
+  retención previa, y qué pasa si el banco rechaza el cobro o pide confirmarlo.
+- **Cláusula 6**: las condiciones de 24 horas aplican a la reserva ya cobrada; sin reembolso una
+  vez iniciado el tour; la reserva sin cobrar se cancela en cualquier momento sin costo; no se
+  puede cancelar con un cobro en proceso; el cambio de fecha es para reservas ya cobradas.
+- **Cláusula 7**: bajo el mínimo, el operador decide si la salida se hace o se cancela; si la
+  cancela, aviso de 24 horas y 100 %; si se hace, la reserva sigue y se cobra; la reserva que no
+  llegó a cobrarse antes del inicio se cancela sin cobro. En clima, seguridad y fuerza mayor: la
+  revisión es de las reservas cobradas, no se cancela desde el sitio durante la revisión y la no
+  cobrada se cancela sin cobro.
+- **Cláusula 8**: solo hay reembolso en los casos de las cláusulas 5, 6, 7 y 9, y siempre por el
+  100 %, sin descuentos.
+
+También: el aviso del checkout diferido ya no dice "cuando la salida alcance el mínimo" sino
+"cuando la salida se confirme", y nombra la retención. Arreglo de paso: la action de cancelar una
+salida rechazaba el motivo "Fuerza mayor" que el diálogo ofrece.
+
+**Sin tocar, para decidir con la abogada**: la cláusula 16 ("nada en ellos limita los derechos que
+la ley le reconoce como consumidor") y la 13 (Comisión Nacional del Consumidor).

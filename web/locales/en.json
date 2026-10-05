@@ -208,7 +208,7 @@
     "cancel-body": "You have not been charged. You can try booking again.",
     "cancel-back": "Back to tour",
     "cancel-retry": "Try again",
-    "deferred-no-charge-note": "You won't be charged today. We save your card and charge it once the departure reaches its minimum group size. We'll email you.",
+    "deferred-no-charge-note": "You won't be charged today. We save your card and charge it once the departure is confirmed: when it reaches its minimum group size or when we decide to run it. Before charging we may place a hold on your card. We'll email you.",
     "deferred-submit": "Continue",
     "deferred-submitting": "Holding your spot...",
     "card-section": "Card",

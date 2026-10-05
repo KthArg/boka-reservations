@@ -208,7 +208,7 @@
     "cancel-body": "No se realizó ningún cobro. Podés intentar reservar de nuevo.",
     "cancel-back": "Volver al tour",
     "cancel-retry": "Reintentar",
-    "deferred-no-charge-note": "Hoy no se te cobra nada. Guardás tu tarjeta y te cobramos cuando la salida alcance el mínimo de personas. Te avisamos por email.",
+    "deferred-no-charge-note": "Hoy no se te cobra nada. Guardás tu tarjeta y te cobramos cuando la salida se confirme: al alcanzar su mínimo de personas o cuando decidamos hacerla. Antes del cobro podemos hacer una retención en tu tarjeta. Te avisamos por email.",
     "deferred-submit": "Continuar",
     "deferred-submitting": "Reservando tu cupo...",
     "card-section": "Tarjeta",

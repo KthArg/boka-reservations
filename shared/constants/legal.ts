@@ -11,7 +11,7 @@
  */
 export const PRIVACY_NOTICE_VERSION = '2026-09-27';
 
-export const TERMS_VERSION = '2026-09-27';
+export const TERMS_VERSION = '2026-10-05';
 
 /**
  * Nombres de las casillas legales del checkout y su valor marcado (spec 0031). Son el contrato

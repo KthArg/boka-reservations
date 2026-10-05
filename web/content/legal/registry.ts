@@ -2,6 +2,8 @@ import { routing } from '@/i18n/routing';
 import type { LegalDocumentFactory } from './types';
 import { termsEs } from './terms/2026-09-27.es';
 import { termsEn } from './terms/2026-09-27.en';
+import { termsEs as termsEs20261005 } from './terms/2026-10-05.es';
+import { termsEn as termsEn20261005 } from './terms/2026-10-05.en';
 import { privacyEs } from './privacy/2026-09-27.es';
 import { privacyEn } from './privacy/2026-09-27.en';
 
@@ -24,6 +26,7 @@ type Versions = Readonly<Record<string, Readonly<Record<LegalLocale, LegalDocume
 const REGISTRY: Readonly<Record<LegalTextValue, Versions>> = {
   [LegalText.Terms]: {
     '2026-09-27': { es: termsEs, en: termsEn },
+    '2026-10-05': { es: termsEs20261005, en: termsEn20261005 },
   },
   [LegalText.Privacy]: {
     '2026-09-27': { es: privacyEs, en: privacyEn },
