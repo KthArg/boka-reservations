@@ -21,6 +21,19 @@ const ONVO_JS = 'https://js.onvopay.com';
 const ONVO_FRAME = 'https://*.onvopay.com';
 const SENTRY = 'https://*.sentry.io';
 
+// Prevención de fraude del SDK de OnvoPay en el 3DS (decisión del usuario, 2026-10-05; aviso de
+// privacidad 2026-10-05, §2 y §4): consulta la IP del turista en dos servicios y carga la huella
+// del dispositivo de ThreatMetrix. Solo se permiten en la página donde el banco pide confirmar
+// un cobro; el resto del sitio sigue sin mandar la IP del visitante a ningún tercero.
+const RISK_IP_LOOKUPS = 'https://api.ipify.org https://api.my-ip.io';
+const RISK_DEVICE = 'https://h.online-metrix.net';
+const AUTHENTICATE_PATH = /\/booking\/[^/]+\/authenticate\/?$/;
+
+/** La página de confirmación del cobro con el banco (`/{locale}/booking/{token}/authenticate`). */
+export function isChargeAuthenticationPath(pathname: string): boolean {
+  return AUTHENTICATE_PATH.test(pathname);
+}
+
 function supabaseOrigins(): { http: string; ws: string } {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const http = url ? new URL(url).origin : '';
@@ -35,20 +48,24 @@ export function cspHeaderName(): string {
 }
 
 // Arma el string de CSP para un nonce dado. 'unsafe-eval' sólo fuera de producción
-// (Next lo necesita para HMR/React-refresh); en producción no se incluye.
-export function buildCsp(nonce: string): string {
+// (Next lo necesita para HMR/React-refresh); en producción no se incluye. `pathname` decide si se
+// suman los orígenes de prevención de fraude: solo en la página de confirmación del cobro.
+export function buildCsp(nonce: string, pathname = ''): string {
   const { http, ws } = supabaseOrigins();
+  const risk = isChargeAuthenticationPath(pathname);
+  const riskConnect = risk ? `${RISK_IP_LOOKUPS} ${RISK_DEVICE}` : '';
+  const riskDevice = risk ? RISK_DEVICE : '';
   const devEval = process.env.NODE_ENV === PRODUCTION ? '' : `'unsafe-eval'`;
   return [
     `default-src 'self'`,
     `script-src 'nonce-${nonce}' 'strict-dynamic' ${devEval} 'self' https: ${ONVO_SDK}`,
     `style-src 'self' 'unsafe-inline'`,
     // Spec 0036: solo imágenes propias, del almacenamiento y de la pasarela; ninguna URL de un
-    // tercero recibe la IP del visitante.
-    `img-src 'self' data: blob: ${http} ${ONVO_FRAME}`,
+    // tercero recibe la IP del visitante, salvo la prevención de fraude en la página del 3DS.
+    `img-src 'self' data: blob: ${http} ${ONVO_FRAME} ${riskDevice}`,
     `font-src 'self' data:`,
-    `connect-src 'self' ${http} ${ws} ${ONVO_SDK} ${ONVO_API} ${ONVO_JS} ${SENTRY}`,
-    `frame-src ${ONVO_SDK} ${ONVO_FRAME}`,
+    `connect-src 'self' ${http} ${ws} ${ONVO_SDK} ${ONVO_API} ${ONVO_JS} ${SENTRY} ${riskConnect}`,
+    `frame-src ${ONVO_SDK} ${ONVO_FRAME} ${riskDevice}`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

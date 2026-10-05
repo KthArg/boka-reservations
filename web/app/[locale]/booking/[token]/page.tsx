@@ -76,9 +76,11 @@ export default async function BookingViewPage({ params }: Props) {
         <div className={styles.actions}>
           {/* Cobro diferido (spec 0029 §5.7): las páginas de 3DS y de tarjeta, solo en su estado. */}
           {view.awaitingAuthentication ? (
-            <Link href={`/booking/${token}/authenticate`} className={styles.primaryLink}>
+            // Enlace de carga completa, no <Link>: la CSP de la página del 3DS permite la
+            // prevención de fraude de OnvoPay y solo llega con un documento nuevo.
+            <a href={`/${locale}/booking/${token}/authenticate`} className={styles.primaryLink}>
               {t('authenticate-cta')}
-            </Link>
+            </a>
           ) : null}
           {view.canUpdateCard ? (
             <Link href={`/booking/${token}/card`} className={styles.primaryLink}>

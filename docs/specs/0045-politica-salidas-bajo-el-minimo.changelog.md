@@ -75,3 +75,31 @@ salida rechazaba el motivo "Fuerza mayor" que el diálogo ofrece.
 
 **Sin tocar, para decidir con la abogada**: la cláusula 16 ("nada en ellos limita los derechos que
 la ley le reconoce como consumidor") y la 13 (Comisión Nacional del Consumidor).
+
+## 2026-10-05 — Aviso de privacidad versión 2026-10-05 y antifraude de OnvoPay
+
+Decisiones del usuario: el aviso se actualiza para decir lo que hace el programa con el cobro
+posterior a la reserva, y se permite la prevención de fraude de OnvoPay en la página donde el
+banco pide confirmar un cobro (cierra el pendiente (e) de la prueba del 2026-10-01, spec 0033).
+
+**Hecho**:
+
+- Aviso nuevo (`web/content/legal/privacy/2026-10-05.{es,en}.ts`, `PRIVACY_NOTICE_VERSION`,
+  registro y espejo del worker). Cambios frente a la 2026-09-27:
+  - **§2, párrafo nuevo "Tarjeta guardada"**: OnvoPay guarda la tarjeta y recibe nombre y correo;
+    nosotros guardamos marca, últimos cuatro dígitos y vencimiento; el registro se elimina cuando
+    la reserva ya no puede cobrarse.
+  - **§2, párrafo nuevo "Prevención de fraude en el pago"**: el componente de OnvoPay consulta la
+    IP (ipify, my-ip.io) y recoge datos del dispositivo (ThreatMetrix), que no recibimos.
+  - **§2, datos técnicos**: la excepción a "no hacemos seguimiento" es ese componente.
+  - **§3**: finalidad nueva "prevenir el fraude en los pagos"; la aprobación de un cobro la
+    deciden el banco y OnvoPay.
+  - **§4**: la fila de OnvoPay suma tarjeta guardada y antifraude; párrafo nuevo sobre los tres
+    servicios que usa OnvoPay.
+  - **§5**: los servicios antifraude pueden almacenar en otros países.
+- CSP (`web/lib/security/csp.ts`): `api.ipify.org`, `api.my-ip.io` y `h.online-metrix.net` se
+  permiten solo en `/{locale}/booking/{token}/authenticate`. El enlace a esa página desde "Ver mi
+  reserva" pasa a ser de carga completa, para que la política nueva aplique.
+
+**Pendiente**: verificar con un 3DS real (fase 6b) que el componente ya no reporta bloqueos; el
+plazo de conservación de esos datos en ThreatMetrix y los servicios de IP no lo conocemos.
