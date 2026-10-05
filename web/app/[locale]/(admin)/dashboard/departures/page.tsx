@@ -13,6 +13,7 @@ import { needsGuide } from '@/lib/guides/needs-guide';
 import { RefundTray } from './RefundTray';
 import { CancelDepartureDialog } from './CancelDepartureDialog';
 import { listRefundsToResolve, listReviewBookings } from '@/lib/operations/repository';
+import { getBelowMinimumPolicy } from '@/lib/settings/repository';
 import styles from './departures.module.css';
 
 export default async function SalidasPage() {
@@ -20,11 +21,12 @@ export default async function SalidasPage() {
   const tCharge = await getTranslations('departures');
   const tOps = await getTranslations('operations');
   const tPublic = await getTranslations('public');
-  const [departures, guides, reviews, refunds] = await Promise.all([
+  const [departures, guides, reviews, refunds, policy] = await Promise.all([
     listUpcomingDepartures(),
     listGuides(),
     listReviewBookings(),
     listRefundsToResolve(),
+    getBelowMinimumPolicy(),
   ]);
 
   const now = new Date();
@@ -38,7 +40,7 @@ export default async function SalidasPage() {
       <GuidelessTray departures={departures} guides={guides} now={now} />
       <RefundTray refunds={refunds} />
       <ReviewTray bookings={reviews} />
-      <MinimumTray departures={departures} />
+      <MinimumTray departures={departures} policy={policy} />
       <DecisionTray departures={departures} />
 
       {departures.length === 0 ? (

@@ -12,8 +12,9 @@ import styles from './departures.module.css';
  */
 export async function DecisionTray({ departures }: { departures: Departure[] }) {
   const t = await getTranslations('departures');
+  // Sin reservas vivas no hay nada que decidir: la salida se cancela sola (spec 0045).
   const pending = departures.filter(
-    (d) => d.charge.state === DepartureChargeState.AwaitingDecision,
+    (d) => d.charge.state === DepartureChargeState.AwaitingDecision && d.liveTickets > 0,
   );
   if (pending.length === 0) return null;
 

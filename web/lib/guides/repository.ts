@@ -142,6 +142,7 @@ function toDeparture(r: RawDeparture, now: Date): Departure {
       seats: r.capacity_reserved,
       resolvedAt: r.minimum_resolved_at,
       deferredFlow: (r.bookings ?? []).some(isDeferredLive),
+      hasLiveBookings: liveTickets(r.bookings) > 0,
       now,
     }),
   };

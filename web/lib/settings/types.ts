@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   BOOKING_CUTOFF_HOURS_MAX,
   BOOKING_CUTOFF_HOURS_MIN,
+  BelowMinimumPolicy,
   DEFAULT_CHARGE_LEAD_HOURS_MAX,
   DEFAULT_CHARGE_LEAD_HOURS_MIN,
   MINIMUM_DECISION_WINDOW_HOURS_MAX,
@@ -28,6 +29,7 @@ export const BusinessSettingsFormSchema = z.object({
     (v) => (v === '' || v === null ? undefined : v),
     z.coerce.number().int().min(BOOKING_CUTOFF_HOURS_MIN).max(BOOKING_CUTOFF_HOURS_MAX),
   ),
+  below_minimum_policy: z.nativeEnum(BelowMinimumPolicy),
 });
 
 export type BusinessSettingsForm = z.infer<typeof BusinessSettingsFormSchema>;
@@ -37,6 +39,7 @@ export type BusinessSettings = Pick<
   | 'minimum_decision_window_hours'
   | 'default_charge_lead_hours'
   | 'booking_cutoff_hours'
+  | 'below_minimum_policy'
   | 'updated_at'
   | 'operator_legal_name'
   | 'operator_tax_id'

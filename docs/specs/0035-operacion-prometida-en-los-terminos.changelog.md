@@ -86,3 +86,10 @@ registra los cambios de regla al principio.
 **Pendiente**:
 
 - Una bandeja de reembolsos `failed` y `awaiting_transfer` fuera del detalle de cada reserva.
+
+## 2026-10-05 — Reemplazado en parte por el spec 0045
+
+La regla "toda salida bajo el mínimo se cancela sola" ya no rige por defecto. Desde la migración
+`…057`, `resolve_immediate_minimum` cancela solas las salidas sin ninguna reserva; las que tienen
+reservas las decide el staff, salvo que `business_settings.below_minimum_policy` sea
+`auto_cancel`. Ver [0045](./0045-politica-salidas-bajo-el-minimo.md).

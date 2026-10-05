@@ -91,13 +91,18 @@ async function captureOne(
  * Suelta todas las autorizaciones de la salida. Soltar no deja transacción de balance (§5.4). La
  * reserva solo se marca soltada cuando la pasarela confirmó el cierre: darlo por hecho sacaría al
  * intent de la cola de close-payment-intents y dejaría una retención viva que nadie mira.
+ *
+ * Devuelve true si no quedó nada vivo: ni un intent ya cobrado sin asentar, ni una cancelación
+ * que la pasarela no aceptó, ni un estado inesperado. Solo con eso el motor puede cancelar la
+ * salida sin una persona delante (spec 0045).
  */
 export async function releaseAll(
   db: SupabaseClient,
   onvopay: OnvopayChargeClient,
   instanceId: string,
-): Promise<void> {
+): Promise<boolean> {
   const bookings = await fetchDepartureBookings(db, instanceId);
+  let clean = true;
   for (const booking of bookings) {
     if (booking.status !== BookingState.PendingPayment) continue;
     const intentId = await fetchPendingIntent(db, booking.id);
@@ -105,12 +110,22 @@ export async function releaseAll(
     const snapshot = await onvopay.getIntent(intentId);
     const status = snapshot?.status ?? IntentStatus.NotFound;
     // Un intent que ya cobró no se suelta: lo asienta el watchdog por el camino de siempre.
-    if (status === IntentStatus.Succeeded) continue;
-    if (isConfirmable(status) && !(await cancelled(onvopay, intentId, booking.id))) continue;
+    if (status === IntentStatus.Succeeded) {
+      clean = false;
+      continue;
+    }
+    if (isConfirmable(status) && !(await cancelled(onvopay, intentId, booking.id))) {
+      clean = false;
+      continue;
+    }
     // Cerrado o inexistente: no hay nada que cancelar y la retención no existe.
-    if (!isConfirmable(status) && !isClosedIntentStatus(status)) continue;
+    if (!isConfirmable(status) && !isClosedIntentStatus(status)) {
+      clean = false;
+      continue;
+    }
     await releaseAuthorization(db, booking.id, intentId);
   }
+  return clean;
 }
 
 async function cancelled(

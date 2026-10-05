@@ -11,6 +11,7 @@ function input(overrides: Partial<MinimumInput> = {}): MinimumInput {
     seats: 2,
     resolvedAt: null,
     deferredFlow: false,
+    hasLiveBookings: true,
     now: NOW,
     ...overrides,
   };
@@ -31,6 +32,8 @@ describe('minimumView', () => {
     ['el mínimo es 1', { minParticipants: 1, seats: 0 }],
     ['ya está resuelta', { resolvedAt: NOW.toISOString() }],
     ['es del cobro diferido', { deferredFlow: true }],
+    // Spec 0045: una salida sin reservas se cancela sola, no pide decisión.
+    ['no tiene ninguna reserva', { seats: 0, hasLiveBookings: false }],
   ])('no la lleva si %s', (_case, overrides) => {
     expect(minimumView(input(overrides)).needsDecision).toBe(false);
   });

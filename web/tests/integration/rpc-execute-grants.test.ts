@@ -93,6 +93,8 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
   },
   // Spec 0044: cancela salidas al guardar un tour.
   withdraw_schedule_instances: { p_tour_id: ZERO_UUID, p_actor_id: ZERO_UUID },
+  // Spec 0045: cancela una salida bajo el mínimo sin una persona delante.
+  auto_cancel_departure_minimum: { p_instance_id: ZERO_UUID },
   request_refund_transfer: { p_refund_id: ZERO_UUID, p_actor_id: ZERO_UUID },
   settle_refund_transfer: {
     p_refund_id: ZERO_UUID,

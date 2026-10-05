@@ -7,6 +7,7 @@ const VALID = {
   minimum_decision_window_hours: '48',
   default_charge_lead_hours: '48',
   booking_cutoff_hours: '3',
+  below_minimum_policy: 'staff_decides',
 };
 
 describe('BusinessSettingsFormSchema', () => {
@@ -39,6 +40,7 @@ describe('BusinessSettingsFormSchema', () => {
       minimum_decision_window_hours: '48',
       default_charge_lead_hours: '36',
       booking_cutoff_hours: '3',
+      below_minimum_policy: 'auto_cancel',
     });
 
     // Assert
@@ -46,6 +48,7 @@ describe('BusinessSettingsFormSchema', () => {
       minimum_decision_window_hours: 48,
       default_charge_lead_hours: 36,
       booking_cutoff_hours: 3,
+      below_minimum_policy: 'auto_cancel',
     });
   });
 
@@ -88,5 +91,12 @@ describe('BusinessSettingsFormSchema — anticipación mínima (spec 0041)', () 
   it.each(['-1', '73', '2.5', ''])('rejects %s', (raw) => {
     const result = BusinessSettingsFormSchema.safeParse({ ...VALID, booking_cutoff_hours: raw });
     expect(result.success).toBe(false);
+  });
+
+  // Spec 0045: solo las dos políticas conocidas.
+  it.each(['', 'cancel', null])('rejects %j as a below-minimum policy', (raw) => {
+    expect(
+      BusinessSettingsFormSchema.safeParse({ ...VALID, below_minimum_policy: raw }).success,
+    ).toBe(false);
   });
 });

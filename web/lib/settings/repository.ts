@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
-import { BUSINESS_SETTINGS_ID } from '@shared/constants/settings';
+import { BUSINESS_SETTINGS_ID, BelowMinimumPolicy } from '@shared/constants/settings';
 import type { BusinessSettings, BusinessSettingsForm } from './types';
 
 // Acceso a `business_settings` con la sesión del usuario: la RLS de …043 limita la lectura a
@@ -11,6 +11,7 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
     .from('business_settings')
     .select(
       `minimum_decision_window_hours, default_charge_lead_hours, booking_cutoff_hours, updated_at,
+       below_minimum_policy,
        operator_legal_name, operator_tax_id, operator_address, operator_brand,
        operator_contact_email, operator_privacy_email, operator_phone, operator_hours,
        operator_ict_declaration, operator_has_liability_policy, no_show_tolerance_minutes`,
@@ -19,6 +20,22 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
     .single();
   if (error) throw error;
   return data;
+}
+
+/**
+ * Política de las salidas bajo el mínimo (spec 0045), para los textos del panel. Si no se puede
+ * leer rige `staff_decides`, igual que en la base y en el worker.
+ */
+export async function getBelowMinimumPolicy(): Promise<BelowMinimumPolicy> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from('business_settings')
+    .select('below_minimum_policy')
+    .eq('id', BUSINESS_SETTINGS_ID)
+    .maybeSingle();
+  return data?.below_minimum_policy === BelowMinimumPolicy.AutoCancel
+    ? BelowMinimumPolicy.AutoCancel
+    : BelowMinimumPolicy.StaffDecides;
 }
 
 /** Devuelve false si la escritura falló o la RLS no dejó actualizar la fila. */

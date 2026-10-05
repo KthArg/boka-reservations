@@ -6,6 +6,7 @@ import { updateBusinessSettings } from '@/lib/settings/actions';
 import {
   BOOKING_CUTOFF_HOURS_MAX,
   BOOKING_CUTOFF_HOURS_MIN,
+  BelowMinimumPolicy,
   DEFAULT_CHARGE_LEAD_HOURS_MAX,
   DEFAULT_CHARGE_LEAD_HOURS_MIN,
   MINIMUM_DECISION_WINDOW_HOURS_MAX,
@@ -16,7 +17,12 @@ import type { SettingsFormResult } from '@/lib/settings/types';
 import { SettingsHoursField } from './SettingsHoursField';
 import styles from './settings.module.css';
 
-type Props = { decisionWindowHours: number; chargeLeadHours: number; bookingCutoffHours: number };
+type Props = {
+  decisionWindowHours: number;
+  chargeLeadHours: number;
+  bookingCutoffHours: number;
+  belowMinimumPolicy: BelowMinimumPolicy;
+};
 
 const WINDOW = { min: MINIMUM_DECISION_WINDOW_HOURS_MIN, max: MINIMUM_DECISION_WINDOW_HOURS_MAX };
 const LEAD = { min: DEFAULT_CHARGE_LEAD_HOURS_MIN, max: DEFAULT_CHARGE_LEAD_HOURS_MAX };
@@ -28,7 +34,12 @@ const ERROR_RANGE: Partial<Record<SettingsActionError, { min: number; max: numbe
   [SettingsActionError.CutoffOutOfRange]: CUTOFF,
 };
 
-export function SettingsForm({ decisionWindowHours, chargeLeadHours, bookingCutoffHours }: Props) {
+export function SettingsForm({
+  decisionWindowHours,
+  chargeLeadHours,
+  bookingCutoffHours,
+  belowMinimumPolicy,
+}: Props) {
   const t = useTranslations('settings');
   const [state, formAction, pending] = useActionState<SettingsFormResult | null, FormData>(
     updateBusinessSettings,
@@ -38,6 +49,7 @@ export function SettingsForm({ decisionWindowHours, chargeLeadHours, bookingCuto
   const [hours, setHours] = useState(String(decisionWindowHours));
   const [leadHours, setLeadHours] = useState(String(chargeLeadHours));
   const [cutoffHours, setCutoffHours] = useState(String(bookingCutoffHours));
+  const [policy, setPolicy] = useState<string>(belowMinimumPolicy);
 
   const failed = state?.success === false ? state.error : null;
   const errorRange = (failed && ERROR_RANGE[failed]) || WINDOW;
@@ -68,6 +80,21 @@ export function SettingsForm({ decisionWindowHours, chargeLeadHours, bookingCuto
         value={cutoffHours}
         onChange={setCutoffHours}
       />
+      <div className={styles.field}>
+        <label className={styles.label}>
+          {t('field-below-minimum-policy')}
+          <select
+            name="below_minimum_policy"
+            value={policy}
+            onChange={(e) => setPolicy(e.target.value)}
+            className={styles.input}
+          >
+            <option value={BelowMinimumPolicy.StaffDecides}>{t('policy-staff-decides')}</option>
+            <option value={BelowMinimumPolicy.AutoCancel}>{t('policy-auto-cancel')}</option>
+          </select>
+        </label>
+        <p className={styles.hint}>{t('hint-below-minimum-policy')}</p>
+      </div>
 
       {failed && (
         <p className={styles.formError} role="alert">

@@ -917,6 +917,7 @@ export type Database = {
         Row: {
           id: number;
           minimum_decision_window_hours: number;
+          below_minimum_policy: 'staff_decides' | 'auto_cancel';
           booking_cutoff_hours: number;
           default_charge_lead_hours: number;
           operator_legal_name: string;
@@ -936,6 +937,7 @@ export type Database = {
         Insert: {
           id?: number;
           minimum_decision_window_hours?: number;
+          below_minimum_policy?: 'staff_decides' | 'auto_cancel';
           booking_cutoff_hours?: number;
           default_charge_lead_hours?: number;
           operator_legal_name?: string;
@@ -955,6 +957,7 @@ export type Database = {
         Update: {
           id?: number;
           minimum_decision_window_hours?: number;
+          below_minimum_policy?: 'staff_decides' | 'auto_cancel';
           booking_cutoff_hours?: number;
           default_charge_lead_hours?: number;
           operator_legal_name?: string;
@@ -1200,6 +1203,10 @@ export type Database = {
       withdraw_schedule_instances: {
         Args: { p_tour_id: string; p_actor_id: string };
         Returns: { withdrawn: number; kept: number };
+      };
+      auto_cancel_departure_minimum: {
+        Args: { p_instance_id: string };
+        Returns: string;
       };
       resolve_departure_minimum: {
         Args: {
