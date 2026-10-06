@@ -27,6 +27,7 @@ type Settings = {
   minimum_decision_window_hours: number;
   default_charge_lead_hours: number;
   below_minimum_policy: 'staff_decides' | 'auto_cancel';
+  guide_warning_horizon_days: number;
   updated_by: string | null;
 };
 
@@ -59,7 +60,7 @@ async function currentSettings(): Promise<Settings> {
   const { data, error } = await service
     .from('business_settings')
     .select(
-      'minimum_decision_window_hours, default_charge_lead_hours, below_minimum_policy, updated_by',
+      'minimum_decision_window_hours, default_charge_lead_hours, below_minimum_policy, guide_warning_horizon_days, updated_by',
     )
     .eq('id', BUSINESS_SETTINGS_ID)
     .single();
@@ -72,12 +73,14 @@ function formWith(
   leadHours = '48',
   cutoffHours = '3',
   policy = 'staff_decides',
+  guideDays = '14',
 ): FormData {
   const form = new FormData();
   form.append('minimum_decision_window_hours', hours);
   form.append('default_charge_lead_hours', leadHours);
   form.append('booking_cutoff_hours', cutoffHours);
   form.append('below_minimum_policy', policy);
+  form.append('guide_warning_horizon_days', guideDays);
   return form;
 }
 
@@ -126,6 +129,7 @@ describe('updateBusinessSettings', () => {
       minimum_decision_window_hours: 48,
       default_charge_lead_hours: 36,
       below_minimum_policy: 'staff_decides',
+      guide_warning_horizon_days: 14,
       updated_by: adminId,
     });
   });
@@ -221,5 +225,37 @@ describe('updateBusinessSettings', () => {
 
     expect(result).toEqual({ success: false, error: SettingsActionError.PolicyInvalid });
     expect((await currentSettings()).below_minimum_policy).toBe(original.below_minimum_policy);
+  });
+
+  // Spec 0046: la ventana del aviso de salidas sin guía se cambia desde el panel.
+  it('saves the guide warning horizon chosen by the admin', async () => {
+    session.client = adminSession;
+    requireRoleMock.mockResolvedValue({ id: adminId });
+
+    const result = await updateBusinessSettings(
+      null,
+      formWith('24', '48', '3', 'staff_decides', '21'),
+    );
+
+    expect(result).toEqual({ success: true });
+    expect((await currentSettings()).guide_warning_horizon_days).toBe(21);
+  });
+
+  it('rejects a guide warning horizon out of range, without writing', async () => {
+    session.client = adminSession;
+    requireRoleMock.mockResolvedValue({ id: adminId });
+
+    const result = await updateBusinessSettings(
+      null,
+      formWith('24', '48', '3', 'staff_decides', '91'),
+    );
+
+    expect(result).toEqual({
+      success: false,
+      error: SettingsActionError.GuideHorizonOutOfRange,
+    });
+    expect((await currentSettings()).guide_warning_horizon_days).toBe(
+      original.guide_warning_horizon_days,
+    );
   });
 });

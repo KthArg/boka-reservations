@@ -920,6 +920,7 @@ export type Database = {
           below_minimum_policy: 'staff_decides' | 'auto_cancel';
           booking_cutoff_hours: number;
           default_charge_lead_hours: number;
+          guide_warning_horizon_days: number;
           operator_legal_name: string;
           operator_tax_id: string;
           operator_address: string;
@@ -940,6 +941,7 @@ export type Database = {
           below_minimum_policy?: 'staff_decides' | 'auto_cancel';
           booking_cutoff_hours?: number;
           default_charge_lead_hours?: number;
+          guide_warning_horizon_days?: number;
           operator_legal_name?: string;
           operator_tax_id?: string;
           operator_address?: string;
@@ -960,6 +962,7 @@ export type Database = {
           below_minimum_policy?: 'staff_decides' | 'auto_cancel';
           booking_cutoff_hours?: number;
           default_charge_lead_hours?: number;
+          guide_warning_horizon_days?: number;
           operator_legal_name?: string;
           operator_tax_id?: string;
           operator_address?: string;
@@ -1400,7 +1403,7 @@ export type Database = {
         Returns: number;
       };
       report_revenue: {
-        Args: { p_from: string; p_to: string };
+        Args: { p_from: string; p_to: string; p_basis?: string };
         Returns: {
           tour_id: string;
           name_es: string;

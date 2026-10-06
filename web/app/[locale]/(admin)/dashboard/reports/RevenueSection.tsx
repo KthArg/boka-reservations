@@ -1,16 +1,19 @@
 import { getTranslations } from 'next-intl/server';
 import { formatMoneyCents } from '@/lib/format/money';
 import { reportTourName, type RevenueRow } from '@/lib/reports/types';
+import { RevenueBasis } from '@shared/constants/reports';
 import styles from './reports.module.css';
 
 type Props = {
   rows: RevenueRow[];
   locale: string;
+  /** A qué fecha se aplicó el rango (spec 0046). */
+  basis: RevenueBasis;
   /** null: quien mira no es admin y no puede exportar (spec 0036). */
   exportHref: string | null;
 };
 
-export async function RevenueSection({ rows, locale, exportHref }: Props) {
+export async function RevenueSection({ rows, locale, basis, exportHref }: Props) {
   const t = await getTranslations('reports');
   const currency = rows[0]?.currency ?? 'USD';
   const gross = rows.reduce((s, r) => s + r.grossCents, 0);
@@ -20,13 +23,18 @@ export async function RevenueSection({ rows, locale, exportHref }: Props) {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>{t('revenue-title')}</h2>
+        <h2 className={styles.sectionTitle}>
+          {t('revenue-title')} · {t(`basis-${basis}`)}
+        </h2>
         {exportHref ? (
           <a className={styles.secondaryBtn} href={exportHref}>
             {t('export-csv')}
           </a>
         ) : null}
       </div>
+      {basis === RevenueBasis.Departure ? (
+        <p className={styles.note}>{t('basis-departure-note')}</p>
+      ) : null}
       <div className={styles.cards}>
         <div className={styles.card}>
           <p className={styles.cardLabel}>{t('gross')}</p>

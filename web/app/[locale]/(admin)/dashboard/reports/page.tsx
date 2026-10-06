@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getSession, requireAnyRole } from '@/lib/auth/server';
 import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
 import { UserRole } from '@shared/constants/enums';
-import { ReportKind } from '@shared/constants/reports';
+import { ReportKind, RevenueBasis, parseRevenueBasis } from '@shared/constants/reports';
 import { defaultReportRange, validateReportRange, type ReportRange } from '@/lib/reports/range';
 import { getRevenueReport, getOccupancyReport, getRefundsSummary } from '@/lib/reports/queries';
 import { ReportsFilters } from './ReportsFilters';
@@ -13,11 +13,17 @@ import { RefundsSection } from './RefundsSection';
 import { TopToursSection } from './TopToursSection';
 import styles from './reports.module.css';
 
-type SearchParams = { from?: string; to?: string };
+type SearchParams = { from?: string; to?: string; basis?: string };
 type Props = { params: Promise<{ locale: string }>; searchParams: Promise<SearchParams> };
 
-function exportHref(locale: string, kind: ReportKind, range: ReportRange): string {
+function exportHref(
+  locale: string,
+  kind: ReportKind,
+  range: ReportRange,
+  basis?: RevenueBasis,
+): string {
   const sp = new URLSearchParams({ report: kind, from: range.from, to: range.to });
+  if (basis) sp.set('basis', basis);
   // Ruta absoluta con locale: un href relativo se resolvería contra
   // /{locale}/dashboard/ (la página no lleva barra final) → 404.
   return `/${locale}/dashboard/reports/export?${sp.toString()}`;
@@ -36,13 +42,14 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const range: ReportRange = sp.from && sp.to ? { from: sp.from, to: sp.to } : defaultReportRange();
   const rangeError = validateReportRange(range.from, range.to);
+  const basis = parseRevenueBasis(sp.basis);
 
   let body: React.ReactNode;
   if (rangeError) {
     body = <p className={styles.error}>{t(`range-error-${rangeError}`)}</p>;
   } else {
     const [revenue, occupancy, refunds] = await Promise.all([
-      getRevenueReport(range),
+      getRevenueReport(range, basis),
       getOccupancyReport(range),
       getRefundsSummary(range),
     ]);
@@ -51,7 +58,8 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         <RevenueSection
           rows={revenue}
           locale={locale}
-          exportHref={isAdmin ? exportHref(locale, ReportKind.Revenue, range) : null}
+          basis={basis}
+          exportHref={isAdmin ? exportHref(locale, ReportKind.Revenue, range, basis) : null}
         />
         <OccupancySection
           rows={occupancy}
@@ -71,7 +79,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>{t('page-title')}</h1>
-      <ReportsFilters range={range} />
+      <ReportsFilters range={range} basis={basis} />
       {body}
     </div>
   );

@@ -9,6 +9,8 @@ import {
   BelowMinimumPolicy,
   DEFAULT_CHARGE_LEAD_HOURS_MAX,
   DEFAULT_CHARGE_LEAD_HOURS_MIN,
+  GUIDE_WARNING_HORIZON_DAYS_MAX,
+  GUIDE_WARNING_HORIZON_DAYS_MIN,
   MINIMUM_DECISION_WINDOW_HOURS_MAX,
   MINIMUM_DECISION_WINDOW_HOURS_MIN,
   SettingsActionError,
@@ -22,16 +24,19 @@ type Props = {
   chargeLeadHours: number;
   bookingCutoffHours: number;
   belowMinimumPolicy: BelowMinimumPolicy;
+  guideWarningHorizonDays: number;
 };
 
 const WINDOW = { min: MINIMUM_DECISION_WINDOW_HOURS_MIN, max: MINIMUM_DECISION_WINDOW_HOURS_MAX };
 const LEAD = { min: DEFAULT_CHARGE_LEAD_HOURS_MIN, max: DEFAULT_CHARGE_LEAD_HOURS_MAX };
 const CUTOFF = { min: BOOKING_CUTOFF_HOURS_MIN, max: BOOKING_CUTOFF_HOURS_MAX };
+const GUIDE_HORIZON = { min: GUIDE_WARNING_HORIZON_DAYS_MIN, max: GUIDE_WARNING_HORIZON_DAYS_MAX };
 
 /** El rango que explica cada error, según el campo que falló. */
 const ERROR_RANGE: Partial<Record<SettingsActionError, { min: number; max: number }>> = {
   [SettingsActionError.LeadHoursOutOfRange]: LEAD,
   [SettingsActionError.CutoffOutOfRange]: CUTOFF,
+  [SettingsActionError.GuideHorizonOutOfRange]: GUIDE_HORIZON,
 };
 
 export function SettingsForm({
@@ -39,6 +44,7 @@ export function SettingsForm({
   chargeLeadHours,
   bookingCutoffHours,
   belowMinimumPolicy,
+  guideWarningHorizonDays,
 }: Props) {
   const t = useTranslations('settings');
   const [state, formAction, pending] = useActionState<SettingsFormResult | null, FormData>(
@@ -50,6 +56,7 @@ export function SettingsForm({
   const [leadHours, setLeadHours] = useState(String(chargeLeadHours));
   const [cutoffHours, setCutoffHours] = useState(String(bookingCutoffHours));
   const [policy, setPolicy] = useState<string>(belowMinimumPolicy);
+  const [guideDays, setGuideDays] = useState(String(guideWarningHorizonDays));
 
   const failed = state?.success === false ? state.error : null;
   const errorRange = (failed && ERROR_RANGE[failed]) || WINDOW;
@@ -95,6 +102,14 @@ export function SettingsForm({
         </label>
         <p className={styles.hint}>{t('hint-below-minimum-policy')}</p>
       </div>
+      <SettingsHoursField
+        name="guide_warning_horizon_days"
+        label={t('field-guide-horizon')}
+        hint={t('hint-guide-horizon', GUIDE_HORIZON)}
+        {...GUIDE_HORIZON}
+        value={guideDays}
+        onChange={setGuideDays}
+      />
 
       {failed && (
         <p className={styles.formError} role="alert">

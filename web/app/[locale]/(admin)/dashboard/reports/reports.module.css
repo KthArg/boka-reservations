@@ -194,3 +194,10 @@
     white-space: nowrap;
   }
 }
+
+/* Aclaración del criterio de fecha de los ingresos (spec 0046). */
+.note {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

@@ -479,7 +479,7 @@
     "departures-title": "Departures",
     "departures-empty": "No upcoming departures.",
     "guideless-tray-title": "Departures without a guide",
-    "guideless-tray-intro": "These departures in the next 14 days have tourists and no guide assigned. Assign one before the tour starts.",
+    "guideless-tray-intro": "These departures in the next {days, plural, one {24 hours} other {# days}} have tourists and no guide assigned. Assign one before the tour starts.",
     "guideless-urgent": "Less than 24 h",
     "guideless-seats": "{seats, plural, one {# seat} other {# seats}} (includes pending)",
     "guideless-more": "and {count} more in the table",
@@ -666,7 +666,11 @@
     "top-by-bookings": "By bookings",
     "range-error-missing": "Pick a date range (from and to).",
     "range-error-inverted": "The 'from' date cannot be after 'to'.",
-    "range-error-too-long": "The range cannot exceed one year."
+    "range-error-too-long": "The range cannot exceed one year.",
+    "basis-label": "Revenue by",
+    "basis-payment": "Payment date",
+    "basis-departure": "Departure date",
+    "basis-departure-note": "With \"Departure date\", the range applies to the departure day of each booking: the payment and its refund count in that period even if they happened in another. The Refunds section still uses the refund date, so its totals may differ."
   },
   "settings": {
     "nav-label": "Settings",
@@ -686,7 +690,8 @@
       "settings_operator_invalid": "Check the operator details: an email is not valid or a text is too long.",
       "settings_tolerance_out_of_range": "The tolerance must be between {min} and {max} minutes.",
       "settings_cutoff_out_of_range": "Enter a whole number of hours between {min} and {max} for the minimum booking notice.",
-      "settings_policy_invalid": "Choose one of the two options for departures below the minimum."
+      "settings_policy_invalid": "Choose one of the two options for departures below the minimum.",
+      "settings_guide_horizon_out_of_range": "Enter a whole number of days between {min} and {max} for the departures without a guide warning."
     },
     "section-operator": "Operator details and sales",
     "operator-intro": "These details appear in the terms and conditions, the privacy notice, the site and email footers, and the summary before paying. Online sales are enabled once every field is filled in, except the ICT declaration, which is optional. Every change is logged.",
@@ -716,7 +721,9 @@
     "field-below-minimum-policy": "Departures below the minimum",
     "policy-staff-decides": "Staff decides",
     "policy-auto-cancel": "Cancelled automatically",
-    "hint-below-minimum-policy": "What happens to a departure that has bookings but does not reach the minimum. With \"Staff decides\", the departure waits in Departures until someone keeps or cancels it; if nobody decides, it runs. With \"Cancelled automatically\", it is cancelled one day before with a 100% refund and a notice to the tourist. A departure with no bookings is cancelled automatically 24 hours before in both cases."
+    "hint-below-minimum-policy": "What happens to a departure that has bookings but does not reach the minimum. With \"Staff decides\", the departure waits in Departures until someone keeps or cancels it; if nobody decides, it runs. With \"Cancelled automatically\", it is cancelled one day before with a 100% refund and a notice to the tourist. A departure with no bookings is cancelled automatically 24 hours before in both cases.",
+    "field-guide-horizon": "Departures without a guide warning (days ahead)",
+    "hint-guide-horizon": "The \"Departures without a guide\" tray warns about departures with tourists and no guide that start within this many days. Between {min} and {max} days."
   },
   "operations": {
     "cancel-departure": "Cancel departure",

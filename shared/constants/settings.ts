@@ -45,6 +45,13 @@ export enum BelowMinimumPolicy {
   AutoCancel = 'auto_cancel',
 }
 
+/**
+ * Con cuántos días de anticipación avisa la bandeja "Salidas sin guía" (specs 0043 y 0046). Espejo
+ * del CHECK de `business_settings.guide_warning_horizon_days`.
+ */
+export const GUIDE_WARNING_HORIZON_DAYS_MIN = 1;
+export const GUIDE_WARNING_HORIZON_DAYS_MAX = 90;
+
 /** Largo máximo de cada dato del operador: son textos de una línea para el pie y los términos. */
 export const OPERATOR_FIELD_MAX_LENGTH = 200;
 
@@ -61,4 +68,6 @@ export enum SettingsActionError {
   CutoffOutOfRange = 'settings_cutoff_out_of_range',
   /** Política de salidas bajo el mínimo desconocida (spec 0045). */
   PolicyInvalid = 'settings_policy_invalid',
+  /** Ventana del aviso de salidas sin guía fuera de rango (spec 0046). */
+  GuideHorizonOutOfRange = 'settings_guide_horizon_out_of_range',
 }

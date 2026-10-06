@@ -48,6 +48,7 @@ export default async function SettingsPage({ params }: Props) {
           chargeLeadHours={settings.default_charge_lead_hours}
           bookingCutoffHours={settings.booking_cutoff_hours}
           belowMinimumPolicy={settings.below_minimum_policy as BelowMinimumPolicy}
+          guideWarningHorizonDays={settings.guide_warning_horizon_days}
         />
       </section>
     </div>

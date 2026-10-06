@@ -13,7 +13,7 @@ import { needsGuide } from '@/lib/guides/needs-guide';
 import { RefundTray } from './RefundTray';
 import { CancelDepartureDialog } from './CancelDepartureDialog';
 import { listRefundsToResolve, listReviewBookings } from '@/lib/operations/repository';
-import { getBelowMinimumPolicy } from '@/lib/settings/repository';
+import { getDepartureSettings } from '@/lib/settings/repository';
 import styles from './departures.module.css';
 
 export default async function SalidasPage() {
@@ -21,13 +21,14 @@ export default async function SalidasPage() {
   const tCharge = await getTranslations('departures');
   const tOps = await getTranslations('operations');
   const tPublic = await getTranslations('public');
-  const [departures, guides, reviews, refunds, policy] = await Promise.all([
+  const [departures, guides, reviews, refunds, settings] = await Promise.all([
     listUpcomingDepartures(),
     listGuides(),
     listReviewBookings(),
     listRefundsToResolve(),
-    getBelowMinimumPolicy(),
+    getDepartureSettings(),
   ]);
+  const horizonDays = settings.guideWarningHorizonDays;
 
   const now = new Date();
 
@@ -37,10 +38,10 @@ export default async function SalidasPage() {
         <h1 className={styles.title}>{t('departures-title')}</h1>
       </div>
 
-      <GuidelessTray departures={departures} guides={guides} now={now} />
+      <GuidelessTray departures={departures} guides={guides} now={now} horizonDays={horizonDays} />
       <RefundTray refunds={refunds} />
       <ReviewTray bookings={reviews} />
-      <MinimumTray departures={departures} policy={policy} />
+      <MinimumTray departures={departures} policy={settings.belowMinimumPolicy} />
       <DecisionTray departures={departures} />
 
       {departures.length === 0 ? (
@@ -92,7 +93,7 @@ export default async function SalidasPage() {
                     <ChargeStatus charge={dep.charge} />
                   </td>
                   <td className={styles.td}>
-                    {needsGuide(dep, now) ? (
+                    {needsGuide(dep, now, horizonDays) ? (
                       <span className={styles.noGuide}>{t('guideless-mark')}</span>
                     ) : null}
                     <GuideAssigner

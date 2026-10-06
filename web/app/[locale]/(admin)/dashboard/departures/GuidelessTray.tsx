@@ -5,21 +5,27 @@ import type { AssignableGuide, Departure } from '@/lib/guides/types';
 import { GuideAssigner } from './GuideAssigner';
 import styles from './departures.module.css';
 
-type Props = { departures: Departure[]; guides: AssignableGuide[]; now: Date };
+type Props = {
+  departures: Departure[];
+  guides: AssignableGuide[];
+  now: Date;
+  /** Ventana del aviso, en días (Configuración, spec 0046). */
+  horizonDays: number;
+};
 
 /**
  * Salidas próximas con turistas y sin guía (spec 0043). Va primera en la página: una salida sin
  * guía es lo que más rápido se vuelve irreversible. Se asigna desde acá con el mismo selector.
  */
-export async function GuidelessTray({ departures, guides, now }: Props) {
+export async function GuidelessTray({ departures, guides, now, horizonDays }: Props) {
   const t = await getTranslations('guides');
-  const { shown, hidden } = guidelessTray(departures, now);
+  const { shown, hidden } = guidelessTray(departures, now, horizonDays);
   if (shown.length === 0) return null;
 
   return (
     <section className={styles.tray}>
       <h2 className={styles.trayTitle}>{t('guideless-tray-title')}</h2>
-      <p className={styles.trayIntro}>{t('guideless-tray-intro')}</p>
+      <p className={styles.trayIntro}>{t('guideless-tray-intro', { days: horizonDays })}</p>
       <ul className={styles.trayList}>
         {shown.map((departure) => {
           const { date, time } = formatOperatorDateTime(departure.startsAt);
