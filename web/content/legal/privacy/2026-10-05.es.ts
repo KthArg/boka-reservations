@@ -42,7 +42,7 @@ export const privacyEs: LegalDocumentFactory = (op) => ({
           'No le pedimos documento de identidad, teléfono, dirección, nacionalidad, datos de salud ni datos de las personas que lo acompañan, incluidos los menores de edad.',
         ),
         p(
-          'Pago. Los datos de su tarjeta los digita directamente en el formulario de nuestro procesador de pagos, OnvoPay (ONVO Costa Rica S.A.). Nosotros no vemos ni guardamos el número completo de la tarjeta ni su código de seguridad. De OnvoPay recibimos solo la confirmación del pago y una referencia de la transacción.',
+          'Pago. Los datos de su tarjeta viajan directamente desde su navegador a nuestro procesador de pagos, OnvoPay (ONVO Costa Rica S.A.), sin pasar por nuestros servidores. Nosotros no vemos ni guardamos el número completo de la tarjeta ni su código de seguridad. De OnvoPay recibimos solo la confirmación del pago y una referencia de la transacción.',
         ),
         p(
           'Tarjeta guardada. Cuando el cobro se hace después de reservar, OnvoPay guarda su tarjeta para que podamos cobrarle cuando la salida se confirme, y le enviamos su nombre y su correo para registrarlo como titular. Nosotros guardamos solo la marca de la tarjeta, sus últimos cuatro dígitos y su fecha de vencimiento, para identificarla en nuestros correos. Cuando la reserva ya no puede volver a cobrarse (porque se canceló, o porque se cobró y la salida ya empezó), pedimos a OnvoPay que elimine ese registro con su tarjeta.',
