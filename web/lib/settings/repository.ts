@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
+import { GUIDE_WARNING_HORIZON_DAYS } from '@shared/constants/departures';
 import { BUSINESS_SETTINGS_ID, BelowMinimumPolicy } from '@shared/constants/settings';
 import type { BusinessSettings, BusinessSettingsForm } from './types';
 
@@ -11,7 +12,7 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
     .from('business_settings')
     .select(
       `minimum_decision_window_hours, default_charge_lead_hours, booking_cutoff_hours, updated_at,
-       below_minimum_policy,
+       below_minimum_policy, guide_warning_horizon_days,
        operator_legal_name, operator_tax_id, operator_address, operator_brand,
        operator_contact_email, operator_privacy_email, operator_phone, operator_hours,
        operator_ict_declaration, operator_has_liability_policy, no_show_tolerance_minutes`,
@@ -22,20 +23,30 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
   return data;
 }
 
+export type DepartureSettings = {
+  belowMinimumPolicy: BelowMinimumPolicy;
+  guideWarningHorizonDays: number;
+};
+
 /**
- * Política de las salidas bajo el mínimo (spec 0045), para los textos del panel. Si no se puede
- * leer rige `staff_decides`, igual que en la base y en el worker.
+ * Lo que la página de Salidas necesita de la configuración: la política de las salidas bajo el
+ * mínimo (spec 0045) y la ventana del aviso de salidas sin guía (spec 0046). Si no se puede leer
+ * rigen `staff_decides`, igual que en la base y en el worker, y los 14 días iniciales.
  */
-export async function getBelowMinimumPolicy(): Promise<BelowMinimumPolicy> {
+export async function getDepartureSettings(): Promise<DepartureSettings> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from('business_settings')
-    .select('below_minimum_policy')
+    .select('below_minimum_policy, guide_warning_horizon_days')
     .eq('id', BUSINESS_SETTINGS_ID)
     .maybeSingle();
-  return data?.below_minimum_policy === BelowMinimumPolicy.AutoCancel
-    ? BelowMinimumPolicy.AutoCancel
-    : BelowMinimumPolicy.StaffDecides;
+  return {
+    belowMinimumPolicy:
+      data?.below_minimum_policy === BelowMinimumPolicy.AutoCancel
+        ? BelowMinimumPolicy.AutoCancel
+        : BelowMinimumPolicy.StaffDecides,
+    guideWarningHorizonDays: data?.guide_warning_horizon_days ?? GUIDE_WARNING_HORIZON_DAYS,
+  };
 }
 
 /** Devuelve false si la escritura falló o la RLS no dejó actualizar la fila. */

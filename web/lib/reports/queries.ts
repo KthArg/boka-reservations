@@ -1,14 +1,23 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
+import { RevenueBasis } from '@shared/constants/reports';
 import { toRangeBounds, type ReportRange } from './range';
 import type { RevenueRow, OccupancyRow, RefundsSummary } from './types';
 
 export type { RevenueRow, OccupancyRow, RefundsSummary } from './types';
 
-export async function getRevenueReport(range: ReportRange): Promise<RevenueRow[]> {
+/** `basis`: a qué fecha se aplica el rango, la del pago o la de la salida (spec 0046). */
+export async function getRevenueReport(
+  range: ReportRange,
+  basis: RevenueBasis = RevenueBasis.Payment,
+): Promise<RevenueRow[]> {
   const db = await createSupabaseServerClient();
   const { fromIso, toIso } = toRangeBounds(range);
-  const { data, error } = await db.rpc('report_revenue', { p_from: fromIso, p_to: toIso });
+  const { data, error } = await db.rpc('report_revenue', {
+    p_from: fromIso,
+    p_to: toIso,
+    p_basis: basis,
+  });
   if (error) throw new Error(`report_revenue: ${error.message}`);
   return (data ?? []).map((r) => ({
     tourId: r.tour_id,

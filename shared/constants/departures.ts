@@ -35,6 +35,7 @@ export const DepartureResolutionOutcome = {
  * Aviso de salidas con turistas y sin guía (spec 0043): cuántos días hacia adelante se mira, desde
  * cuántas horas la salida es urgente y cuántas muestra la bandeja como mucho. Solo los usa la web.
  */
+/** Valor inicial; el vigente se configura en el panel (spec 0046). */
 export const GUIDE_WARNING_HORIZON_DAYS = 14;
 export const GUIDE_WARNING_URGENT_HOURS = 24;
 export const GUIDE_WARNING_TRAY_LIMIT = 30;

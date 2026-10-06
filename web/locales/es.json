@@ -479,7 +479,7 @@
     "departures-title": "Salidas",
     "departures-empty": "No hay salidas próximas.",
     "guideless-tray-title": "Salidas sin guía",
-    "guideless-tray-intro": "Estas salidas de los próximos 14 días tienen turistas y ningún guía asignado. Asigná uno antes de que el tour empiece.",
+    "guideless-tray-intro": "Estas salidas de {days, plural, one {las próximas 24 horas} other {los próximos # días}} tienen turistas y ningún guía asignado. Asigná uno antes de que el tour empiece.",
     "guideless-urgent": "Menos de 24 h",
     "guideless-seats": "{seats, plural, one {# cupo} other {# cupos}} (incluye pendientes)",
     "guideless-more": "y {count} más en la tabla",
@@ -666,7 +666,11 @@
     "top-by-bookings": "Por reservas",
     "range-error-missing": "Definí un rango de fechas (desde y hasta).",
     "range-error-inverted": "La fecha 'desde' no puede ser posterior a 'hasta'.",
-    "range-error-too-long": "El rango no puede superar un año."
+    "range-error-too-long": "El rango no puede superar un año.",
+    "basis-label": "Ingresos por",
+    "basis-payment": "Fecha de pago",
+    "basis-departure": "Fecha de salida",
+    "basis-departure-note": "Con \"Fecha de salida\", el rango se aplica al día de la salida de cada reserva: el pago y su reembolso cuentan en ese período aunque hayan ocurrido en otro. La sección Reembolsos sigue usando la fecha del reembolso, así que sus totales pueden no coincidir."
   },
   "settings": {
     "nav-label": "Configuración",
@@ -686,7 +690,8 @@
       "settings_operator_invalid": "Revisá los datos del operador: algún correo no es válido o algún texto es demasiado largo.",
       "settings_tolerance_out_of_range": "La tolerancia tiene que estar entre {min} y {max} minutos.",
       "settings_cutoff_out_of_range": "Ingresá un número entero de horas entre {min} y {max} para la anticipación mínima.",
-      "settings_policy_invalid": "Elegí una de las dos opciones para las salidas bajo el mínimo."
+      "settings_policy_invalid": "Elegí una de las dos opciones para las salidas bajo el mínimo.",
+      "settings_guide_horizon_out_of_range": "Ingresá un número entero de días entre {min} y {max} para el aviso de salidas sin guía."
     },
     "section-operator": "Datos del operador y venta",
     "operator-intro": "Estos datos aparecen en los términos y condiciones, el aviso de privacidad, el pie del sitio y de los correos, y el resumen antes de pagar. La venta en línea se habilita cuando están completos todos los campos, salvo la declaratoria del ICT, que es opcional. Cada cambio queda registrado.",
@@ -716,7 +721,9 @@
     "field-below-minimum-policy": "Salidas bajo el mínimo",
     "policy-staff-decides": "Decide el staff",
     "policy-auto-cancel": "Se cancelan solas",
-    "hint-below-minimum-policy": "Qué pasa con una salida que tiene reservas pero no alcanza el mínimo. Con \"Decide el staff\", la salida espera en Salidas a que alguien la mantenga o la cancele; si nadie decide, se hace. Con \"Se cancelan solas\", se cancela un día antes con reembolso del 100 % y aviso al turista. Una salida sin ninguna reserva se cancela sola 24 horas antes en los dos casos."
+    "hint-below-minimum-policy": "Qué pasa con una salida que tiene reservas pero no alcanza el mínimo. Con \"Decide el staff\", la salida espera en Salidas a que alguien la mantenga o la cancele; si nadie decide, se hace. Con \"Se cancelan solas\", se cancela un día antes con reembolso del 100 % y aviso al turista. Una salida sin ninguna reserva se cancela sola 24 horas antes en los dos casos.",
+    "field-guide-horizon": "Aviso de salidas sin guía (días de anticipación)",
+    "hint-guide-horizon": "La bandeja \"Salidas sin guía\" avisa de las salidas con turistas y sin guía que empiezan dentro de esta cantidad de días. Entre {min} y {max} días."
   },
   "operations": {
     "cancel-departure": "Cancelar salida",

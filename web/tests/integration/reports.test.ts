@@ -180,3 +180,109 @@ describe('reportes (RPC con sesión autenticada admin)', () => {
     expect(row.valid_bookings_count).toBe(3); // B1, B2, B3 (B4 pending excluido)
   });
 });
+
+// Spec 0046: el rango se puede aplicar a la fecha de la salida en lugar de la del pago.
+describe('report_revenue por fecha de salida', () => {
+  // Salida en mayo, pagada en junio y reembolsada en julio: tres meses distintos a propósito.
+  const MAY = { p_from: '2024-05-01T00:00:00Z', p_to: '2024-06-01T00:00:00Z' };
+  const JUNE = { p_from: '2024-06-01T00:00:00Z', p_to: '2024-07-01T00:00:00Z' };
+  let mayInstanceId: string;
+  let bookingId: string;
+
+  const rowFor = async (args: { p_from: string; p_to: string; p_basis?: string }) => {
+    const { data, error } = await authed.rpc('report_revenue', args);
+    if (error) throw new Error(error.message);
+    return (data ?? []).find((r) => r.tour_id === tourId) ?? null;
+  };
+
+  beforeAll(async () => {
+    const { data: sched } = await admin
+      .from('tour_schedules')
+      .select('id')
+      .eq('tour_id', tourId)
+      .single();
+    const { data: inst } = await admin
+      .from('tour_instances')
+      .insert({
+        tour_id: tourId,
+        schedule_id: sched!.id,
+        starts_at: '2024-05-10T15:00:00Z',
+        ends_at: '2024-05-10T15:00:00Z',
+        capacity_total: 10,
+      })
+      .select('id')
+      .single();
+    mayInstanceId = inst!.id;
+    const { data: booking } = await admin
+      .from('bookings')
+      .insert({
+        tour_instance_id: mayInstanceId,
+        customer_name: 'Report Test',
+        customer_email: `rep-${crypto.randomUUID().slice(0, 8)}@example.com`,
+        tickets_adult: 1,
+        total_amount_cents: 7000,
+        status: 'cancelled',
+        locale: 'es',
+      })
+      .select('id')
+      .single();
+    bookingId = booking!.id;
+    const { data: payment } = await admin
+      .from('payments')
+      .insert({
+        booking_id: bookingId,
+        external_payment_id: `pi_${crypto.randomUUID()}`,
+        amount_cents: 7000,
+        status: 'refunded',
+        created_at: '2024-06-15T15:00:00Z',
+      })
+      .select('id')
+      .single();
+    await admin.from('refunds').insert({
+      booking_id: bookingId,
+      payment_id: payment!.id,
+      amount_cents: 7000,
+      currency: 'USD',
+      status: 'succeeded',
+      created_at: '2024-07-02T15:00:00Z',
+    });
+  });
+
+  afterAll(async () => {
+    await admin.from('refunds').delete().eq('booking_id', bookingId);
+    await admin.from('payments').delete().eq('booking_id', bookingId);
+    await admin.from('bookings').delete().eq('id', bookingId);
+    await admin.from('tour_instances').delete().eq('id', mayInstanceId);
+  });
+
+  it('counts the payment and its refund in the month of the departure', async () => {
+    const row = await rowFor({ ...MAY, p_basis: 'departure' });
+
+    expect(row).toMatchObject({ gross_cents: 7000, refunded_cents: 7000, net_cents: 0 });
+  });
+
+  it('does not count it in the month it was paid', async () => {
+    expect(await rowFor({ ...JUNE, p_basis: 'departure' })).toBeNull();
+  });
+
+  // Bordes del rango medio abierto: el inicio entra, el fin no.
+  it('includes a departure starting exactly at the range start and excludes the range end', async () => {
+    const at = '2024-05-10T15:00:00Z';
+    const from = await rowFor({ p_from: at, p_to: '2024-05-11T00:00:00Z', p_basis: 'departure' });
+    const to = await rowFor({ p_from: '2024-05-01T00:00:00Z', p_to: at, p_basis: 'departure' });
+
+    expect(from?.gross_cents).toBe(7000);
+    expect(to).toBeNull();
+  });
+
+  it('keeps the payment-date numbers when no basis is given', async () => {
+    // Criterio de caja: el pago es de junio y el reembolso de julio.
+    expect(await rowFor(MAY)).toBeNull();
+    expect(await rowFor(JUNE)).toMatchObject({ gross_cents: 7000, refunded_cents: 0 });
+    expect(await rowFor({ ...JUNE, p_basis: 'payment' })).toEqual(await rowFor(JUNE));
+  });
+
+  it('treats an unknown basis as the payment date', async () => {
+    expect(await rowFor({ ...JUNE, p_basis: 'whatever' })).toEqual(await rowFor(JUNE));
+  });
+});

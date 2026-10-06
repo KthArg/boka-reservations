@@ -5,6 +5,8 @@ import {
   BelowMinimumPolicy,
   DEFAULT_CHARGE_LEAD_HOURS_MAX,
   DEFAULT_CHARGE_LEAD_HOURS_MIN,
+  GUIDE_WARNING_HORIZON_DAYS_MAX,
+  GUIDE_WARNING_HORIZON_DAYS_MIN,
   MINIMUM_DECISION_WINDOW_HOURS_MAX,
   MINIMUM_DECISION_WINDOW_HOURS_MIN,
   SettingsActionError,
@@ -30,6 +32,11 @@ export const BusinessSettingsFormSchema = z.object({
     z.coerce.number().int().min(BOOKING_CUTOFF_HOURS_MIN).max(BOOKING_CUTOFF_HOURS_MAX),
   ),
   below_minimum_policy: z.nativeEnum(BelowMinimumPolicy),
+  // Vacío falla: un campo borrado no puede convertirse en un número que nadie escribió.
+  guide_warning_horizon_days: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().int().min(GUIDE_WARNING_HORIZON_DAYS_MIN).max(GUIDE_WARNING_HORIZON_DAYS_MAX),
+  ),
 });
 
 export type BusinessSettingsForm = z.infer<typeof BusinessSettingsFormSchema>;
@@ -40,6 +47,7 @@ export type BusinessSettings = Pick<
   | 'default_charge_lead_hours'
   | 'booking_cutoff_hours'
   | 'below_minimum_policy'
+  | 'guide_warning_horizon_days'
   | 'updated_at'
   | 'operator_legal_name'
   | 'operator_tax_id'

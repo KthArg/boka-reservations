@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/server';
 import { UserRole } from '@shared/constants/enums';
-import { ReportKind, REPORT_UNKNOWN_ERROR } from '@shared/constants/reports';
+import {
+  ReportKind,
+  REPORT_UNKNOWN_ERROR,
+  RevenueBasis,
+  parseRevenueBasis,
+} from '@shared/constants/reports';
 import { validateReportRange, type ReportRange } from '@/lib/reports/range';
 import { getRevenueReport, getOccupancyReport, getRefundsSummary } from '@/lib/reports/queries';
 import { revenueToCsv, occupancyToCsv, refundsSummaryToCsv } from '@/lib/reports/csv';
@@ -12,9 +17,12 @@ async function buildCsv(
   report: string,
   range: ReportRange,
   locale: string,
+  basis: RevenueBasis,
 ): Promise<[string, string] | null> {
   if (report === ReportKind.Revenue) {
-    return [revenueToCsv(await getRevenueReport(range), locale), 'ingresos'];
+    // El nombre del archivo dice el criterio: dos CSV del mismo rango dan números distintos.
+    const name = basis === RevenueBasis.Departure ? 'ingresos-por-salida' : 'ingresos';
+    return [revenueToCsv(await getRevenueReport(range, basis), locale), name];
   }
   if (report === ReportKind.Occupancy) {
     return [occupancyToCsv(await getOccupancyReport(range), locale), 'ocupacion'];
@@ -42,7 +50,8 @@ export async function GET(request: Request, { params }: RouteContext): Promise<N
   }
   const range: ReportRange = { from: from as string, to: to as string };
 
-  const result = await buildCsv(sp.get('report') ?? '', range, locale);
+  const basis = parseRevenueBasis(sp.get('basis'));
+  const result = await buildCsv(sp.get('report') ?? '', range, locale, basis);
   if (!result) return new NextResponse(REPORT_UNKNOWN_ERROR, { status: 400 });
 
   const [csv, name] = result;

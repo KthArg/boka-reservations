@@ -8,6 +8,7 @@ const VALID = {
   default_charge_lead_hours: '48',
   booking_cutoff_hours: '3',
   below_minimum_policy: 'staff_decides',
+  guide_warning_horizon_days: '14',
 };
 
 describe('BusinessSettingsFormSchema', () => {
@@ -41,6 +42,7 @@ describe('BusinessSettingsFormSchema', () => {
       default_charge_lead_hours: '36',
       booking_cutoff_hours: '3',
       below_minimum_policy: 'auto_cancel',
+      guide_warning_horizon_days: '21',
     });
 
     // Assert
@@ -49,6 +51,7 @@ describe('BusinessSettingsFormSchema', () => {
       default_charge_lead_hours: 36,
       booking_cutoff_hours: 3,
       below_minimum_policy: 'auto_cancel',
+      guide_warning_horizon_days: 21,
     });
   });
 
@@ -97,6 +100,19 @@ describe('BusinessSettingsFormSchema — anticipación mínima (spec 0041)', () 
   it.each(['', 'cancel', null])('rejects %j as a below-minimum policy', (raw) => {
     expect(
       BusinessSettingsFormSchema.safeParse({ ...VALID, below_minimum_policy: raw }).success,
+    ).toBe(false);
+  });
+
+  // Spec 0046: ventana del aviso de salidas sin guía, de 1 a 90 días.
+  it.each(['1', '14', '90'])('accepts a guide warning horizon of %s days', (raw) => {
+    expect(
+      BusinessSettingsFormSchema.safeParse({ ...VALID, guide_warning_horizon_days: raw }).success,
+    ).toBe(true);
+  });
+
+  it.each(['0', '91', '', 'abc', '1.5'])('rejects %j as a guide warning horizon', (raw) => {
+    expect(
+      BusinessSettingsFormSchema.safeParse({ ...VALID, guide_warning_horizon_days: raw }).success,
     ).toBe(false);
   });
 });
