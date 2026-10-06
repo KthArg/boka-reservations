@@ -262,13 +262,26 @@ describe('política de las salidas bajo el mínimo (spec 0045)', () => {
     expect(await resolveNow(empty)).toBe('cancelled');
   });
 
-  it('no cancela la salida vacía de un tour sin mínimo', async () => {
+  // Decisión del operador (2026-10-06, …058): vacía es vacía, tenga o no mínimo el tour.
+  it('cancela sola la salida vacía de un tour sin mínimo', async () => {
     const noMinimum = await departure(IN_WINDOW_MS, 1, 0);
 
     await runResolveMinimum(db, new Date());
 
-    expect((await instance(noMinimum)).status).toBe('available');
-    expect((await instance(noMinimum)).minimum_resolution).toBe('reached');
+    expect(await instance(noMinimum)).toEqual({
+      status: 'cancelled',
+      cancellation_reason: 'minimum',
+      minimum_resolution: 'auto_cancelled',
+    });
+  });
+
+  it('da por alcanzado el mínimo de un tour sin mínimo que tiene una reserva', async () => {
+    const withBooking = await departure(IN_WINDOW_MS, 1, 1);
+
+    await runResolveMinimum(db, new Date());
+
+    expect((await instance(withBooking)).status).toBe('available');
+    expect((await instance(withBooking)).minimum_resolution).toBe('reached');
   });
 
   // Todas sus reservas diferidas se cancelaron después de abrir el ciclo: es una vacía más.

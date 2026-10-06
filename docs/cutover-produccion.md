@@ -197,7 +197,8 @@ que el primer admin se siembra a mano. El hook `custom_access_token_hook` inyect
 
 - [ ] Texto definitivo de privacidad y T&C reemplazando los placeholders de `/privacy` y `/terms`.
 - [ ] Incrementar `PRIVACY_NOTICE_VERSION` en `shared/constants/legal.ts` al publicar el texto.
-- [ ] Registro de la base ante PRODHAB y acuerdos de encargado de tratamiento (Resend/Supabase/OnvoPay).
+- [x] ~~Registro de la base ante PRODHAB~~ — **no aplica** (verificado 2026-09-21): solo se inscriben las bases que se venden o distribuyen con fin comercial (Ley 8968 art. 21; reglamento arts. 2.c y 44). Cambia si algún día se comparten datos para lucrar.
+- [ ] Acuerdos de encargado de tratamiento con Supabase, Vercel, Resend, Sentry y Railway: ver `docs/operacion/acuerdos-de-tratamiento.md`. Confirmar con OnvoPay si actúa como encargado o como responsable propio.
 
 > Verificado el 2026-10-03 en el dashboard de Supabase y en producción: registro abierto deshabilitado, SMTP de Resend (`smtp.resend.com`, remitente `noreply@bokaverdecr.com`), Site URL `https://reservas.bokaverdecr.com`, web y worker desplegados desde `main`, admin creado, dominio en Vercel. Las casillas sin marcar de arriba siguen pendientes o no se pudieron verificar desde afuera.
 

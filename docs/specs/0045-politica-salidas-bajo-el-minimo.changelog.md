@@ -116,3 +116,21 @@ Hallazgos de la investigación: ipify declara que no registra nada; my-ip.io (Wo
 publica política de privacidad; ThreatMetrix no da plazo fijo, lista varios países y cruza los
 identificadores entre sus clientes; la política de ONVO (2022) no menciona antifraude. Pendiente:
 preguntarle a OnvoPay por escrito.
+
+## 2026-10-06 — Las vacías se cancelan también en los tours sin mínimo (…058)
+
+Decisiones del usuario: (1) una salida sin ninguna reserva se cancela sola 24 horas antes aunque
+el tour no tenga mínimo; (2) las cancelaciones por mínimo siguen devolviendo el 100 % de forma
+automática, sin pasar por revisión (sin cambio de código).
+
+**Hecho**: migración `…058`, que pone la rama de "sin reservas" de `resolve_immediate_minimum`
+antes de la de "mínimo alcanzado". Un tour sin mínimo con al menos una reserva sigue dándose por
+alcanzado. Tests de integración actualizados en web y worker.
+
+**Efecto a tener presente**: una salida vacía deja de venderse 24 horas antes, sea cual sea la
+anticipación mínima para reservar de Configuración.
+
+**Otros cambios del día**: el CSV de reservas suma `base_sin_iva` e `iva` para emitir la factura
+a mano; documentos de operación en `docs/operacion/` (acuerdos de tratamiento, factura manual,
+borrador del acuerdo de responsabilidad); el runbook ya no pide el registro ante PRODHAB;
+verificado que Sentry no captura el envío de la tarjeta desde el navegador.

@@ -269,12 +269,14 @@ describe('resolve_immediate_minimum', () => {
     expect(instance.status).not.toBe('cancelled');
   });
 
-  it('con mínimo 1 la resuelve alcanzada aunque esté vacía', async () => {
+  // …058: una salida sin reservas se cancela sola también en un tour sin mínimo.
+  it('con mínimo 1 y vacía la cancela sola', async () => {
     const instanceId = await createInstance(db, await tour(1), IN_WINDOW_MS);
 
     const { data } = await db.rpc('resolve_immediate_minimum', { p_instance_id: instanceId });
 
-    expect(data).toBe('reached');
+    expect(data).toBe('cancelled');
+    expect((await readInstance(db, instanceId)).minimum_resolution).toBe('auto_cancelled');
   });
 
   // Spec 0045: con reservas solo se cancela sola con la política `auto_cancel`.
