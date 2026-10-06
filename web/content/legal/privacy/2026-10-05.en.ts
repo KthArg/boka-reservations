@@ -41,7 +41,7 @@ export const privacyEn: LegalDocumentFactory = (op) => ({
           'We do not ask for an ID document, phone number, address, nationality, health data or data about the people who come with you, including minors.',
         ),
         p(
-          'Payment. You enter your card details directly in the form of our payment processor, OnvoPay (ONVO Costa Rica S.A.). We do not see or store the full card number or its security code. From OnvoPay we only receive the payment confirmation and a transaction reference.',
+          'Payment. Your card details travel directly from your browser to our payment processor, OnvoPay (ONVO Costa Rica S.A.), without passing through our servers. We do not see or store the full card number or its security code. From OnvoPay we only receive the payment confirmation and a transaction reference.',
         ),
         p(
           'Saved card. When the charge is made after booking, OnvoPay saves your card so that we can charge you once the departure is confirmed, and we send it your name and email to register you as the cardholder. We only store the card brand, its last four digits and its expiry date, to identify it in our emails. When the booking can no longer be charged again (because it was cancelled, or because it was charged and the departure has started), we ask OnvoPay to delete that record with your card.',
