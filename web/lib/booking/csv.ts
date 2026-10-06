@@ -1,4 +1,5 @@
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
+import { vatIncludedCents } from '@shared/constants/policies';
 import { toCsv } from '@/lib/format/csv';
 import { formatOperatorDateTime } from './today-range';
 import type { AdminExportRow } from './admin-types';
@@ -17,6 +18,9 @@ const HEADER = [
   'estado_reserva',
   'estado_pago',
   'monto',
+  // Para la factura electrónica, que al lanzar se emite a mano: el monto ya incluye el IVA.
+  'base_sin_iva',
+  'iva',
   'moneda',
   'check_in_at',
   'created_at',
@@ -40,6 +44,8 @@ function toCells(r: AdminExportRow): string[] {
     r.status,
     r.paymentStatus ?? '',
     amount(r.totalAmountCents),
+    amount(r.totalAmountCents - vatIncludedCents(r.totalAmountCents)),
+    amount(vatIncludedCents(r.totalAmountCents)),
     r.currency,
     r.checkedInAt ?? '',
     r.createdAt,

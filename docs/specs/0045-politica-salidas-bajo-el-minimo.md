@@ -29,7 +29,7 @@ Actores: **staff y admin** (deciden en Salidas), **admin** (elige la política e
 - No cambia el plazo de 24 horas de aviso para cancelar por mínimo, ni el reembolso del 100 %.
 - No cambia el ciclo de cobro del diferido (plazo de 30 horas, autorización, captura, reintentos).
 - No cambia qué pasa con una salida del cobro diferido que nadie decide: sus reservas sin cobrar se cancelan a la hora de la salida.
-- No se cancelan las salidas vacías de tours sin mínimo (`min_participants <= 1`): siguen a la venta hasta la anticipación mínima (spec 0041).
+- ~~No se cancelan las salidas vacías de tours sin mínimo.~~ Cambió el 2026-10-06 (migración …058): las salidas vacías se cancelan solas tenga o no mínimo el tour.
 - No hay política por tour: es una sola, global.
 - No se avisa al guía asignado a una salida vacía que se cancela (comportamiento actual).
 - No se agregan emails nuevos.
@@ -48,7 +48,7 @@ Definiciones:
 Criterios de aceptación:
 
 - [ ] Configuración muestra el campo "Salidas bajo el mínimo" con dos opciones; solo el admin lo cambia. El valor inicial es "Decide el staff".
-- [ ] **Vacía, cualquier política**: una salida vacía de un tour con mínimo mayor a 1 se cancela sola cuando faltan entre 25 horas y 24 horas 10 minutos, con motivo `minimum` y resolución `auto_cancelled`. No se envía ningún correo (no hay turistas).
+- [ ] **Vacía, cualquier política**: una salida vacía se cancela sola, tenga o no mínimo el tour (desde …058), cuando faltan entre 25 horas y 24 horas 10 minutos, con motivo `minimum` y resolución `auto_cancelled`. No se envía ningún correo (no hay turistas).
 - [ ] **Casi vacía**: si en esa ventana la salida no tiene reservas pero sí un apartado vivo o una reserva `payment_mismatch`, no se cancela en esa corrida; la siguiente (5 minutos después) vuelve a evaluar.
 - [ ] **Con reservas, política `staff_decides`, cobro inmediato**: el worker no la cancela. La salida sigue en la bandeja "Salidas bajo el mínimo" hasta que empieza o alguien la resuelve. El staff puede mantenerla en cualquier momento y cancelarla por mínimo hasta 24 horas 10 minutos antes; después, solo por otra causa. Si nadie decide, la salida se hace.
 - [ ] **Con reservas, política `staff_decides`, cobro diferido**: igual que hoy (bandeja "Salidas que esperan decisión").

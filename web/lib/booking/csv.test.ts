@@ -29,13 +29,20 @@ describe('bookingsToCsv', () => {
     expect(csv.startsWith('﻿')).toBe(true);
     const header = csv.slice(1).split('\r\n')[0];
     expect(header).toBe(
-      'booking_id,tour,fecha_inicio,hora_inicio,cliente,email,tickets_adult,tickets_child,tickets_student,total_tickets,estado_reserva,estado_pago,monto,moneda,check_in_at,created_at',
+      'booking_id,tour,fecha_inicio,hora_inicio,cliente,email,tickets_adult,tickets_child,tickets_student,total_tickets,estado_reserva,estado_pago,monto,base_sin_iva,iva,moneda,check_in_at,created_at',
     );
   });
 
   it('convierte centavos a unidad mayor con dos decimales', () => {
     const line = bookingsToCsv([row({ totalAmountCents: 12500 })]).split('\r\n')[1];
-    expect(line).toContain(',125.00,USD,');
+    expect(line).toContain(',125.00,');
+  });
+
+  // La factura se emite a mano al lanzar: el operador necesita la base y el IVA (13 %) ya
+  // separados, y que sumen el monto cobrado.
+  it('separa la base y el IVA incluido en el monto', () => {
+    const line = bookingsToCsv([row({ totalAmountCents: 11300 })]).split('\r\n')[1];
+    expect(line).toContain(',113.00,100.00,13.00,USD,');
   });
 
   it('formatea fecha/hora en la zona del operador (UTC-6)', () => {
