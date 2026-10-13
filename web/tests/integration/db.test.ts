@@ -216,9 +216,9 @@ describe('RLS — anon no puede escribir', () => {
 });
 
 describe('RLS — lectura anon', () => {
-  // anon SÍ puede leer tours activos: el portal público lo requiere (spec 0004,
-  // política tours_select_anon con USING status='active'). Lo que la RLS impide
-  // es ver tours archivados.
+  // anon SÍ puede leer tours activos y en pausa: el portal público muestra el aviso de un tour
+  // pausado (spec 0047, política tours_select_anon con USING status <> 'archived'). Lo que la
+  // RLS impide es ver tours archivados.
   it('anon lee tours activos pero no archivados', async () => {
     const { data: active } = await admin
       .from('tours')
@@ -236,7 +236,7 @@ describe('RLS — lectura anon', () => {
     const ids = (data ?? []).map((t) => t.id);
     expect(ids).toContain(active!.id);
     expect(ids).not.toContain(archived!.id);
-    expect((data ?? []).every((t) => t.status === TourStatus.Active)).toBe(true);
+    expect((data ?? []).some((t) => t.status === TourStatus.Archived)).toBe(false);
 
     await admin.from('tours').delete().in('id', [active!.id, archived!.id]);
   });

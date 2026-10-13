@@ -1,13 +1,10 @@
 import {
-  Mountain,
   CalendarCheck,
   Route,
   ChartColumn,
   Users,
   LogOut,
   Pencil,
-  Archive,
-  ArchiveRestore,
   UserX,
   UserCheck,
   UserPlus,
@@ -19,20 +16,21 @@ import {
   RotateCw,
   Settings,
   ShieldCheck,
+  Sun,
+  Moon,
+  Pause,
+  Play,
   type LucideIcon,
 } from 'lucide-react';
 
 // Mapa de nombres semánticos → íconos de lucide-react.
 const ICONS: Record<string, LucideIcon> = {
-  tours: Mountain,
   bookings: CalendarCheck,
   departures: Route,
   reports: ChartColumn,
   users: Users,
   logout: LogOut,
   edit: Pencil,
-  archive: Archive,
-  restore: ArchiveRestore,
   deactivate: UserX,
   reactivate: UserCheck,
   assign: UserPlus,
@@ -44,6 +42,10 @@ const ICONS: Record<string, LucideIcon> = {
   retry: RotateCw,
   settings: Settings,
   privacy: ShieldCheck,
+  'tour-day': Sun,
+  'tour-night': Moon,
+  pause: Pause,
+  resume: Play,
 };
 
 type Props = { name: string; size?: number };

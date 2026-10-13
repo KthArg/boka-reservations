@@ -1,8 +1,8 @@
-import type { TourWithMinPrice } from '@/lib/public/tours';
+import type { FixedTour } from '@/lib/public/tours';
 import { TourCard } from '@/components/public/TourCard/TourCard';
 import styles from './TourGrid.module.css';
 
-type Props = { tours: TourWithMinPrice[] };
+type Props = { tours: FixedTour[] };
 
 /** Tope del escalonado de entrada: con muchos tours, las últimas tarjetas no esperan de más. */
 const MAX_STAGGER_STEPS = 8;

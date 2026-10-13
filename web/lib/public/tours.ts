@@ -1,111 +1,68 @@
 import { createSupabasePublicClient } from '@/lib/db/supabase-public';
+import { captureAlert } from '@/lib/booking/sentry-alert';
 import { applyActivePricingFilter } from '@/lib/pricing/active-filter';
 import { lowestChargedPrice, selectPriceForDay } from '@/lib/pricing/season';
-import { InstanceStatus, TicketType, TourStatus } from '@shared/constants/enums';
+import { InstanceStatus, TicketType, TOUR_KINDS, type TourKind } from '@shared/constants/enums';
 import type { Tables } from '@/types/database';
-import { crDate } from '@/lib/dates/cr-date';
-import { shiftOfTour, type TourShift } from './shift';
 
 export type PublicTour = Tables<'tours'>;
 export type PublicPricing = Tables<'tour_pricing'>;
 export type PublicInstance = Tables<'tour_instances'>;
 
-export type TourWithMinPrice = PublicTour & {
-  min_price_usd: number | null;
-  /** Día, noche o ambos según sus horarios vigentes (spec 0042); null sin horarios. */
-  shift: TourShift | null;
-};
+/** Un tour fijo para la portada (spec 0047): con su precio "desde", o null si no tiene precio. */
+export type FixedTour = PublicTour & { kind: TourKind; min_price_usd: number | null };
 
 type PricingForSelection = {
+  tour_id: string;
   ticket_type: string;
   price_usd: number;
   season_start: string | null;
   season_end: string | null;
 };
 
-export async function listActiveTours(): Promise<TourWithMinPrice[]> {
+/**
+ * Los dos tours fijos, siempre día y después noche, estén en venta o en pausa (la RLS de anon
+ * oculta los archivados). Una fila faltante es una base mal sembrada: se muestra la que haya.
+ */
+export async function listFixedTours(): Promise<FixedTour[]> {
   const db = createSupabasePublicClient();
 
-  const { data: tours, error } = await db
-    .from('tours')
-    .select('*')
-    .eq('status', TourStatus.Active)
-    .order('name_es');
-
+  const { data, error } = await db.from('tours').select('*').not('kind', 'is', null);
   if (error) throw new Error(`Error al cargar tours: ${error.message}`);
-  if (!tours) return [];
+  const tours = (data ?? []).filter((t): t is PublicTour & { kind: TourKind } => t.kind !== null);
+  if (tours.length < TOUR_KINDS.length) {
+    captureAlert('Falta un tour fijo en la base', 'fixed-tour-missing', {
+      found: String(tours.length),
+    });
+  }
+  if (tours.length === 0) return [];
 
   // "Desde $X" (spec 0040): el precio de adulto más bajo que se cobra en algún día del año.
   const base = db
     .from('tour_pricing')
     .select('tour_id, price_usd, ticket_type, season_start, season_end')
+    .in(
+      'tour_id',
+      tours.map((t) => t.id),
+    )
     .eq('ticket_type', TicketType.Adult);
-  const [{ data: pricing }, startTimes] = await Promise.all([
-    applyActivePricingFilter(base),
-    listScheduleStartTimes(tours.map((t) => t.id)),
-  ]);
+  const { data: pricing, error: pricingError } = await applyActivePricingFilter(base);
+  // Sin precios la portada muestra "consultar precio"; que quede registro de por qué.
+  if (pricingError) console.error('[tours] no se pudieron leer los precios:', pricingError.message);
+  const rows = (pricing ?? []) as PricingForSelection[];
 
-  const byTour = new Map<string, PricingForSelection[]>();
-  for (const p of (pricing ?? []) as (PricingForSelection & { tour_id: string })[]) {
-    const rows = byTour.get(p.tour_id) ?? [];
-    rows.push(p);
-    byTour.set(p.tour_id, rows);
-  }
-  const priceByTour = new Map<string, number>();
-  for (const [tourId, rows] of byTour) {
-    const lowest = lowestChargedPrice(rows, TicketType.Adult);
-    if (lowest !== null) priceByTour.set(tourId, lowest);
-  }
-
-  return tours.map((t) => ({
-    ...t,
-    min_price_usd: priceByTour.get(t.id) ?? null,
-    shift: shiftOfTour(startTimes.get(t.id) ?? []),
-  }));
+  return TOUR_KINDS.flatMap((kind) => {
+    const tour = tours.find((t) => t.kind === kind);
+    if (!tour) return [];
+    const own = rows.filter((row) => row.tour_id === tour.id);
+    return [{ ...tour, min_price_usd: lowestChargedPrice(own, TicketType.Adult) }];
+  });
 }
 
-/**
- * Horas de inicio de los horarios vigentes de cada tour (spec 0042 §5.3): activos (lo único que
- * anon puede leer) y sin vencer. Si la consulta falla, los tours se muestran sin turno.
- */
-async function listScheduleStartTimes(tourIds: string[]): Promise<Map<string, string[]>> {
-  const byTour = new Map<string, string[]>();
-  if (tourIds.length === 0) return byTour;
+/** Un tour fijo por su `kind`, en venta o en pausa; quien lo use decide qué mostrar en pausa. */
+export async function getFixedTour(kind: TourKind): Promise<PublicTour | null> {
   const db = createSupabasePublicClient();
-  const { data, error } = await db
-    .from('tour_schedules')
-    .select('tour_id, start_time')
-    .in('tour_id', tourIds)
-    .eq('active', true)
-    .or(`valid_until.is.null,valid_until.gte.${crDate()}`);
-  if (error) {
-    console.error('[tours] no se pudieron leer los horarios:', error.message);
-    return byTour;
-  }
-  for (const row of data ?? []) {
-    const times = byTour.get(row.tour_id) ?? [];
-    times.push(row.start_time);
-    byTour.set(row.tour_id, times);
-  }
-  return byTour;
-}
-
-/** Turno del tour para su página de detalle (spec 0042). */
-export async function getTourShift(tourId: string): Promise<TourShift | null> {
-  const startTimes = await listScheduleStartTimes([tourId]);
-  return shiftOfTour(startTimes.get(tourId) ?? []);
-}
-
-export async function getTourBySlug(slug: string): Promise<PublicTour | null> {
-  const db = createSupabasePublicClient();
-
-  const { data, error } = await db
-    .from('tours')
-    .select('*')
-    .eq('slug', slug)
-    .eq('status', TourStatus.Active)
-    .single();
-
+  const { data, error } = await db.from('tours').select('*').eq('kind', kind).maybeSingle();
   if (error) return null;
   return data;
 }

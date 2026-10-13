@@ -6,7 +6,24 @@ export enum UserRole {
 
 export enum TourStatus {
   Active = 'active',
+  /** Venta en pausa (spec 0047): no se inician reservas nuevas; las existentes siguen su ciclo. */
+  Paused = 'paused',
+  /** Solo tours viejos, sin `kind`: un tour fijo no se archiva. */
   Archived = 'archived',
+}
+
+/** Los dos tours fijos (spec 0047). Espejo del enum `tour_kind`; también es su segmento de URL. */
+export const TourKind = {
+  Day: 'day',
+  Night: 'night',
+} as const;
+
+export type TourKind = (typeof TourKind)[keyof typeof TourKind];
+
+export const TOUR_KINDS = [TourKind.Day, TourKind.Night] as const;
+
+export function isTourKind(value: string): value is TourKind {
+  return (TOUR_KINDS as readonly string[]).includes(value);
 }
 
 export enum TicketType {

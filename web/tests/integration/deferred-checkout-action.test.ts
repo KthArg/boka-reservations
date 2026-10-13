@@ -5,7 +5,7 @@
 // Requiere: supabase start + seed. Ejecutar: pnpm test:integration
 
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/types/database';
 import type { PaymentMethodDetails } from '@/lib/payments/types';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
@@ -372,5 +372,49 @@ describe('completeDeferredCheckoutAction — rechazos', () => {
     // Assert
     expect(result).toEqual({ error: 'error-generic' });
     expect(provider.getPaymentMethod).not.toHaveBeenCalled();
+  });
+});
+
+describe('tour en pausa (spec 0047)', () => {
+  const setTourStatus = async (status: 'active' | 'paused') =>
+    ok(await db.from('tours').update({ status }).in('id', tourIds), 'tour status');
+
+  afterEach(async () => {
+    await setTourStatus('active');
+  });
+
+  it('does not start a booking on a paused tour: no hold and no OnvoPay customer', async () => {
+    // Arrange
+    await setTourStatus('paused');
+    const { count: holdsBefore } = await db
+      .from('tour_holds')
+      .select('id', { count: 'exact', head: true })
+      .eq('tour_instance_id', instanceId);
+
+    // Act
+    const result = await startDeferredCheckoutAction(null, checkoutForm());
+
+    // Assert
+    expect(result).toEqual({ error: 'tour-paused' });
+    expect(provider.createCustomer).not.toHaveBeenCalled();
+    const { count: holdsAfter } = await db
+      .from('tour_holds')
+      .select('id', { count: 'exact', head: true })
+      .eq('tour_instance_id', instanceId);
+    expect(holdsAfter).toBe(holdsBefore);
+  });
+
+  it('lets a tourist who already holds seats finish when the tour is paused in between', async () => {
+    // Arrange
+    const started = await startCheckout();
+    const card = cardOf(started.customerId);
+    await setTourStatus('paused');
+
+    // Act
+    const result = await completeDeferredCheckoutAction(payloadFor(started, card.id));
+
+    // Assert
+    if (!('bookingId' in result)) throw new Error(`complete: ${result.error}`);
+    expect(await readBooking(db, result.bookingId)).toMatchObject({ status: 'pending_minimum' });
   });
 });

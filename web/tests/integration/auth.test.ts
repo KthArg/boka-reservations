@@ -91,6 +91,7 @@ describe('auth — usuario desactivado', () => {
 
 // --- RLS con sesión autenticada ---
 
+// Spec 0047: el seed ya no trae 'cerro-chompipe'; el tour sembrado es el fijo diurno.
 describe('RLS — con sesión autenticada', () => {
   it('staff autenticado no puede hacer UPDATE en tours', async () => {
     const client = createClient<Database>(SUPABASE_URL, ANON_KEY);
@@ -100,16 +101,9 @@ describe('RLS — con sesión autenticada', () => {
     });
 
     // RLS filter policy: UPDATE afecta 0 filas sin retornar error explícito
-    await client
-      .from('tours')
-      .update({ name_es: 'Modificado por staff' })
-      .eq('slug', 'cerro-chompipe');
+    await client.from('tours').update({ name_es: 'Modificado por staff' }).eq('kind', 'day');
 
-    const { data } = await admin
-      .from('tours')
-      .select('name_es')
-      .eq('slug', 'cerro-chompipe')
-      .single();
+    const { data } = await admin.from('tours').select('name_es').eq('kind', 'day').single();
 
     expect(data?.name_es).not.toBe('Modificado por staff');
     await client.auth.signOut();
@@ -142,23 +136,20 @@ describe('RLS — admin puede modificar tours', () => {
     const { data: original } = await admin
       .from('tours')
       .select('name_es')
-      .eq('slug', 'cerro-chompipe')
+      .eq('kind', 'day')
       .single();
 
-    await client
-      .from('tours')
-      .update({ name_es: 'Modificado por admin' })
-      .eq('slug', 'cerro-chompipe');
+    await client.from('tours').update({ name_es: 'Modificado por admin' }).eq('kind', 'day');
 
     const { data: updated } = await admin
       .from('tours')
       .select('name_es')
-      .eq('slug', 'cerro-chompipe')
+      .eq('kind', 'day')
       .single();
 
     expect(updated?.name_es).toBe('Modificado por admin');
 
-    await admin.from('tours').update({ name_es: original!.name_es }).eq('slug', 'cerro-chompipe');
+    await admin.from('tours').update({ name_es: original!.name_es }).eq('kind', 'day');
     await client.auth.signOut();
   });
 });

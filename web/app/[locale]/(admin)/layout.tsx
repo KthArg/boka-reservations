@@ -2,7 +2,7 @@ import { getCurrentUser, requireAnyRole } from '@/lib/auth/server';
 import { signOut } from '@/lib/auth/actions';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
-import { UserRole } from '@shared/constants/enums';
+import { TourKind, UserRole } from '@shared/constants/enums';
 import { ADMIN_PANEL_ROLES } from '@shared/constants/bookings';
 import { DialogProvider } from '@/components/dialogs/DialogProvider';
 import { AdminSidebar } from './AdminSidebar';
@@ -35,7 +35,19 @@ export default async function AdminLayout({ children }: Props) {
 
   // primary = se muestran como íconos en la barra móvil; el resto va al menú hamburguesa.
   const items = [
-    { href: '/dashboard/tours', label: tTours('nav-label'), icon: 'tours', primary: true },
+    // Spec 0047: los dos tours fijos, cada uno con su entrada.
+    {
+      href: `/dashboard/tours/${TourKind.Day}`,
+      label: tTours('kind-day'),
+      icon: 'tour-day',
+      primary: true,
+    },
+    {
+      href: `/dashboard/tours/${TourKind.Night}`,
+      label: tTours('kind-night'),
+      icon: 'tour-night',
+      primary: true,
+    },
     { href: '/dashboard/bookings', label: tBookings('nav-label'), icon: 'bookings', primary: true },
     {
       href: '/dashboard/departures',

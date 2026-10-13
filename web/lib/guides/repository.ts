@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { BookingStatus, InstanceStatus, UserRole } from '@shared/constants/enums';
 import { minimumView } from '@/lib/operations/minimum';
 import { DepartureChargeState, type AssignableGuide, type Departure } from './types';
+import type { TourKind } from '@shared/constants/enums';
 
 type RawBooking = {
   status: string;
@@ -28,7 +29,7 @@ type RawDeparture = {
   minimum_resolution: string | null;
   staff_decision_required_at: string | null;
   min_participants_at_trigger: number | null;
-  tours: { name_es: string; min_participants: number } | null;
+  tours: { name_es: string; min_participants: number; kind: TourKind | null } | null;
   tour_instance_guides: RawAssignment[] | null;
   bookings: RawBooking[] | null;
 };
@@ -40,7 +41,7 @@ const DEPARTURES_SELECT = `
   id, starts_at, capacity_total, capacity_reserved,
   minimum_charge_triggered_at, minimum_charge_closed_at, minimum_resolved_at,
   minimum_resolution, staff_decision_required_at, min_participants_at_trigger,
-  tours!inner ( name_es, min_participants ),
+  tours!inner ( name_es, min_participants, kind ),
   tour_instance_guides ( users!guide_id ( id, full_name, active ) ),
   bookings (
     status, payment_method_id, authorized_at, cancel_claimed_at,
@@ -129,6 +130,7 @@ function toDeparture(r: RawDeparture, now: Date): Departure {
   return {
     id: r.id,
     tourName: r.tours?.name_es ?? '',
+    tourKind: r.tours?.kind ?? null,
     startsAt: r.starts_at,
     capacityTotal: r.capacity_total,
     confirmedTickets: confirmedTickets(r.bookings),

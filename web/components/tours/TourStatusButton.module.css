@@ -1,0 +1,37 @@
+.pause,
+.resume {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+}
+
+.pause:disabled,
+.resume:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.pause {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+
+.pause:hover:not(:disabled) {
+  background: var(--color-warning-light);
+}
+
+.resume {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.resume:hover:not(:disabled) {
+  background: var(--color-success-light);
+}

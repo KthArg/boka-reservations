@@ -38,7 +38,7 @@ Los borradores legales para la abogada y el operador están fuera del repo, en `
    - Worker: `NOTIFICATIONS_ENABLED=true` solo cuando Resend y el dominio estén verificados; mientras tanto `false`.
    - Worker: `RETENTION_ENABLED=true`. Es lo que hace cumplir los plazos del registro de datos.
 5. **Worker.** Levantarlo y confirmar en los logs una corrida de `generate-tour-instances` y una de `apply-retention`. Si se usa Railway: plan Hobby y **App Sleeping apagado**.
-6. **Datos iniciales.** Primer admin (Fase 4b del runbook) y carga de tours reales desde el panel.
+6. **Datos iniciales.** Primer admin (Fase 4b del runbook) y completar el tour diurno y el nocturno desde el panel (textos, foto, horarios y precios; spec 0047). Las migraciones …060 y …061 se aplican con el worker detenido y después de comprobar que el tour de prueba no tenga reservas vivas, cobros abiertos ni apartados en curso en salidas futuras (la …061 aborta si los tiene).
 7. **Texto legal.** Ya está en el código (spec 0034): `web/content/legal/`, versiones en `shared/constants/legal.ts`. Una versión nueva se agrega como archivo nuevo en el registro, sin tocar las anteriores, que siguen visibles en `/terms/<versión>` y `/privacy/<versión>`. Llenar los datos del operador en el panel antes de abrir ventas.
 8. **Prueba completa en producción** (Fase 7 del runbook): reserva real de monto mínimo, correo en la bandeja de entrada, cancelación del turista con 24 h o más y reembolso del 100 % (verificado en el dashboard de OnvoPay), cancelación del staff por decisión del operador con reembolso total, cuadre de reportes.
 9. **Tag** `v0.1.0` y recién entonces difundir la URL.

@@ -1,5 +1,5 @@
 import type { PricingRow, ScheduleRow, TourFormData } from './types';
-import type { TablesInsert } from '@/types/database';
+import type { TablesUpdate } from '@/types/database';
 import { crDate } from '@/lib/dates/cr-date';
 
 // Mapeo de filas del formulario a payloads de insert/upsert. Vive aparte de `actions.ts`
@@ -17,7 +17,7 @@ import { crDate } from '@/lib/dates/cr-date';
  */
 export function mapTourColumns(
   fields: Omit<TourFormData, 'pricing' | 'schedules'>,
-): TablesInsert<'tours'> {
+): TablesUpdate<'tours'> {
   return { ...fields, cover_image_url: fields.cover_image_url ?? null };
 }
 

@@ -14,6 +14,7 @@ import {
   type MonthKey,
 } from '@/lib/public/calendar';
 import { MONTH_KEYS, WEEKDAY_LONG_KEYS, WEEKDAY_SHORT_KEYS } from '@/lib/public/calendar-keys';
+import type { TourKind } from '@shared/constants/enums';
 import { MonthGrid } from './MonthGrid';
 import { DayDepartures } from './DayDepartures';
 import styles from './AvailabilityCalendar.module.css';
@@ -22,7 +23,7 @@ type Props = {
   departures: CalendarDeparture[];
   /** Hoy en Costa Rica, calculado en el servidor. */
   today: string;
-  tourSlug: string;
+  tourKind: TourKind;
 };
 
 /**
@@ -30,7 +31,7 @@ type Props = {
  * archivos de idioma, no de `Intl`: su texto cambia entre Node y cada navegador y el HTML del
  * servidor no coincidiría con el del navegador.
  */
-export function AvailabilityCalendar({ departures, today, tourSlug }: Props) {
+export function AvailabilityCalendar({ departures, today, tourKind }: Props) {
   const locale = useLocale();
   const t = useTranslations('public');
   const days = useMemo(() => groupByCrDay(departures), [departures]);
@@ -104,7 +105,7 @@ export function AvailabilityCalendar({ departures, today, tourSlug }: Props) {
       <DayDepartures
         day={selectedDay}
         title={selectedDay ? dayLabel(selectedDay.day) : null}
-        checkoutHref={(id) => `/${locale}/tours/${tourSlug}/checkout?instance=${id}`}
+        checkoutHref={(id) => `/${locale}/tours/${tourKind}/checkout?instance=${id}`}
       />
     </div>
   );

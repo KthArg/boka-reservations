@@ -5,7 +5,7 @@ import { selectPriceForDay, type PriceRow } from '@/lib/pricing/season';
 import { CENTS_PER_UNIT, CHECKOUT_CURRENCY } from '@shared/constants/bookings';
 import { TicketType } from '@shared/constants/enums';
 import { seatsLeft, type CalendarDeparture } from './calendar';
-import { shiftOfTime } from './shift';
+import { shiftOfDeparture, type Shift } from './shift';
 import type { PublicInstance } from './tours';
 
 /**
@@ -17,6 +17,7 @@ export function toCalendarDepartures(
   instances: PublicInstance[],
   locale: string,
   pricing: PriceRow[] = [],
+  kind: Shift | null = null,
 ): CalendarDeparture[] {
   const time = new Intl.DateTimeFormat(intlLocaleTag(locale), {
     hour: 'numeric',
@@ -31,7 +32,7 @@ export function toCalendarDepartures(
       id: instance.id,
       crDay,
       time: time.format(startsAt),
-      shift: shiftOfTime(crClockTime(startsAt)),
+      shift: shiftOfDeparture(kind, crClockTime(startsAt)),
       seatsLeft: seatsLeft(instance.capacity_total, instance.capacity_reserved),
       adultPrice: adult
         ? formatMoneyCents(

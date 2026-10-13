@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
-import { createTour, updateTour } from '@/lib/tours/actions';
+import { updateTour } from '@/lib/tours/actions';
 import { useSubmitWithoutReset } from '@/lib/forms/use-submit-without-reset';
 import { hasInvalidNumbers } from '@/lib/tours/number-rules';
 import { hasPricingErrors } from '@/lib/tours/validation';
@@ -26,15 +26,14 @@ import PricingEditor from './PricingEditor';
 import ScheduleEditor from './ScheduleEditor';
 import styles from './TourForm.module.css';
 
-type Props = { defaultValues?: TourWithDetails; defaultChargeLeadHours: number };
+type Props = { defaultValues: TourWithDetails; defaultChargeLeadHours: number };
 
 const EMPTY_ERRORS: FieldErrors = {};
 
 export default function TourForm({ defaultValues, defaultChargeLeadHours }: Props) {
   const t = useTranslations('tours');
-  const isEdit = !!defaultValues;
 
-  const action = isEdit ? updateTour.bind(null, defaultValues!.id) : createTour;
+  const action = updateTour.bind(null, defaultValues.id);
   const [state, formAction, isPending] = useActionState<ActionResult | null, FormData>(
     action,
     null,
@@ -47,11 +46,9 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
     Object.entries(rawErrors).map(([field, msgs]) => [field, msgs?.map(translate)]),
   ) as FieldErrors;
 
-  const [pricing, setPricing] = useState<PricingRow[]>(
-    defaultValues ? toPricingRows(defaultValues.pricing) : [],
-  );
+  const [pricing, setPricing] = useState<PricingRow[]>(toPricingRows(defaultValues.pricing));
   const [schedules, setSchedules] = useState<ScheduleRow[]>(
-    defaultValues ? toScheduleRows(defaultValues.schedules) : [],
+    toScheduleRows(defaultValues.schedules),
   );
 
   // Campos básicos como estado controlado: React 19 hace form.reset() tras la action y borraría
@@ -61,10 +58,10 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
   const setBasicField = (name: keyof TourBasicValues, value: string) =>
     setBasic((b) => ({ ...b, [name]: value }));
   const [chargeTiming, setChargeTiming] = useState<ChargeTiming>(
-    defaultValues?.charge_timing ?? ChargeTiming.BeforeDeparture,
+    defaultValues.charge_timing ?? ChargeTiming.BeforeDeparture,
   );
   const [chargeLeadHours, setChargeLeadHours] = useState(
-    defaultValues?.charge_lead_hours ? String(defaultValues.charge_lead_hours) : '',
+    defaultValues.charge_lead_hours ? String(defaultValues.charge_lead_hours) : '',
   );
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -140,7 +137,7 @@ export default function TourForm({ defaultValues, defaultChargeLeadHours }: Prop
 
       <div className={styles.footer}>
         <button type="submit" disabled={isPending} className={styles.submitBtn}>
-          {isPending ? '...' : isEdit ? t('submit-update') : t('submit-create')}
+          {isPending ? '...' : t('submit-update')}
         </button>
       </div>
     </form>

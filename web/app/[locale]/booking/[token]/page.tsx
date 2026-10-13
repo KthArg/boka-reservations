@@ -7,7 +7,7 @@ import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { BookingStatus } from '@shared/constants/enums';
 import { DepartureCancellationReason } from '@shared/constants/operations';
 import { ShiftBadge } from '@/components/public/ShiftBadge/ShiftBadge';
-import { shiftOfTime } from '@/lib/public/shift';
+import { shiftOfDeparture } from '@/lib/public/shift';
 import styles from './booking.module.css';
 
 type Props = { params: Promise<{ locale: string; token: string }> };
@@ -34,8 +34,8 @@ export default async function BookingViewPage({ params }: Props) {
   const tourName = locale === 'es' ? view.tourNameEs : view.tourNameEn;
   const { date, time } = formatOperatorDateTime(view.startsAt);
   const people = view.ticketsAdult + view.ticketsChild + view.ticketsStudent;
-  // Spec 0042: sol o luna según la hora de inicio de la salida.
-  const shift = time ? shiftOfTime(time) : null;
+  // Spec 0047: sol o luna según el tour; un tour viejo, según la hora de inicio.
+  const shift = time ? shiftOfDeparture(view.tourKind, time) : view.tourKind;
 
   return (
     <main className={styles.page}>

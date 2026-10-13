@@ -83,8 +83,10 @@ console.log(
 );
 timers.push(setInterval(logAlive, ALIVE_INTERVAL_MS));
 
-// generate-tour-instances: al inicio y luego una vez al día
-schedule('generate-tour-instances', generateTourInstances, ONE_DAY_MS);
+// generate-tour-instances: al inicio y luego cada hora (spec 0047). Es un upsert que ignora lo que
+// ya existe; así, al reanudar un tour en pausa o agregar un horario, las salidas aparecen sin
+// reiniciar el worker.
+schedule('generate-tour-instances', generateTourInstances, ONE_HOUR_MS);
 // release-expired-holds: al inicio y luego cada minuto
 schedule('release-expired-holds', releaseExpiredHolds, ONE_MINUTE_MS);
 // send-notifications: al inicio y luego cada minuto
