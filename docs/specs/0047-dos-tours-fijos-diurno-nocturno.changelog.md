@@ -20,6 +20,29 @@ Rama: feat/0047-dos-tours-fijos
 **Pendiente**:
 
 - Aplicar …060 y …061 en producción y promover a `main`.
+## 2026-10-13 06:40 — PR B: portada partida y páginas dedicadas
+
+**Hecho**:
+
+- Portada `/tours` como díptico: la mitad del día (arena, sol que asoma desde abajo) y la de la noche (tema noche, luna y estrellas). Con puntero, la mitad que se mira gana ancho; bajo 900 px se apilan. Reemplaza `TourGrid` y `TourCard`, que se borraron.
+- Cada mitad muestra nombre, descripción recortada a tres líneas, duración, precio "desde" y "Ver fechas". En pausa es un bloque sin enlace con el nombre y "No disponible por ahora".
+- Página de cada tour: el héroe lleva su astro y su fondo (sol o luna); con foto, manda la foto. Al final, una franja invita al otro tour con el tema de ese otro tour, y un enlace vuelve a la portada.
+- Encabezado: enlaces "Día" y "Noche" con ícono; en teléfonos angostos queda solo el ícono, con el nombre para lectores de pantalla.
+- Textos nuevos de la portada: "De día o de noche" / "By day or by night" y su bajada.
+- Verificado en navegador a 1280, 360 y 320 px, sin scroll horizontal, en ES y EN. Web unit 554, lint sin errores, typecheck limpio.
+
+**Por qué / decisiones**:
+
+- Sin colores ni tipografías nuevas: todo sale de los tokens del 0042; las transparencias son `color-mix` sobre esos tokens.
+- El enlace de cada mitad cubre todo el bloque, pero se anuncia con el nombre y los datos (`aria-labelledby` / `aria-describedby`), no con la descripción entera.
+- Con foto el astro se oculta y el velo oscurece arriba y abajo: el texto en hueso sobre el sol no se leía (hallazgo del code-reviewer).
+- El ensanche al pasar el puntero solo corre sin `prefers-reduced-motion`.
+- La rama "tour en pausa" de la página pasó a `PausedTour.tsx` para no superar las 150 líneas.
+
+**Pendiente**:
+
+- Nada del spec. Queda fuera: verlo con las fotos reales (el seed no trae fotos, así que el caso con foto se revisó solo en el CSS), tests de componente de `TourPanel` (el repo no tiene Testing Library) y unificar el sol y la luna, que hoy están en dos módulos CSS.
+- El título y la bajada de la portada los redacté yo: revisarlos con el cliente.
 
 ## 2026-10-13 06:05 — PR A: esquema, panel, pausa y rutas por tipo de tour
 

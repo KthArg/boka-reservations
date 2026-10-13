@@ -248,10 +248,9 @@
     "complaints": "Quejas y reclamos"
   },
   "public": {
-    "nav-home": "Inicio",
     "hero-title": "Descubrí Costa Rica",
-    "tours-title": "Nuestros tours",
-    "tours-subtitle": "Senderismo y observación de aves guiados por los bosques de Costa Rica, en grupos pequeños y a paso tranquilo.",
+    "tours-title": "De día o de noche",
+    "tours-subtitle": "Dos caminatas guiadas por el mismo bosque. Elegí la tuya y reservá tu fecha.",
     "tours-from-price": "Desde ${price} USD",
     "tours-no-price": "Consultar precio",
     "tours-duration": "{n} min",
@@ -314,9 +313,15 @@
     "price-season-range": "{startDay} de {startMonth} al {endDay} de {endMonth}",
     "shift-day": "Día",
     "shift-night": "Noche",
-    "nav-day": "Diurno",
-    "nav-night": "Nocturno",
-    "tour-unavailable": "No disponible por ahora"
+    "nav-day": "Día",
+    "nav-night": "Noche",
+    "tour-unavailable": "No disponible por ahora",
+    "tours-see-dates": "Ver fechas",
+    "other-tour-day": "También de día",
+    "other-tour-night": "También de noche",
+    "other-tour-all": "Ver los dos tours",
+    "nav-tours-label": "Tours",
+    "other-tour-label": "Otros tours"
   },
   "bookings": {
     "nav-label": "Reservas",

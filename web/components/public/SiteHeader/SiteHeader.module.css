@@ -55,6 +55,8 @@
 .navLink {
   display: inline-flex;
   align-items: center;
+  gap: 0.45em;
+  white-space: nowrap;
   height: 40px;
   padding: 0 1.1rem;
   border: 1px solid var(--color-border-strong);
@@ -81,6 +83,24 @@
   .navLink {
     height: 36px;
     padding: 0 0.85rem;
+  }
+}
+
+/* En un teléfono angosto quedan el sol y la luna; el nombre sigue para lectores de pantalla. */
+@media (max-width: 440px) {
+  .navLink {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .navLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
