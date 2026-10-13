@@ -20,6 +20,7 @@ Decisiones del usuario (2026-10-13):
 - Público: portada partida con los dos tours y una página propia por tour.
 - Panel: los dos tours se editan y se pueden pausar; no se crean ni se archivan.
 - El tour de prueba `hola` de producción se archiva; los dos tours nuevos nacen sin horarios ni precios.
+- 2026-10-13, antes de aplicar en producción: el tour de prueba `hola` no se archiva, se borra entero con todos sus datos (salidas, apartados, reservas, pagos, reembolsos y avisos). Es una prueba y no hace falta conservar registro. La migración …061 lo hace por slug; cualquier otro tour que existiera se archiva como estaba previsto.
 - Al aprobar (2026-10-13): los dos tours nacen `active` ("disponibles"), no en pausa. Todavía no se vende, así que no hay riesgo: sin horarios ni precios el sitio los muestra sin fechas reservables.
 
 ## 2. Objetivos

@@ -7,8 +7,9 @@
 --   3. Nadie crea ni borra tours por PostgREST: fuera las políticas y los grants de INSERT y
 --      DELETE de authenticated. service_role conserva todo (los tests insertan tours de kind nulo).
 --   4. anon lee también los tours en pausa, para que el sitio pueda mostrar el aviso.
---   5. Los tours que existan se archivan con las reglas de la acción "archivar" que se retira, y
---      se insertan los dos fijos, activos y sin horarios ni precios.
+--   5. El tour de prueba `hola` se borra entero; cualquier otro tour que exista se archiva con las
+--      reglas de la acción "archivar" que se retira; y se insertan los dos fijos, activos y sin
+--      horarios ni precios.
 --
 -- La política de anon se escribe como `status <> 'archived'` y no nombra 'paused': así esta
 -- migración no usa el valor que agrega …060 y no depende de que corran en transacciones distintas.
@@ -152,7 +153,34 @@ CREATE POLICY tours_select_anon
 -- ================================================================
 -- 5. Datos: archivar lo que exista e insertar los dos fijos
 -- ================================================================
--- Mismas reglas que la acción archiveTour que este spec retira: con reservas vivas en salidas
+-- El tour de prueba de producción (slug `hola`) se borra entero, con sus salidas, apartados,
+-- reservas, pagos, reembolsos y avisos: son datos de prueba en modo prueba de OnvoPay y el usuario
+-- pidió no conservarlos (2026-10-13). Hay respaldo previo. En una base sin ese tour no hace nada.
+-- Sus filas de audit_logs quedan: la tabla es de solo agregar. El orden sigue las FK sin CASCADE
+-- (refunds → payments → bookings → tour_holds); el resto cae por CASCADE desde tours.
+DO $do$
+DECLARE
+  v_tour_id uuid;
+BEGIN
+  SELECT id INTO v_tour_id FROM public.tours WHERE slug = 'hola';
+  IF v_tour_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  CREATE TEMP TABLE hola_bookings ON COMMIT DROP AS
+    SELECT b.id
+    FROM public.bookings b
+    JOIN public.tour_instances ti ON ti.id = b.tour_instance_id
+    WHERE ti.tour_id = v_tour_id;
+
+  DELETE FROM public.refunds WHERE booking_id IN (SELECT id FROM hola_bookings);
+  DELETE FROM public.payments WHERE booking_id IN (SELECT id FROM hola_bookings);
+  DELETE FROM public.bookings WHERE id IN (SELECT id FROM hola_bookings);
+  DELETE FROM public.tours WHERE id = v_tour_id;
+END;
+$do$;
+
+-- Cualquier otro tour que exista se archiva. Mismas reglas que la acción archiveTour que este spec retira: con reservas vivas en salidas
 -- futuras o un ciclo de cobro abierto no se archiva. Acá eso aborta la migración, nombrando el
 -- tour, para que se cierre desde el panel antes de volver a aplicarla.
 DO $$

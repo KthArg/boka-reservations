@@ -3,6 +3,24 @@
 Spec: [0047-dos-tours-fijos-diurno-nocturno.md](./0047-dos-tours-fijos-diurno-nocturno.md)
 Rama: feat/0047-dos-tours-fijos
 
+## 2026-10-13 07:05 — El tour de prueba se borra en lugar de archivarse
+
+**Hecho**:
+
+- La migración …061 borra entero el tour `hola` (por slug) con sus salidas, apartados, reservas, pagos, reembolsos y avisos, antes del bloque que archiva cualquier otro tour.
+- Probado en la base local dentro de una transacción revertida, con un tour `hola` que tenía apartado, reserva, pago y reembolso: no queda nada y los dos fijos siguen.
+- Respaldo de producción previo en `backups/prod-2026-10-13-pre-060`.
+
+**Por qué / decisiones**:
+
+- Decisión del usuario: es una prueba y no hace falta guardar registro.
+- Va en la migración porque es la única vía para ejecutar SQL en producción desde esta máquina (`supabase db push`).
+- Las filas de `audit_logs` del tour quedan: la tabla es de solo agregar, también para la migración.
+
+**Pendiente**:
+
+- Aplicar …060 y …061 en producción y promover a `main`.
+
 ## 2026-10-13 06:05 — PR A: esquema, panel, pausa y rutas por tipo de tour
 
 **Hecho**:
