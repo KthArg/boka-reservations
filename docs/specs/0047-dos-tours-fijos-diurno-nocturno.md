@@ -103,7 +103,7 @@ Alternativa descartada: reutilizar "archivar" como pausa. Archivar se bloquea si
 - `updateTour` se conserva; deja de aceptar `slug` y al guardar redirige a `/dashboard/tours/<kind>`. Las acciones por `kind` resuelven el id y delegan en un núcleo por id, que es el que usan los tests con tours desechables.
 - `createTour`, `archiveTour` y `reactivateTour` se eliminan, junto con `ArchiveTourButton`, la página `new` y la lista.
 - Nuevas `pauseTour(kind)` y `resumeTour(kind)`: solo admin; cambian el estado, registran auditoría y revalidan el sitio. Devuelven `{ ok: true } | { ok: false; error }`.
-- `resumeTour` exige que el tour quede realmente vendible: ficha publicada completa (el mismo criterio `isTourBookable` que usa el sitio: no incluye, requisitos, edades), al menos un horario activo vigente y un precio de adulto vigente. Si falta algo devuelve `tour_resume_incomplete` y el mensaje dice qué falta. No existe el estado "activo pero no reservable" por ficha incompleta.
+- `resumeTour` exige que el tour quede realmente vendible: ficha publicada completa (el mismo criterio `isTourBookable` que usa el sitio: no incluye, requisitos, edades), al menos un horario activo vigente y un precio de adulto vigente. Si falta algo devuelve un código por faltante (`tour_resume_missing_info`, `tour_resume_missing_schedule`, `tour_resume_missing_price`) y el mensaje dice qué falta. No existe el estado "activo pero no reservable" por ficha incompleta.
 - Se retiran con ellas: `slugExists`, `cleanupAndFail`, el campo slug del esquema y del formulario, y los códigos de error de crear, archivar y slug.
 - Las políticas RLS de INSERT y DELETE sobre `tours` para `authenticated` se eliminan: ni un admin puede crear o borrar tours por PostgREST.
 
@@ -168,7 +168,7 @@ Sin cambios en las máquinas de reservas, pagos, salidas ni notificaciones.
 - **Turista con la página del checkout abierta, sin apartado, cuando el admin pausa**: al enviar el formulario recibe "tour no disponible"; no se crea apartado ni cobro.
 - **Tour en pausa con reservas futuras**: siguen su ciclo. Las salidas futuras sin reservas se cancelan solas 24 h antes (regla del 0045) y pueden aparecer en "Salidas sin guía"; es ruido aceptado.
 - **Reanudar**: las salidas canceladas durante la pausa no se restauran; las que faltan dentro del horizonte se generan en la siguiente corrida horaria del worker. Hasta entonces el calendario puede verse incompleto.
-- **Reanudar con el tour incompleto**: error `tour_resume_incomplete` con lo que falta; el tour sigue en pausa.
+- **Reanudar con el tour incompleto**: error `tour_resume_missing_*` con lo que falta; el tour sigue en pausa.
 - **Tour activo que deja de estar completo** (el admin borra después su único precio u horario): no se pausa solo; el sitio lo muestra como hoy, sin fechas reservables.
 - **Cambio de fecha en un tour en pausa**: el staff puede mover una reserva a otra salida existente del mismo tour. Es la única vía por la que una salida de un tour en pausa gana cupos. En una pausa larga los destinos se agotan, porque no se generan salidas nuevas y las vacías se cancelan a las 24 h.
 - **Salida generada con menos de 24 h de antelación** (horario nuevo o reanudación): no entra en la ventana que resuelve el mínimo ni se cancela por vacía. Ya ocurría con la corrida diaria; la anticipación mínima para reservar (0041) sigue aplicando.

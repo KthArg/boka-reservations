@@ -26,6 +26,8 @@ export const CheckoutErrorKey = {
   AmountChanged: 'amount-changed',
   /** La salida ya no acepta reservas en línea: anticipación mínima (spec 0041). */
   BookingClosed: 'booking-closed',
+  /** El tour está en pausa: no inicia reservas nuevas (spec 0047). */
+  TourPaused: 'tour-paused',
   CardInvalid: 'card-invalid',
   CardExpiresBeforeDeparture: 'card-expires-before-departure',
 } as const;

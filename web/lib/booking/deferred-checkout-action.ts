@@ -10,7 +10,7 @@ import {
   parseCheckoutInput,
   type CheckoutInput,
 } from '@/lib/booking/checkout-input';
-import { isInstanceSellable, isSalesEnabled } from '@/lib/booking/sales-gate';
+import { isInstanceSellable, isSalesEnabled, isTourOnSale } from '@/lib/booking/sales-gate';
 import { startDeferredCheckout } from '@/lib/booking/deferred-checkout';
 import { completeDeferredCheckout } from '@/lib/booking/deferred-checkout-complete';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
@@ -99,6 +99,10 @@ export async function startDeferredCheckoutAction(
   if (!input) return GENERIC;
   if (!(await isInstanceSellable(input.instanceId))) {
     return { error: CheckoutErrorKey.SalesNotEnabled };
+  }
+  // Spec 0047: un tour en pausa no inicia reservas nuevas.
+  if (!(await isTourOnSale(input.instanceId))) {
+    return { error: CheckoutErrorKey.TourPaused };
   }
   // Antes de crear hold y customer: el throttle no revela nada ni crea inventario.
   if (await isCheckoutThrottled()) return GENERIC;

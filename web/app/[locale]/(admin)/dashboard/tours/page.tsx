@@ -1,75 +1,9 @@
-import { getTranslations } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
-import { listTours } from '@/lib/tours/repository';
-import { TourStatus } from '@shared/constants/enums';
-import { Icon } from '@/components/admin/icons';
-import { ArchiveTourButton } from '@/components/tours/ArchiveTourButton';
-import styles from './tours.module.css';
+import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { TourKind } from '@shared/constants/enums';
 
+/** Ya no hay lista de tours (spec 0047): son dos y el menú lleva directo a cada uno. */
 export default async function ToursPage() {
-  const [tours, t] = await Promise.all([listTours(), getTranslations('tours')]);
-
-  return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{t('page-title')}</h1>
-        <Link href="/dashboard/tours/new" className={styles.newBtn}>
-          {t('new-tour')}
-        </Link>
-      </div>
-
-      {tours.length === 0 ? (
-        <p className={styles.empty}>{t('no-tours')}</p>
-      ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.th}>{t('col-name')}</th>
-              <th className={styles.th}>{t('col-status')}</th>
-              <th className={styles.th}>{t('col-duration')}</th>
-              <th className={styles.th}>{t('col-schedules')}</th>
-              <th className={styles.th}>{t('col-actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tours.map((tour) => (
-              <tr key={tour.id} className={styles.row}>
-                <td className={styles.td}>{tour.name_es}</td>
-                <td className={styles.td}>
-                  <span
-                    className={
-                      tour.status === TourStatus.Active ? styles.badgeActive : styles.badgeArchived
-                    }
-                  >
-                    {tour.status === TourStatus.Active ? t('status-active') : t('status-archived')}
-                  </span>
-                </td>
-                <td className={styles.td}>{tour.duration_minutes} min</td>
-                <td className={styles.td}>{tour.activeSchedulesCount}</td>
-                <td className={`${styles.td} ${styles.actions}`}>
-                  <Link href={`/dashboard/tours/${tour.id}/edit`} className={styles.editBtn}>
-                    <Icon name="edit" size={15} />
-                    {t('edit')}
-                  </Link>
-                  {tour.status === TourStatus.Active ? (
-                    <ArchiveTourButton
-                      tourId={tour.id}
-                      mode="archive"
-                      className={styles.archiveBtn}
-                    />
-                  ) : (
-                    <ArchiveTourButton
-                      tourId={tour.id}
-                      mode="reactivate"
-                      className={styles.reactivateBtn}
-                    />
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
+  const locale = await getLocale();
+  redirect(`/${locale}/dashboard/tours/${TourKind.Day}`);
 }

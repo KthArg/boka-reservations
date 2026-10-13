@@ -44,6 +44,11 @@ export enum AuditAction {
   OperatorSettingsUpdated = 'settings.operator_updated',
   /** El admin corrigió nombre o correo de una reserva a pedido del turista (spec 0036). */
   BookingContactCorrected = 'booking.contact_corrected',
+  /** Venta de un tour fijo pausada o reanudada desde el panel (spec 0047). */
+  /** Tour del catálogo abierto archivado por la migración …061 (actor: sistema). */
+  TourArchived = 'tour.archived',
+  TourPaused = 'tour.paused',
+  TourResumed = 'tour.resumed',
 }
 
 /** Tipo de entidad referida por un registro de auditoría. */
@@ -52,6 +57,7 @@ export enum AuditEntityType {
   Refund = 'refund',
   TourHold = 'tour_hold',
   BusinessSettings = 'business_settings',
+  Tour = 'tour',
 }
 
 /**

@@ -3,20 +3,12 @@
 // Ejecutar: pnpm test:integration
 
 import { createClient } from '@supabase/supabase-js';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { reconcileRows } from '@/lib/tours/reconcile';
 import { resolveAuthoritativeCharge } from '@/lib/booking/checkout-pricing';
 import { getTourPricingForDay } from '@/lib/public/tours';
 import { TourActionError } from '@shared/constants/tours';
 import type { Database } from '@/types/database';
-
-// archiveTour exige rol admin y revalida rutas; fuera de un request de Next se mockean.
-vi.mock('@/lib/auth/server', () => ({
-  requireRole: vi.fn().mockResolvedValue({ id: 'test-admin', userRole: 'admin' }),
-}));
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-
-import { archiveTour } from '@/lib/tours/archive-action';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -401,45 +393,5 @@ describe('un guía por salida (…041 + B9)', () => {
       .select('guide_id')
       .eq('tour_instance_id', instanceId);
     expect(rows).toHaveLength(1);
-  });
-});
-
-describe('archiveTour (spec 0028, B12)', () => {
-  it('bloquea con reserva activa futura; sin ella cancela las salidas y archiva', async () => {
-    const { data: booking } = await admin
-      .from('bookings')
-      .insert({
-        tour_instance_id: instanceId,
-        customer_name: 'Archive Test',
-        customer_email: 'archive@example.com',
-        tickets_adult: 1,
-        total_amount_cents: 1000,
-        locale: 'es',
-        status: 'confirmed',
-      })
-      .select('id')
-      .single();
-
-    const blocked = await archiveTour(tourId);
-    expect(blocked).toEqual({ ok: false, error: TourActionError.ArchiveHasBookings });
-    const { data: still } = await admin
-      .from('tour_instances')
-      .select('status')
-      .eq('id', instanceId)
-      .single();
-    expect(still!.status).toBe('available');
-
-    await admin.from('bookings').delete().eq('id', booking!.id);
-
-    const ok = await archiveTour(tourId);
-    expect(ok).toEqual({ ok: true });
-    const { data: after } = await admin
-      .from('tour_instances')
-      .select('status')
-      .eq('id', instanceId)
-      .single();
-    expect(after!.status).toBe('cancelled');
-    const { data: tour } = await admin.from('tours').select('status').eq('id', tourId).single();
-    expect(tour!.status).toBe('archived');
   });
 });

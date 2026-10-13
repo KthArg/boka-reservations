@@ -1,38 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { slugify, detectPricingOverlaps } from '@/lib/tours/validation';
+import { detectPricingOverlaps } from '@/lib/tours/validation';
 import { TicketType } from '@shared/constants/enums';
 import type { PricingRow } from '@/lib/tours/types';
 import { PricingRowSchema, ScheduleRowSchema } from '@/lib/tours/types';
-
-describe('slugify', () => {
-  it('convierte a minúsculas y reemplaza espacios con guiones', () => {
-    expect(slugify('Birdwatching Monteverde')).toBe('birdwatching-monteverde');
-  });
-
-  it('elimina caracteres especiales manteniendo letras y números', () => {
-    expect(slugify('Tour #1 en San José!')).toBe('tour-1-en-san-jose');
-  });
-
-  it('normaliza vocales con tilde', () => {
-    expect(slugify('Río Celeste Encantado')).toBe('rio-celeste-encantado');
-  });
-
-  it('convierte ñ a n', () => {
-    expect(slugify('Montaña Grande')).toBe('montana-grande');
-  });
-
-  it('colapsa guiones múltiples consecutivos', () => {
-    expect(slugify('hola -- mundo')).toBe('hola-mundo');
-  });
-
-  it('recorta espacios al inicio y al final', () => {
-    expect(slugify('  tour de prueba  ')).toBe('tour-de-prueba');
-  });
-
-  it('devuelve cadena vacía para input vacío', () => {
-    expect(slugify('')).toBe('');
-  });
-});
 
 describe('detectPricingOverlaps', () => {
   const row = (overrides: Partial<PricingRow> = {}): PricingRow => ({

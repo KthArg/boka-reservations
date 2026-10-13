@@ -5,6 +5,7 @@ import { BookingStatus } from '@shared/constants/enums';
 import { CancellationReason } from '@shared/constants/cancellations';
 import { computeRefund, NO_REFUND, type RefundEligibility } from '@shared/constants/policies';
 import { isAwaitingAuthentication, isCardUpdateOpen } from './deferred-booking-rules';
+import type { TourKind } from '@shared/constants/enums';
 
 // Vista de una reserva para las páginas del turista (ver y cancelar) y para cancelBooking.
 
@@ -17,6 +18,8 @@ export type BookingView = {
   startsAt: string;
   tourNameEs: string;
   tourNameEn: string;
+  /** Tour fijo de la reserva (spec 0047): define el turno; null en un tour viejo. */
+  tourKind: TourKind | null;
   ticketsAdult: number;
   ticketsChild: number;
   ticketsStudent: number;
@@ -47,7 +50,7 @@ const VIEW_SELECT = `
   id, customer_name, status, total_amount_cents, currency, terms_version,
   charge_started_at, charge_attempts, awaiting_action_until, recovery_deadline, authorized_at,
   tickets_adult, tickets_child, tickets_student, operator_review_required_at,
-  tour_instances!inner ( starts_at, cancellation_reason, tours!inner ( name_es, name_en ) )
+  tour_instances!inner ( starts_at, cancellation_reason, tours!inner ( name_es, name_en, kind ) )
 `;
 
 interface RawView {
@@ -69,7 +72,7 @@ interface RawView {
   tour_instances: {
     starts_at: string;
     cancellation_reason: string | null;
-    tours: { name_es: string; name_en: string } | null;
+    tours: { name_es: string; name_en: string; kind: TourKind | null } | null;
   } | null;
 }
 
@@ -98,6 +101,7 @@ function toView(r: RawView, now: Date): BookingView {
     startsAt,
     tourNameEs: r.tour_instances?.tours?.name_es ?? '',
     tourNameEn: r.tour_instances?.tours?.name_en ?? '',
+    tourKind: r.tour_instances?.tours?.kind ?? null,
     ticketsAdult: r.tickets_adult,
     ticketsChild: r.tickets_child,
     ticketsStudent: r.tickets_student,

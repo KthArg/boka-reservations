@@ -4,7 +4,6 @@ import { parseTourFields } from './parse';
 import { TourFormSchema } from './types';
 
 const VALID_FIELDS: Record<string, string> = {
-  slug: 'volcan-arenal',
   name_es: 'Volcán Arenal',
   name_en: 'Arenal Volcano',
   description_es: 'Caminata',

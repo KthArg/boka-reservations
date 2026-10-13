@@ -1,4 +1,4 @@
-// createTour / updateTour persisten charge_timing y charge_lead_hours (spec 0033 §5.1). La
+// updateTour persiste charge_timing y charge_lead_hours (spec 0033 §5.1). La
 // escritura corre con una sesión de admin real, así que la RLS de tours aplica. Se mockean solo
 // las fronteras de Next que no existen en vitest: requireRole, el cliente de sesión, redirect y
 // getLocale. Hermano de tour-minimum-policy-action.test.ts.
@@ -6,7 +6,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createTour, updateTour } from '@/lib/tours/actions';
+import { updateTour } from '@/lib/tours/actions';
 import { ChargeTiming } from '@shared/constants/tours';
 import type { Database } from '@/types/database';
 import { deleteToursDeep } from './cleanup';
@@ -32,9 +32,8 @@ const service = createClient<Database>(SUPABASE_URL, SERVICE_KEY, {
 let adminSession: SupabaseClient<Database>;
 const createdTourIds: string[] = [];
 
-function tourForm(slug: string, extra: Record<string, string> = {}): FormData {
+function tourForm(extra: Record<string, string> = {}): FormData {
   const fields: Record<string, string> = {
-    slug,
     name_es: 'Tour cobro',
     name_en: 'Charge tour',
     description_es: 'd',
@@ -61,17 +60,47 @@ function tourForm(slug: string, extra: Record<string, string> = {}): FormData {
   return form;
 }
 
-type ChargeColumns = { id: string; charge_timing: string; charge_lead_hours: number | null };
+type ChargeColumns = {
+  id: string;
+  name_es: string;
+  charge_timing: string;
+  charge_lead_hours: number | null;
+};
 
 async function chargeConfigFor(slug: string): Promise<ChargeColumns> {
   const { data, error } = await service
     .from('tours')
-    .select('id, charge_timing, charge_lead_hours')
+    .select('id, name_es, charge_timing, charge_lead_hours')
     .eq('slug', slug)
     .single();
   if (error) throw new Error(`chargeConfigFor ${slug}: ${error.message}`);
   createdTourIds.push(data.id);
   return data;
+}
+
+/** Los tours ya no se crean desde el panel (spec 0047): el test parte de uno sembrado, sin kind. */
+async function seedTour(slug: string): Promise<string> {
+  const { data, error } = await service
+    .from('tours')
+    .insert({
+      slug,
+      name_es: 'Sembrado',
+      name_en: 'Seeded',
+      description_es: 'd',
+      description_en: 'd',
+      difficulty: 'easy',
+      duration_minutes: 60,
+      meeting_point_es: 'P',
+      meeting_point_en: 'P',
+      includes_es: 'g',
+      includes_en: 'g',
+      max_capacity: 10,
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(`seedTour: ${error.message}`);
+  createdTourIds.push(data.id);
+  return data.id;
 }
 
 function newSlug(): string {
@@ -104,9 +133,10 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     const slug = newSlug();
 
     // Act
-    const result = await createTour(
+    const result = await updateTour(
+      await seedTour(slug),
       null,
-      tourForm(slug, { charge_timing: ChargeTiming.OnMinimum }),
+      tourForm({ charge_timing: ChargeTiming.OnMinimum }),
     );
 
     // Assert: redirect (mockeado) significa éxito; un error devolvería { success: false }.
@@ -121,9 +151,10 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     const slug = newSlug();
 
     // Act
-    const result = await createTour(
+    const result = await updateTour(
+      await seedTour(slug),
       null,
-      tourForm(slug, {
+      tourForm({
         charge_timing: ChargeTiming.BeforeDeparture,
         charge_lead_hours: '36',
       }),
@@ -141,9 +172,10 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     const slug = newSlug();
 
     // Act
-    const result = await createTour(
+    const result = await updateTour(
+      await seedTour(slug),
       null,
-      tourForm(slug, { charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: '' }),
+      tourForm({ charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: '' }),
     );
 
     // Assert
@@ -156,7 +188,7 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     const slug = newSlug();
 
     // Act
-    const result = await createTour(null, tourForm(slug));
+    const result = await updateTour(await seedTour(slug), null, tourForm());
 
     // Assert
     expect(result).toBeUndefined();
@@ -168,9 +200,10 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
   it('clears the lead time when an edit switches to charging on the minimum', async () => {
     // Arrange
     const slug = newSlug();
-    await createTour(
+    await updateTour(
+      await seedTour(slug),
       null,
-      tourForm(slug, { charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: '36' }),
+      tourForm({ charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: '36' }),
     );
     const { id } = await chargeConfigFor(slug);
 
@@ -178,7 +211,7 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     const result = await updateTour(
       id,
       null,
-      tourForm(slug, {
+      tourForm({
         charge_timing: ChargeTiming.OnMinimum,
       }),
     );
@@ -190,14 +223,16 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     expect(saved.charge_lead_hours).toBeNull();
   });
 
-  it.each(['0', '721'])('rejects %j as a lead time, without creating the tour', async (raw) => {
+  it.each(['0', '721'])('rejects %j as a lead time, without touching the tour', async (raw) => {
     // Arrange
     const slug = newSlug();
+    const id = await seedTour(slug);
 
     // Act
-    const result = await createTour(
+    const result = await updateTour(
+      id,
       null,
-      tourForm(slug, { charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: raw }),
+      tourForm({ charge_timing: ChargeTiming.BeforeDeparture, charge_lead_hours: raw }),
     );
 
     // Assert
@@ -205,7 +240,36 @@ describe('tour actions — charge_timing y charge_lead_hours', () => {
     expect(
       (result as { success: false; errors: Record<string, string[]> }).errors.charge_lead_hours,
     ).toBeDefined();
-    const { data } = await service.from('tours').select('id').eq('slug', slug).maybeSingle();
-    expect(data).toBeNull();
+    const saved = await chargeConfigFor(slug);
+    expect(saved.charge_lead_hours).toBeNull();
+    expect(saved.name_es).toBe('Sembrado');
+  });
+
+  it('ignores a slug sent with the form: tours keep the one they have (spec 0047)', async () => {
+    // Arrange
+    const slug = newSlug();
+    const id = await seedTour(slug);
+
+    // Act
+    const result = await updateTour(id, null, tourForm({ slug: 'otro-slug' }));
+
+    // Assert
+    expect(result).toBeUndefined();
+    const { data } = await service.from('tours').select('slug').eq('id', id).single();
+    expect(data?.slug).toBe(slug);
+  });
+
+  it('reports a failure, without writing prices, when the tour does not exist', async () => {
+    // Arrange
+    const missingId = crypto.randomUUID();
+    const pricing = JSON.stringify([{ ticket_type: 'adult', price_usd: 10, active: true }]);
+
+    // Act
+    const result = await updateTour(missingId, null, tourForm({ pricing }));
+
+    // Assert
+    expect(result).toEqual({ success: false, errors: { _form: ['tour_update_failed'] } });
+    const { data } = await service.from('tour_pricing').select('id').eq('tour_id', missingId);
+    expect(data).toEqual([]);
   });
 });

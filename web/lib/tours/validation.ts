@@ -3,18 +3,6 @@ import { crDate } from '@/lib/dates/cr-date';
 import { isValidMonthDay, seasonsOverlap } from '@/lib/pricing/season';
 import type { PricingRow, ScheduleRow } from './types';
 
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[ñ]/g, 'n')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
-
 type OverlapError = { indices: [number, number]; code: string };
 
 function hasSeason(

@@ -16,10 +16,12 @@ vi.mock('@/lib/security/client-ip', () => ({ getClientIp: vi.fn(() => '1.2.3.4')
 const flag = vi.hoisted(() => ({ enabled: false }));
 vi.mock('@/lib/booking/deferred-flag', () => ({ isDeferredChargeEnabled: () => flag.enabled }));
 // Compuertas de venta (spec 0034): datos del operador y tour con la información de los términos.
-const gate = vi.hoisted(() => ({ sales: true, instance: true }));
+// Spec 0047: además, el tour de la salida tiene que estar en venta, no en pausa.
+const gate = vi.hoisted(() => ({ sales: true, instance: true, onSale: true }));
 vi.mock('@/lib/booking/sales-gate', () => ({
   isSalesEnabled: vi.fn(async () => gate.sales),
   isInstanceSellable: vi.fn(async () => gate.instance),
+  isTourOnSale: vi.fn(async () => gate.onSale),
 }));
 
 const { initCheckout } = await import('@/lib/booking/create');
@@ -106,6 +108,17 @@ describe('checkoutAction — compuertas de venta (spec 0034)', () => {
 
     gate.instance = true;
     expect(result).toEqual({ error: 'sales-not-enabled' });
+    expect(initCheckout).not.toHaveBeenCalled();
+  });
+
+  it('no inicia una reserva de un tour en pausa (spec 0047)', async () => {
+    vi.mocked(initCheckout).mockClear();
+    gate.onSale = false;
+
+    const result = await checkoutAction(null, buildForm(ACCEPTED));
+
+    gate.onSale = true;
+    expect(result).toEqual({ error: 'tour-paused' });
     expect(initCheckout).not.toHaveBeenCalled();
   });
 });

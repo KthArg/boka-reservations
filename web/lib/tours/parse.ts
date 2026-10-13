@@ -28,7 +28,6 @@ export function parseSchedules(formData: FormData): ScheduleRow[] {
 
 export function parseTourFields(formData: FormData): Record<string, unknown> {
   return {
-    slug: formData.get('slug'),
     name_es: formData.get('name_es'),
     name_en: formData.get('name_en'),
     description_es: formData.get('description_es'),

@@ -9,7 +9,7 @@ type Props = {
   errors: FieldErrors;
 };
 
-/** Textos del tour en los dos idiomas. La ficha (números, slug y foto) va en TourDetailsSection. */
+/** Textos del tour en los dos idiomas. La ficha (números y foto) va en TourDetailsSection. */
 export default function TourBasicInfoSection({ values, onChange, errors }: Props) {
   const t = useTranslations('tours');
 

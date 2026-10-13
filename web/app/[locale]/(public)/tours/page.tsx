@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { listActiveTours } from '@/lib/public/tours';
+import { listFixedTours } from '@/lib/public/tours';
 import { isPublicReadThrottled } from '@/lib/public/read-limit';
 import { TourGrid } from '@/components/public/TourGrid/TourGrid';
 import styles from './tours.module.css';
@@ -38,7 +38,7 @@ export default async function ToursPage() {
     );
   }
 
-  const tours = await listActiveTours();
+  const tours = await listFixedTours();
 
   return (
     <section className={styles.page}>

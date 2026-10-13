@@ -3,7 +3,7 @@ import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { getOperatorIdentity } from '@/lib/operator/repository';
 import { isOperatorIdentityComplete } from '@/lib/operator/types';
 import { isTourBookable } from '@/lib/public/tour-bookable';
-import { TicketType } from '@shared/constants/enums';
+import { TicketType, TourStatus } from '@shared/constants/enums';
 
 /**
  * La venta en línea abre solo con los datos del operador completos (spec 0034): el turista acepta
@@ -46,4 +46,20 @@ export async function isInstanceSellable(instanceId: string): Promise<boolean> {
     .limit(1);
   if (pricingError) return false;
   return isTourBookable(instance.tours, childPricing ?? []);
+}
+
+/**
+ * El tour de la salida está en venta, no en pausa (spec 0047 §5.2). Lo verifican solo las acciones
+ * que crean el apartado: quien ya lo tiene termina de reservar aunque el admin pause después, por
+ * eso no vive dentro de `isInstanceSellable`, que el paso 2 del diferido vuelve a correr. Ante un
+ * error de lectura responde que no: la venta falla cerrada.
+ */
+export async function isTourOnSale(instanceId: string): Promise<boolean> {
+  const { data, error } = await createSupabaseServiceClient()
+    .from('tour_instances')
+    .select('tours!inner(status)')
+    .eq('id', instanceId)
+    .maybeSingle();
+  if (error || !data?.tours) return false;
+  return data.tours.status === TourStatus.Active;
 }
