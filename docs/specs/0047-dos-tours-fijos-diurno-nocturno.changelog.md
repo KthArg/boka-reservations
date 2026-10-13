@@ -20,6 +20,7 @@ Rama: feat/0047-dos-tours-fijos
 **Pendiente**:
 
 - Aplicar …060 y …061 en producción y promover a `main`.
+
 ## 2026-10-13 06:40 — PR B: portada partida y páginas dedicadas
 
 **Hecho**:
