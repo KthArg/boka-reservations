@@ -11,7 +11,9 @@ import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/A
 import { ShiftBadge } from '@/components/public/ShiftBadge/ShiftBadge';
 import { toCalendarDepartures } from '@/lib/public/calendar-departures';
 import { crDate } from '@/lib/dates/cr-date';
+import { OtherTourLink } from '@/components/public/OtherTourLink/OtherTourLink';
 import { isTourKind, TourKind, TourStatus } from '@shared/constants/enums';
+import { PausedTour } from './PausedTour';
 import styles from './tour.module.css';
 
 type Props = { params: Promise<{ kind: string }> };
@@ -40,19 +42,7 @@ export default async function TourDetailPage({ params }: Props) {
 
   // Spec 0047: en pausa solo se ve el nombre y el aviso, nunca textos, precios ni fechas.
   if (tour.status !== TourStatus.Active) {
-    return (
-      <article className={`${theme} ${styles.page}`}>
-        <header className={styles.hero}>
-          <div className={styles.heroContent}>
-            <div className={styles.tags}>
-              <ShiftBadge shift={kind} />
-            </div>
-            <h1 className={styles.title}>{name}</h1>
-            <p className={styles.description}>{t('tour-unavailable')}</p>
-          </div>
-        </header>
-      </article>
-    );
+    return <PausedTour kind={kind} name={name} notice={t('tour-unavailable')} theme={theme} />;
   }
 
   const [pricing, instances, salesEnabled] = await Promise.all([
@@ -80,7 +70,11 @@ export default async function TourDetailPage({ params }: Props) {
 
   return (
     <article className={`${theme} ${styles.page}`}>
-      <header className={`${styles.hero} ${tour.cover_image_url ? styles.heroWithImage : ''}`}>
+      <header
+        className={`${styles.hero} ${tour.cover_image_url ? styles.heroWithImage : ''}`}
+        data-kind={kind}
+      >
+        <span className={styles.astro} aria-hidden="true" />
         {tour.cover_image_url && (
           <img
             src={tour.cover_image_url}
@@ -159,6 +153,7 @@ export default async function TourDetailPage({ params }: Props) {
           </section>
         </aside>
       </div>
+      <OtherTourLink current={kind} />
     </article>
   );
 }
