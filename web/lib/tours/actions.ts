@@ -15,10 +15,9 @@ import {
   hasInvalidSeasonRange,
   hasUnlabeledSeason,
 } from './validation';
-import { slugExists } from './repository';
 import { parseTourFields } from './parse';
 import { mapPricing, mapSchedules, mapTourColumns } from './map';
-import { reconcileRows, writeErrorCode } from './reconcile';
+import { reconcileRows } from './reconcile';
 import { withdrawOutOfValidity } from './withdraw';
 
 async function guardAdmin(): Promise<ActionResult | null> {
@@ -30,71 +29,10 @@ async function guardAdmin(): Promise<ActionResult | null> {
   }
 }
 
-export async function createTour(
-  _prev: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
-  const guard = await guardAdmin();
-  if (guard) return guard;
-
-  const result = TourFormSchema.safeParse(parseTourFields(formData));
-  if (!result.success) return { success: false, errors: result.error.flatten().fieldErrors };
-
-  const { pricing, schedules, ...tourFields } = result.data;
-
-  if (await slugExists(tourFields.slug)) {
-    return { success: false, errors: { slug: [TourActionError.SlugTaken] } };
-  }
-
-  if (hasHalfOpenSeasons(pricing)) {
-    return { success: false, errors: { _form: [TourActionError.SeasonDatesIncomplete] } };
-  }
-  if (hasInvalidSeasonRange(pricing)) {
-    return { success: false, errors: { _form: [TourActionError.SeasonRangeInvalid] } };
-  }
-  if (hasUnlabeledSeason(pricing)) {
-    return { success: false, errors: { _form: [TourActionError.SeasonLabelRequired] } };
-  }
-  if (hasInvalidScheduleRange(schedules)) {
-    return { success: false, errors: { _form: [TourActionError.ScheduleRangeInvalid] } };
-  }
-  const overlapErrors = detectPricingOverlaps(pricing);
-  if (overlapErrors.length > 0) {
-    return { success: false, errors: { _form: overlapErrors.map((e) => e.code) } };
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const { data: tour, error: tourError } = await supabase
-    .from('tours')
-    .insert(mapTourColumns(tourFields))
-    .select('id')
-    .single();
-
-  if (tourError || !tour) {
-    return { success: false, errors: { _form: [TourActionError.CreateFailed] } };
-  }
-
-  const cleanupAndFail = async (code: string): Promise<ActionResult> => {
-    await supabase.from('tours').delete().eq('id', tour.id);
-    return { success: false, errors: { _form: [code] } };
-  };
-
-  if (pricing.length > 0) {
-    const { error } = await supabase.from('tour_pricing').insert(mapPricing(pricing, tour.id));
-    if (error) return cleanupAndFail(writeErrorCode(error, TourActionError.PricingWriteFailed));
-  }
-
-  if (schedules.length > 0) {
-    const { error } = await supabase
-      .from('tour_schedules')
-      .insert(mapSchedules(schedules, tour.id));
-    if (error) return cleanupAndFail(TourActionError.SchedulesWriteFailed);
-  }
-
-  const locale = await getLocale();
-  redirect(`/${locale}/dashboard/tours`);
-}
-
+/**
+ * Guarda un tour. Los tours no se crean ni se borran (spec 0047): los dos fijos se editan acá.
+ * Recibe el id y no el `kind` para que los tests lo ejerciten con tours desechables.
+ */
 export async function updateTour(
   id: string,
   _prev: ActionResult | null,
@@ -107,10 +45,6 @@ export async function updateTour(
   if (!result.success) return { success: false, errors: result.error.flatten().fieldErrors };
 
   const { pricing, schedules, ...tourFields } = result.data;
-
-  if (await slugExists(tourFields.slug, id)) {
-    return { success: false, errors: { slug: [TourActionError.SlugTaken] } };
-  }
 
   // El formulario representa el estado FINAL completo (spec 0028, B1): la validación
   // corre sobre lo enviado, y reconcileRows elimina de DB las filas quitadas antes de
@@ -133,14 +67,16 @@ export async function updateTour(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error: tourError } = await supabase
+  const { data: tour, error: tourError } = await supabase
     .from('tours')
     .update(mapTourColumns(tourFields))
-    .eq('id', id);
+    .eq('id', id)
+    .select('kind')
+    .maybeSingle();
 
-  if (tourError) {
+  if (tourError || !tour) {
     // Quien ya reservó conserva el punto de encuentro que aceptó (spec 0035).
-    const locked = tourError.message.includes(MEETING_POINT_LOCKED);
+    const locked = tourError?.message.includes(MEETING_POINT_LOCKED) ?? false;
     return {
       success: false,
       errors: {
@@ -176,5 +112,6 @@ export async function updateTour(
   if (withdrawal.kept > 0) return { success: true, id, ...withdrawal };
 
   const locale = await getLocale();
-  redirect(`/${locale}/dashboard/tours`);
+  // `saved` muestra el aviso de guardado: la página a la que vuelve es la misma del formulario.
+  redirect(`/${locale}/dashboard/tours${tour.kind ? `/${tour.kind}?saved=1` : ''}`);
 }

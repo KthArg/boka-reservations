@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
+import type { TourKind } from '@shared/constants/enums';
 import type { TourListItem, TourWithDetails } from './types';
 
 export async function listTours(): Promise<TourListItem[]> {
@@ -23,11 +24,17 @@ export async function listTours(): Promise<TourListItem[]> {
   }));
 }
 
-export async function getTourWithDetails(id: string): Promise<TourWithDetails | null> {
+/** Uno de los dos tours fijos, con sus precios y horarios (spec 0047). */
+export async function getFixedTourWithDetails(kind: TourKind): Promise<TourWithDetails | null> {
   const supabase = await createSupabaseServerClient();
 
-  const { data: tour, error } = await supabase.from('tours').select('*').eq('id', id).single();
+  const { data: tour, error } = await supabase
+    .from('tours')
+    .select('*')
+    .eq('kind', kind)
+    .maybeSingle();
   if (error || !tour) return null;
+  const id = tour.id;
 
   const [pricingResult, schedulesResult] = await Promise.all([
     supabase.from('tour_pricing').select('*').eq('tour_id', id).order('created_at'),
@@ -43,12 +50,4 @@ export async function getTourWithDetails(id: string): Promise<TourWithDetails | 
   if (schedulesResult.error) throw schedulesResult.error;
 
   return { ...tour, pricing: pricingResult.data, schedules: schedulesResult.data };
-}
-
-export async function slugExists(slug: string, excludeId?: string): Promise<boolean> {
-  const supabase = await createSupabaseServerClient();
-  let query = supabase.from('tours').select('id').eq('slug', slug);
-  if (excludeId) query = query.neq('id', excludeId);
-  const { data } = await query.maybeSingle();
-  return data !== null;
 }

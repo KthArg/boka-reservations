@@ -21,7 +21,7 @@ const BASE_UNIQUE_INDEX = 'tour_pricing_one_base_per_type';
 const OVERLAP_CONSTRAINT = 'tour_pricing_season_overlap';
 
 /** Mapea la violación del índice del precio base o del trigger de temporadas a su código. */
-export function writeErrorCode(error: PgError, fallback: string): string {
+function writeErrorCode(error: PgError, fallback: string): string {
   if (error.code === PG_UNIQUE_VIOLATION && error.message?.includes(BASE_UNIQUE_INDEX)) {
     return TourActionError.BasePriceDuplicate;
   }

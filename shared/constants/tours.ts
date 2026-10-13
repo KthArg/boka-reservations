@@ -6,8 +6,6 @@
  */
 export enum TourActionError {
   Unauthorized = 'tour_unauthorized',
-  SlugTaken = 'tour_slug_taken',
-  CreateFailed = 'tour_create_failed',
   UpdateFailed = 'tour_update_failed',
   PricingWriteFailed = 'tour_pricing_write_failed',
   SchedulesWriteFailed = 'tour_schedules_write_failed',
@@ -27,8 +25,6 @@ export enum TourActionError {
   ScheduleInUse = 'tour_schedule_in_use',
   /** Los horarios se guardaron pero el retiro de salidas fuera de vigencia falló (spec 0044). */
   ScheduleWithdrawFailed = 'tour_schedule_withdraw_failed',
-  /** No se archiva un tour con reservas activas en salidas futuras (spec 0028, B12). */
-  ArchiveHasBookings = 'tour_archive_has_bookings',
   /** El tour vende tiquete de niño y no publica las edades (spec 0034, cláusula 3). */
   ChildAgesRequired = 'tour_child_ages_required',
   ChildAgesInvalid = 'tour_child_ages_invalid',
@@ -36,13 +32,12 @@ export enum TourActionError {
   MeetingPointLocked = 'tour_meeting_point_locked',
   /** La foto no es un archivo del almacenamiento propio (spec 0036). */
   CoverImageInvalid = 'tour_cover_image_invalid',
-  /**
-   * No se archiva un tour con una salida en pleno ciclo de cobro (spec 0033): archivar cancela
-   * la salida, y el motor no toca salidas canceladas, así que el ciclo quedaría abierto para
-   * siempre, con retenciones vivas que nadie suelta.
-   */
-  ArchiveChargeInProgress = 'tour_archive_charge_in_progress',
-  ArchiveFailed = 'tour_archive_failed',
+  /** Pausar o reanudar la venta falló (spec 0047). */
+  StatusChangeFailed = 'tour_status_change_failed',
+  /** Reanudar exige el tour vendible: cada faltante tiene su código (spec 0047 §5.3). */
+  ResumeMissingInfo = 'tour_resume_missing_info',
+  ResumeMissingSchedule = 'tour_resume_missing_schedule',
+  ResumeMissingPrice = 'tour_resume_missing_price',
 }
 
 /** Códigos SQLSTATE que las actions mapean a errores de dominio. */

@@ -1,12 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { Clock, MapPin, Mountain } from 'lucide-react';
-import {
-  getTourBySlug,
-  getTourPriceList,
-  getTourShift,
-  getUpcomingInstances,
-} from '@/lib/public/tours';
+import { getFixedTour, getTourPriceList, getUpcomingInstances } from '@/lib/public/tours';
 import { isPublicReadThrottled } from '@/lib/public/read-limit';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isSalesEnabled } from '@/lib/booking/sales-gate';
@@ -16,12 +11,16 @@ import { AvailabilityCalendar } from '@/components/public/AvailabilityCalendar/A
 import { ShiftBadge } from '@/components/public/ShiftBadge/ShiftBadge';
 import { toCalendarDepartures } from '@/lib/public/calendar-departures';
 import { crDate } from '@/lib/dates/cr-date';
-import styles from './slug.module.css';
+import { OtherTourLink } from '@/components/public/OtherTourLink/OtherTourLink';
+import { isTourKind, TourKind, TourStatus } from '@shared/constants/enums';
+import { PausedTour } from './PausedTour';
+import styles from './tour.module.css';
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ kind: string }> };
 
 export default async function TourDetailPage({ params }: Props) {
-  const { id: slug } = await params;
+  const { kind } = await params;
+  if (!isTourKind(kind)) notFound();
   const [t, locale] = await Promise.all([getTranslations('public'), getLocale()]);
 
   // INFRA-05 (spec 0023): freno anti-scraping por IP a las lecturas públicas.
@@ -33,30 +32,34 @@ export default async function TourDetailPage({ params }: Props) {
     );
   }
 
-  const tour = await getTourBySlug(slug);
+  const tour = await getFixedTour(kind);
 
   if (!tour) notFound();
 
-  const [pricing, instances, salesEnabled, shift] = await Promise.all([
+  // Spec 0047: la página de cada tour usa el tema de su turno; la nocturna, entera.
+  const theme = kind === TourKind.Night ? 'theme-night theme-page-night' : '';
+  const name = locale === 'es' ? tour.name_es : tour.name_en;
+
+  // Spec 0047: en pausa solo se ve el nombre y el aviso, nunca textos, precios ni fechas.
+  if (tour.status !== TourStatus.Active) {
+    return <PausedTour kind={kind} name={name} notice={t('tour-unavailable')} theme={theme} />;
+  }
+
+  const [pricing, instances, salesEnabled] = await Promise.all([
     getTourPriceList(tour.id),
     getBookingCutoffHours().then((hours) => getUpcomingInstances(tour.id, hours)),
     isSalesEnabled(),
-    getTourShift(tour.id),
   ]);
   // Spec 0034: sin la información que prometen los términos, o sin datos del operador, el tour se
   // muestra pero no se puede reservar.
   const bookable = salesEnabled && isTourBookable(tour, pricing);
 
-  const name = locale === 'es' ? tour.name_es : tour.name_en;
   const description = locale === 'es' ? tour.description_es : tour.description_en;
   const includes = locale === 'es' ? tour.includes_es : tour.includes_en;
   const excludes = locale === 'es' ? tour.excludes_es : tour.excludes_en;
   const requirements = locale === 'es' ? tour.requirements_es : tour.requirements_en;
   const meetingPoint = locale === 'es' ? tour.meeting_point_es : tour.meeting_point_en;
   const difficultyKey = `tours-difficulty-${tour.difficulty}` as const;
-
-  // Spec 0042: la página de un tour de noche pasa entera al tema nocturno.
-  const theme = shift === 'night' ? 'theme-night theme-page-night' : '';
 
   // "Qué incluye" siempre se muestra; lo que no incluye y los requisitos, solo si tienen texto.
   const sections = [
@@ -67,7 +70,11 @@ export default async function TourDetailPage({ params }: Props) {
 
   return (
     <article className={`${theme} ${styles.page}`}>
-      <header className={`${styles.hero} ${tour.cover_image_url ? styles.heroWithImage : ''}`}>
+      <header
+        className={`${styles.hero} ${tour.cover_image_url ? styles.heroWithImage : ''}`}
+        data-kind={kind}
+      >
+        <span className={styles.astro} aria-hidden="true" />
         {tour.cover_image_url && (
           <img
             src={tour.cover_image_url}
@@ -79,7 +86,7 @@ export default async function TourDetailPage({ params }: Props) {
         )}
         <div className={styles.heroContent}>
           <div className={`bv-fade ${styles.tags}`}>
-            {shift ? <ShiftBadge shift={shift} /> : null}
+            <ShiftBadge shift={kind} />
             <span className={styles.tag}>
               <Mountain aria-hidden="true" size={14} />
               <span className="bv-sr-only">{`${t('detail-difficulty')}: `}</span>
@@ -136,9 +143,9 @@ export default async function TourDetailPage({ params }: Props) {
             <h2 className={styles.cardTitle}>{t('detail-availability')}</h2>
             {bookable ? (
               <AvailabilityCalendar
-                departures={toCalendarDepartures(instances, locale, pricing)}
+                departures={toCalendarDepartures(instances, locale, pricing, kind)}
                 today={crDate()}
-                tourSlug={slug}
+                tourKind={kind}
               />
             ) : (
               <p className={styles.prose}>{t('detail-not-bookable')}</p>
@@ -146,6 +153,7 @@ export default async function TourDetailPage({ params }: Props) {
           </section>
         </aside>
       </div>
+      <OtherTourLink current={kind} />
     </article>
   );
 }

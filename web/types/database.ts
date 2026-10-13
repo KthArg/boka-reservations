@@ -223,6 +223,7 @@ export type Database = {
       tours: {
         Row: {
           id: string;
+          kind: 'day' | 'night' | null;
           slug: string;
           name_es: string;
           name_en: string;
@@ -246,12 +247,13 @@ export type Database = {
           charge_lead_hours: number | null;
           max_capacity: number;
           cover_image_url: string | null;
-          status: 'active' | 'archived';
+          status: 'active' | 'paused' | 'archived';
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
+          kind?: 'day' | 'night' | null;
           slug: string;
           name_es: string;
           name_en: string;
@@ -275,12 +277,13 @@ export type Database = {
           charge_lead_hours?: number | null;
           max_capacity: number;
           cover_image_url?: string | null;
-          status?: 'active' | 'archived';
+          status?: 'active' | 'paused' | 'archived';
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
+          kind?: 'day' | 'night' | null;
           slug?: string;
           name_es?: string;
           name_en?: string;
@@ -304,7 +307,7 @@ export type Database = {
           charge_lead_hours?: number | null;
           max_capacity?: number;
           cover_image_url?: string | null;
-          status?: 'active' | 'archived';
+          status?: 'active' | 'paused' | 'archived';
           created_at?: string;
           updated_at?: string;
         };
@@ -1451,7 +1454,8 @@ export type Database = {
     };
     Enums: {
       user_role: 'admin' | 'staff' | 'guide';
-      tour_status: 'active' | 'archived';
+      tour_status: 'active' | 'paused' | 'archived';
+      tour_kind: 'day' | 'night';
       ticket_type: 'adult' | 'child' | 'student';
     };
     CompositeTypes: Record<string, never>;

@@ -5,7 +5,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createTour, updateTour } from '@/lib/tours/actions';
+import { updateTour } from '@/lib/tours/actions';
 import type { Database } from '@/types/database';
 import { deleteToursDeep } from './cleanup';
 
@@ -40,9 +40,8 @@ type ScheduleJson = {
   active: boolean;
 };
 
-function tourForm(slug: string, schedules: ScheduleJson[]): FormData {
+function tourForm(schedules: ScheduleJson[]): FormData {
   const fields: Record<string, string> = {
-    slug,
     name_es: 'Tour vigencia',
     name_en: 'Validity tour',
     description_es: 'd',
@@ -97,6 +96,31 @@ beforeAll(async () => {
   requireRoleMock.mockResolvedValue({ id: data.user.id });
 });
 
+/** Los tours ya no se crean desde el panel (spec 0047): el test parte de uno sembrado, sin kind. */
+async function seedTour(slug: string): Promise<string> {
+  const { data, error } = await service
+    .from('tours')
+    .insert({
+      slug,
+      name_es: 'Sembrado',
+      name_en: 'Seeded',
+      description_es: 'd',
+      description_en: 'd',
+      difficulty: 'easy',
+      duration_minutes: 60,
+      meeting_point_es: 'P',
+      meeting_point_en: 'P',
+      includes_es: 'g',
+      includes_en: 'g',
+      max_capacity: 10,
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(`seedTour: ${error.message}`);
+  createdTourIds.push(data.id);
+  return data.id;
+}
+
 afterAll(async () => {
   await deleteToursDeep(service, [...new Set(createdTourIds)]);
 });
@@ -106,9 +130,8 @@ describe('updateTour — retiro de salidas fuera de vigencia', () => {
     // Arrange
     const slug = `vigencia-${crypto.randomUUID().slice(0, 8)}`;
     const schedule = { day_of_week: 1, start_time: '08:00', capacity: 10, active: true };
-    await createTour(null, tourForm(slug, [schedule]));
-    const { data: tour } = await service.from('tours').select('id').eq('slug', slug).single();
-    createdTourIds.push(tour!.id);
+    const tour = { id: await seedTour(slug) };
+    await updateTour(tour.id, null, tourForm([schedule]));
     const { data: saved } = await service
       .from('tour_schedules')
       .select('id')
@@ -130,7 +153,7 @@ describe('updateTour — retiro de salidas fuera de vigencia', () => {
     const result = await updateTour(
       tour!.id,
       null,
-      tourForm(slug, [{ ...schedule, id: saved!.id, active: false }]),
+      tourForm([{ ...schedule, id: saved!.id, active: false }]),
     );
 
     // Assert

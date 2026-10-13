@@ -1,7 +1,9 @@
 import { getTranslations } from 'next-intl/server';
+import { Moon, Sun } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { LocaleSwitcher } from '@/components/public/LocaleSwitcher/LocaleSwitcher';
+import { TOUR_KINDS, TourKind } from '@shared/constants/enums';
 import styles from './SiteHeader.module.css';
 
 /** Encabezado del sitio (spec 0042): lo comparten el portal y las páginas de la reserva. */
@@ -16,10 +18,17 @@ export async function SiteHeader() {
           <BrandLogo variant="forest" className={styles.logoDay} priority />
           <BrandLogo variant="bone" className={styles.logoNight} decorative />
         </Link>
-        <nav className={styles.nav}>
-          <Link href="/tours" className={styles.navLink}>
-            {t('nav-tours')}
-          </Link>
+        <nav className={styles.nav} aria-label={t('nav-tours-label')}>
+          {TOUR_KINDS.map((kind) => (
+            <Link key={kind} href={`/tours/${kind}`} className={styles.navLink}>
+              {kind === TourKind.Night ? (
+                <Moon aria-hidden="true" size={15} strokeWidth={2.2} />
+              ) : (
+                <Sun aria-hidden="true" size={15} strokeWidth={2.2} />
+              )}
+              <span className={styles.navLabel}>{t(`nav-${kind}`)}</span>
+            </Link>
+          ))}
         </nav>
         <LocaleSwitcher />
       </div>

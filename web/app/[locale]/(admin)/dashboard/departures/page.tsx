@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { Moon, Sun } from 'lucide-react';
-import { shiftOfTime } from '@/lib/public/shift';
+import { shiftOfDeparture } from '@/lib/public/shift';
 import { listGuides, listUpcomingDepartures } from '@/lib/guides/repository';
 import { formatOperatorDateTime } from '@/lib/booking/today-range';
 import { GuideAssigner } from './GuideAssigner';
@@ -63,8 +63,8 @@ export default async function SalidasPage() {
           <tbody>
             {departures.map((dep) => {
               const { date, time } = formatOperatorDateTime(dep.startsAt);
-              // Spec 0042: sol o luna según la hora de inicio de la salida.
-              const shift = time ? shiftOfTime(time) : null;
+              // Spec 0047: sol o luna según el tour; un tour viejo, según la hora de inicio.
+              const shift = time ? shiftOfDeparture(dep.tourKind, time) : dep.tourKind;
               return (
                 <tr key={dep.id} className={styles.row}>
                   <td className={styles.td}>

@@ -83,7 +83,6 @@ describe('mapSchedules', () => {
 
 describe('mapTourColumns', () => {
   const FIELDS = {
-    slug: 'volcan-arenal',
     name_es: 'Volcán Arenal',
     name_en: 'Arenal Volcano',
     description_es: 'd',

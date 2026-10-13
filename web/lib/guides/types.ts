@@ -1,4 +1,5 @@
 import type { MinimumView } from '@/lib/operations/minimum';
+import type { TourKind } from '@shared/constants/enums';
 
 /** Idiomas soportados por la app (mismos que next-intl routing). */
 export type Locale = 'es' | 'en';
@@ -42,6 +43,8 @@ export type DepartureCharge = {
 export type Departure = {
   id: string;
   tourName: string;
+  /** Tour fijo de la salida (spec 0047): define el turno; null en un tour viejo. */
+  tourKind: TourKind | null;
   startsAt: string;
   capacityTotal: number;
   confirmedTickets: number;

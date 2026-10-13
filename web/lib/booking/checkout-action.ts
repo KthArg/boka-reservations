@@ -9,7 +9,7 @@ import {
   isCheckoutThrottled,
   parseCheckoutInput,
 } from '@/lib/booking/checkout-input';
-import { isInstanceSellable, isSalesEnabled } from '@/lib/booking/sales-gate';
+import { isInstanceSellable, isSalesEnabled, isTourOnSale } from '@/lib/booking/sales-gate';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { checkoutErrorKey, CheckoutErrorKey } from '@/lib/booking/deferred-checkout-errors';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
@@ -45,6 +45,10 @@ export async function checkoutAction(
   if (!input) return { error: CheckoutErrorKey.Generic };
   if (!(await isInstanceSellable(input.instanceId))) {
     return { error: CheckoutErrorKey.SalesNotEnabled };
+  }
+  // Spec 0047: un tour en pausa no inicia reservas nuevas.
+  if (!(await isTourOnSale(input.instanceId))) {
+    return { error: CheckoutErrorKey.TourPaused };
   }
 
   // Antes de crear hold/booking/payment: si se excedió el límite por IP, error genérico

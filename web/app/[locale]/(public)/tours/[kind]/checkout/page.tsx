@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { z } from 'zod';
 import { getTranslations, getLocale } from 'next-intl/server';
 import {
-  getTourBySlug,
+  getFixedTour,
   getTourPricingForDay,
   getUpcomingInstances,
   isClosedForOnlineBooking,
@@ -21,27 +21,42 @@ import { CheckoutForm } from '@/components/public/CheckoutForm/CheckoutForm';
 import { DeferredCheckoutForm } from '@/components/public/CheckoutForm/DeferredCheckoutForm';
 import type { PurchaseSummaryInfo } from '@/components/public/CheckoutForm/PurchaseSummary';
 import { ShiftBadge } from '@/components/public/ShiftBadge/ShiftBadge';
-import { shiftOfTime } from '@/lib/public/shift';
+import { shiftOfDeparture } from '@/lib/public/shift';
+import { isTourKind, TourStatus } from '@shared/constants/enums';
 import styles from './checkout.module.css';
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ instance?: string }> };
+type Props = { params: Promise<{ kind: string }>; searchParams: Promise<{ instance?: string }> };
 
 export default async function CheckoutPage({ params, searchParams }: Props) {
-  const { id: slug } = await params;
+  const { kind } = await params;
   const { instance: instanceId } = await searchParams;
 
+  if (!isTourKind(kind)) notFound();
   if (!instanceId || !z.string().uuid().safeParse(instanceId).success) notFound();
 
   const [t, locale, tour, operator, toleranceMinutes, cutoffHours] = await Promise.all([
     getTranslations('checkout'),
     getLocale(),
-    getTourBySlug(slug),
+    getFixedTour(kind),
     getOperatorIdentity(),
     getNoShowToleranceMinutes(),
     getBookingCutoffHours(),
   ]);
 
   if (!tour) notFound();
+
+  // Spec 0047: un tour en pausa no inicia reservas nuevas, tampoco por URL directa.
+  if (tour.status !== TourStatus.Active) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.title}>{locale === 'es' ? tour.name_es : tour.name_en}</h1>
+        <p>{t('tour-paused')}</p>
+        <p>
+          <Link href="/tours">{t('tour-paused-back')}</Link>
+        </p>
+      </div>
+    );
+  }
 
   const instances = await getUpcomingInstances(tour.id, cutoffHours);
   const instance = instances.find((i) => i.id === instanceId);
@@ -54,7 +69,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         <h1 className={styles.title}>{locale === 'es' ? tour.name_es : tour.name_en}</h1>
         <p>{t('booking-closed')}</p>
         <p>
-          <Link href={`/tours/${slug}`}>{t('booking-closed-back')}</Link>
+          <Link href={`/tours/${kind}`}>{t('booking-closed-back')}</Link>
         </p>
       </div>
     );
@@ -94,8 +109,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     },
   );
 
-  // Spec 0042: la etiqueta de turno de la salida (sol o luna) según su hora en Costa Rica.
-  const shift = shiftOfTime(crClockTime(new Date(instance.starts_at)));
+  // Spec 0047: la etiqueta de turno de la salida (sol o luna) es la del tour.
+  const shift = shiftOfDeparture(tour.kind, crClockTime(new Date(instance.starts_at)));
 
   const summary: PurchaseSummaryInfo = {
     tourName,

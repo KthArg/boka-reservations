@@ -43,6 +43,7 @@ export async function generateTourInstances(): Promise<void> {
       .from('tour_schedules')
       .select('id, tour_id, day_of_week, start_time, capacity, valid_from, valid_until')
       .eq('active', true),
+    // Solo 'active': un tour en pausa (spec 0047) no genera salidas nuevas hasta reanudarse.
     db.from('tours').select('id, duration_minutes').eq('status', 'active'),
   ]);
 

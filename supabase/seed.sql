@@ -40,56 +40,50 @@ INSERT INTO users (id, email, role, full_name, active) VALUES
 INSERT INTO users (id, email, role, full_name, phone, active) VALUES
   ('00000000-0000-0000-0000-000000000002', 'carlos@bokatrails.com', 'guide', 'Carlos Ríos', '+506 8888-1111', true);
 
--- Tours
-INSERT INTO tours (id, slug, name_es, name_en, description_es, description_en,
-  difficulty, duration_minutes, meeting_point_es, meeting_point_en,
-  includes_es, includes_en, min_participants, max_capacity, status)
-VALUES
-  ('11111111-0000-0000-0000-000000000001',
-   'cerro-chompipe',
-   'Senderismo Cerro Chompipe',
-   'Cerro Chompipe Hiking',
-   'Un ascenso moderado con vistas panorámicas del Valle Central. Ideal para observar aves de montaña y disfrutar del bosque nuboso.',
-   'A moderate ascent with panoramic views of the Central Valley. Ideal for observing mountain birds and enjoying cloud forest.',
-   'moderate', 240,
-   'Parqueo de la Iglesia de Zetillal, Goicoechea',
-   'Zetillal Church Parking, Goicoechea',
-   'Guía certificado, agua, snack energético, botiquín de primeros auxilios',
-   'Certified guide, water, energy snack, first aid kit',
-   2, 12, 'active'),
-
-  ('11111111-0000-0000-0000-000000000002',
-   'birdwatching-la-selva',
-   'Birdwatching La Selva',
-   'Birdwatching La Selva',
-   'Recorrido por los senderos de La Selva con guía ornitólogo. Posibilidad de avistar más de 50 especies en una mañana.',
-   'Trail tour through La Selva with an ornithologist guide. Opportunity to spot over 50 species in one morning.',
-   'easy', 180,
-   'Portón principal de La Selva Biological Station, Puerto Viejo de Sarapiquí',
-   'Main gate of La Selva Biological Station, Puerto Viejo de Sarapiquí',
-   'Guía ornitólogo, binoculares si no los tenés, lista de aves, entrada a La Selva',
-   'Ornithologist guide, binoculars if needed, bird checklist, La Selva entrance fee',
-   1, 8, 'active');
-
--- Información que los términos prometen publicar de cada tour (spec 0034): sin ella el tour no se
--- puede reservar.
+-- Tours: los dos fijos ya existen (migración …061, spec 0047). Acá solo se completan para
+-- desarrollo local, con la información que los términos prometen publicar (spec 0034): sin ella
+-- el tour no se puede reservar.
 UPDATE tours SET
+  name_es = 'Caminata diurna',
+  name_en = 'Daytime walk',
+  description_es = 'Un recorrido de día por los senderos del bosque, con vistas del valle y aves de montaña.',
+  description_en = 'A daytime walk along the forest trails, with valley views and mountain birds.',
+  difficulty = 'moderate',
+  duration_minutes = 240,
+  meeting_point_es = 'Parqueo de la Iglesia de Zetillal, Goicoechea',
+  meeting_point_en = 'Zetillal Church Parking, Goicoechea',
+  includes_es = 'Guía certificado, agua, snack energético, botiquín de primeros auxilios',
+  includes_en = 'Certified guide, water, energy snack, first aid kit',
   excludes_es = 'Transporte hasta el punto de encuentro, almuerzo',
   excludes_en = 'Transport to the meeting point, lunch',
   requirements_es = 'Mayores de 8 años, condición física moderada, zapatos de montaña',
   requirements_en = 'Ages 8 and up, moderate fitness, hiking shoes',
   child_age_min = 8,
-  child_age_max = 12
-WHERE id = '11111111-0000-0000-0000-000000000001';
+  child_age_max = 12,
+  min_participants = 2,
+  max_capacity = 12
+WHERE kind = 'day';
 
 UPDATE tours SET
+  name_es = 'Caminata nocturna',
+  name_en = 'Night walk',
+  description_es = 'El bosque de noche con guía naturalista: ranas, insectos y mamíferos nocturnos.',
+  description_en = 'The forest at night with a naturalist guide: frogs, insects and nocturnal mammals.',
+  difficulty = 'easy',
+  duration_minutes = 120,
+  meeting_point_es = 'Parqueo de la Iglesia de Zetillal, Goicoechea',
+  meeting_point_en = 'Zetillal Church Parking, Goicoechea',
+  includes_es = 'Guía naturalista, foco, botiquín de primeros auxilios',
+  includes_en = 'Naturalist guide, flashlight, first aid kit',
   excludes_es = 'Transporte hasta el punto de encuentro, alimentación',
   excludes_en = 'Transport to the meeting point, meals',
-  requirements_es = 'Sin requisito de edad; caminata suave por senderos planos',
-  requirements_en = 'No age requirement; easy walk on flat trails',
+  requirements_es = 'Zapatos cerrados y abrigo liviano',
+  requirements_en = 'Closed shoes and a light jacket',
   child_age_min = 3,
-  child_age_max = 12
-WHERE id = '11111111-0000-0000-0000-000000000002';
+  child_age_max = 12,
+  min_participants = 1,
+  max_capacity = 8
+WHERE kind = 'night';
 
 -- Identidad del operador SOLO PARA DESARROLLO LOCAL (spec 0034). Producción la carga el admin
 -- desde el panel; sin ella la venta en línea queda cerrada.
@@ -104,32 +98,32 @@ UPDATE business_settings SET
   operator_hours = 'de lunes a viernes, de 8:00 a. m. a 5:00 p. m.'
 WHERE id = 1;
 
--- Precios Cerro Chompipe
+-- Precios del diurno
 INSERT INTO tour_pricing (tour_id, ticket_type, price_usd, season_label, season_start, season_end, active) VALUES
-  ('11111111-0000-0000-0000-000000000001', 'adult',   65.00, 'alta', '12-01', '04-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'child',   40.00, 'alta', '12-01', '04-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'student', 50.00, 'alta', '12-01', '04-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'adult',   55.00, 'baja', '05-01', '11-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'child',   35.00, 'baja', '05-01', '11-30', true),
-  ('11111111-0000-0000-0000-000000000001', 'student', 42.00, 'baja', '05-01', '11-30', true);
+  ((SELECT id FROM tours WHERE kind = 'day'), 'adult',   65.00, 'alta', '12-01', '04-30', true),
+  ((SELECT id FROM tours WHERE kind = 'day'), 'child',   40.00, 'alta', '12-01', '04-30', true),
+  ((SELECT id FROM tours WHERE kind = 'day'), 'student', 50.00, 'alta', '12-01', '04-30', true),
+  ((SELECT id FROM tours WHERE kind = 'day'), 'adult',   55.00, 'baja', '05-01', '11-30', true),
+  ((SELECT id FROM tours WHERE kind = 'day'), 'child',   35.00, 'baja', '05-01', '11-30', true),
+  ((SELECT id FROM tours WHERE kind = 'day'), 'student', 42.00, 'baja', '05-01', '11-30', true);
 
--- Precios Birdwatching La Selva
+-- Precios del nocturno
 INSERT INTO tour_pricing (tour_id, ticket_type, price_usd, season_label, season_start, season_end, active) VALUES
-  ('11111111-0000-0000-0000-000000000002', 'adult', 80.00, 'alta', '12-01', '04-30', true),
-  ('11111111-0000-0000-0000-000000000002', 'child', 50.00, 'alta', '12-01', '04-30', true),
-  ('11111111-0000-0000-0000-000000000002', 'adult', 70.00, 'baja', '05-01', '11-30', true),
-  ('11111111-0000-0000-0000-000000000002', 'child', 45.00, 'baja', '05-01', '11-30', true);
+  ((SELECT id FROM tours WHERE kind = 'night'), 'adult', 80.00, 'alta', '12-01', '04-30', true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 'child', 50.00, 'alta', '12-01', '04-30', true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 'adult', 70.00, 'baja', '05-01', '11-30', true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 'child', 45.00, 'baja', '05-01', '11-30', true);
 
--- Schedules Cerro Chompipe: sábados y domingos a las 6am
+-- Horarios del diurno: sábados y domingos a las 6:00
 INSERT INTO tour_schedules (tour_id, day_of_week, start_time, capacity, active) VALUES
-  ('11111111-0000-0000-0000-000000000001', 6, '06:00', 12, true),
-  ('11111111-0000-0000-0000-000000000001', 0, '06:00', 12, true);
+  ((SELECT id FROM tours WHERE kind = 'day'), 6, '06:00', 12, true),
+  ((SELECT id FROM tours WHERE kind = 'day'), 0, '06:00', 12, true);
 
--- Schedules Birdwatching La Selva: martes, jueves y sábados — dos salidas por día
+-- Horarios del nocturno: martes, jueves y sábados, dos salidas por noche
 INSERT INTO tour_schedules (tour_id, day_of_week, start_time, capacity, active) VALUES
-  ('11111111-0000-0000-0000-000000000002', 2, '05:30', 8, true),
-  ('11111111-0000-0000-0000-000000000002', 2, '10:00', 8, true),
-  ('11111111-0000-0000-0000-000000000002', 4, '05:30', 8, true),
-  ('11111111-0000-0000-0000-000000000002', 4, '10:00', 8, true),
-  ('11111111-0000-0000-0000-000000000002', 6, '05:30', 8, true),
-  ('11111111-0000-0000-0000-000000000002', 6, '10:00', 8, true);
+  ((SELECT id FROM tours WHERE kind = 'night'), 2, '17:30', 8, true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 2, '19:30', 8, true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 4, '17:30', 8, true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 4, '19:30', 8, true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 6, '17:30', 8, true),
+  ((SELECT id FROM tours WHERE kind = 'night'), 6, '19:30', 8, true);

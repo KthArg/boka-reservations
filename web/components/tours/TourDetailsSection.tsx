@@ -14,7 +14,7 @@ type Props = {
 const DIFFICULTIES = [TourDifficulty.Easy, TourDifficulty.Moderate, TourDifficulty.Hard] as const;
 
 /**
- * Ficha del tour (spec 0042): foto, dificultad, duración, capacidades y slug. En pantallas anchas
+ * Ficha del tour (spec 0042): foto, dificultad, duración y capacidades. En pantallas anchas
  * va en la columna lateral del formulario, junto a los textos.
  */
 export default function TourDetailsSection({ values, onChange, errors }: Props) {
@@ -77,13 +77,6 @@ export default function TourDetailsSection({ values, onChange, errors }: Props) 
           min={1}
         />
       </div>
-      <TourField
-        label={t('field-slug')}
-        name="slug"
-        value={values.slug}
-        onChange={(v) => onChange('slug', v)}
-        errors={errors.slug}
-      />
     </fieldset>
   );
 }

@@ -1,3 +1,4 @@
+import type { TourKind } from '@shared/constants/enums';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
@@ -12,7 +13,7 @@ export default async function CheckoutCancelPage({ searchParams }: Props) {
   const { booking: bookingId } = await searchParams;
   const [t, locale] = await Promise.all([getTranslations('checkout'), getLocale()]);
 
-  let tourSlug: string | null = null;
+  let tourKind: TourKind | null = null;
 
   if (bookingId) {
     // La liberación vive en lib/ (spec 0028, B6): valida propiedad por cookie, chequea
@@ -23,13 +24,13 @@ export default async function CheckoutCancelPage({ searchParams }: Props) {
     const db = createSupabaseServiceClient();
     const { data: booking } = await db
       .from('bookings')
-      .select('tour_instance_id, tour_instances!inner(tours!inner(slug))')
+      .select('tour_instance_id, tour_instances!inner(tours!inner(kind))')
       .eq('id', bookingId)
-      .maybeSingle<{ tour_instances: { tours: { slug: string } } }>();
-    tourSlug = booking?.tour_instances?.tours?.slug ?? null;
+      .maybeSingle<{ tour_instances: { tours: { kind: TourKind | null } } }>();
+    tourKind = booking?.tour_instances?.tours?.kind ?? null;
   }
 
-  const retryHref = tourSlug ? `/${locale}/tours/${tourSlug}` : `/${locale}/tours`;
+  const retryHref = tourKind ? `/${locale}/tours/${tourKind}` : `/${locale}/tours`;
 
   return (
     <div className={styles.page}>

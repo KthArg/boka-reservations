@@ -52,10 +52,6 @@ export const ScheduleRowSchema = z.object({
 
 export const TourFormSchema = z
   .object({
-    slug: z
-      .string()
-      .min(1)
-      .regex(/^[a-z0-9-]+$/, 'Solo letras minúsculas, números y guiones'),
     name_es: z.string().min(1).max(120),
     name_en: z.string().min(1).max(120),
     description_es: z.string().min(1),
@@ -154,14 +150,13 @@ export type TourBasicValues = {
   duration_minutes: string;
   min_participants: string;
   max_capacity: string;
-  slug: string;
   cover_image_url: string;
 };
 
 export type FieldErrors = { _form?: string[] } & Partial<Record<string, string[]>>;
 
 /**
- * Resultado de crear o editar un tour. Al editar, `withdrawn`/`kept` cuentan las salidas fuera de
+ * Resultado de editar un tour. `withdrawn`/`kept` cuentan las salidas fuera de
  * vigencia que se retiraron y las que quedaron por tener reservas (spec 0044); con `kept > 0` la
  * acción no redirige, para que el admin lo vea.
  */
