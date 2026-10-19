@@ -137,10 +137,6 @@ export async function completeDeferredCheckoutAction(
   if (!(await isSalesEnabled()) || !(await isInstanceSellable(input.instanceId))) {
     return { error: CheckoutErrorKey.SalesNotEnabled };
   }
-  // Ni pausar el tour (spec 0047) entre los dos pasos (auditoría 2026-10-18, PAYSEC-N4).
-  if (!(await isTourOnSale(input.instanceId))) {
-    return { error: CheckoutErrorKey.TourPaused };
-  }
 
   // La cookie HttpOnly del paso 1 prueba que este navegador es el dueño del hold.
   const sessionToken = (await cookies()).get(HOLD_SESSION_COOKIE)?.value;
