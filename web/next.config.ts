@@ -27,6 +27,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // No anunciar el framework en `X-Powered-By` (fingerprinting gratis para un atacante).
+  poweredByHeader: false,
   experimental: {
     serverActions: allowedOrigins ? { allowedOrigins } : undefined,
   },
