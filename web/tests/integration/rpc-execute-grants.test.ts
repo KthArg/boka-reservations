@@ -43,7 +43,13 @@ const DEFERRED_BOOKING_ARGS = {
 const STATE_MUTATING: Record<string, Record<string, unknown>> = {
   create_hold_atomic: { p_instance_id: ZERO_UUID, p_seats: 1, p_session: 'x' },
   confirm_booking: { p_booking_id: ZERO_UUID, p_external_payment_id: 'x', p_total_seats: 1 },
-  cancel_booking: { p_booking_id: ZERO_UUID, p_actor_type: 'tourist', p_refund_amount_cents: 1 },
+  cancel_booking: {
+    p_booking_id: ZERO_UUID,
+    p_actor_type: 'tourist',
+    p_refund_amount_cents: 1,
+    p_reason: 'customer_request',
+    p_fee_cents: 0,
+  },
   settle_refund: { p_refund_id: ZERO_UUID },
   flag_payment_mismatch: {
     p_booking_id: ZERO_UUID,
@@ -171,9 +177,7 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     },
   );
 
-  // Spec 0032: STATE_MUTATING se indexa por nombre y no admite las dos sobrecargas de
-  // cancel_booking. Sin p_reason la llamada resolvería a la de 4 parámetros y el test no
-  // probaría la nueva.
+  // Spec 0032: la de 6 parámetros es la única que queda (…062 borró la de 4).
   it('la sobrecarga de 6 parámetros de cancel_booking solo la ejecuta service_role', async () => {
     const args = {
       p_booking_id: ZERO_UUID,
@@ -187,6 +191,15 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     const fromService = await service.rpc('cancel_booking', args);
     expect(fromService.error?.code).not.toBe(PERMISSION_DENIED);
     expect(fromService.error?.message).toContain('BOOKING_NOT_FOUND');
+  });
+
+  it('la firma de 4 parámetros de cancel_booking ya no existe (…062, ACCESS-3)', async () => {
+    const { error } = await service.rpc('cancel_booking', {
+      p_booking_id: ZERO_UUID,
+      p_actor_type: 'tourist',
+      p_refund_amount_cents: 1,
+    } as never);
+    expect(error?.code).toBe('PGRST202');
   });
 
   it('la firma de 17 parámetros de create_deferred_booking ya no existe (spec 0031)', async () => {

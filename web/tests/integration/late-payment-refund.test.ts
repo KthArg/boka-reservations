@@ -272,6 +272,8 @@ describe('pago tardío sobre reserva cancelada (spec 0028)', () => {
       p_booking_id: bookingId,
       p_actor_type: 'tourist',
       p_refund_amount_cents: 0,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
     });
     expect(cancelErr).toBeNull();
 

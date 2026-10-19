@@ -148,7 +148,7 @@ describe('deactivate_internal_user — anti-TOCTOU del último admin (…042)', 
   });
 });
 
-describe('cancel_booking — refund capado al pago (…042)', () => {
+describe('cancel_booking — refund capado al pago (…042, se mantiene en la de 6 parámetros)', () => {
   async function seedConfirmed(): Promise<{ bookingId: string }> {
     const { data: booking } = await admin
       .from('bookings')
@@ -179,6 +179,8 @@ describe('cancel_booking — refund capado al pago (…042)', () => {
       p_booking_id: bookingId,
       p_actor_type: 'tourist',
       p_refund_amount_cents: PAYMENT_CENTS + 4999,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
     });
     expect(error).toBeNull();
 
@@ -197,6 +199,8 @@ describe('cancel_booking — refund capado al pago (…042)', () => {
       p_booking_id: bookingId,
       p_actor_type: 'tourist',
       p_refund_amount_cents: 0,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
     });
     expect(error).toBeNull();
 
