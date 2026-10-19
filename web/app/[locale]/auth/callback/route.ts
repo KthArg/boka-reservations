@@ -1,10 +1,11 @@
 import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { type NextRequest, NextResponse } from 'next/server';
+import { resolveRouteLocale } from '@/lib/i18n/route-locale';
 
 type Params = { params: Promise<{ locale: string }> };
 
 export async function GET(request: NextRequest, { params }: Params) {
-  const { locale } = await params;
+  const locale = resolveRouteLocale((await params).locale);
   const { searchParams } = request.nextUrl;
   const code = searchParams.get('code');
 
