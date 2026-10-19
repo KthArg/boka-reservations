@@ -70,6 +70,19 @@ export async function correctBookingContact(
     console.error('[privacy] correct notices:', noticesError.message, bookingId);
     return { ok: false, error: 'error-generic' };
   }
+  // Los enlaces ya enviados al correo equivocado dejan de valer: con ellos se ve la reserva, se
+  // cancela y se cambia la tarjeta (auditoría 2026-10-18, PRIV-08). Los avisos que sigan
+  // emiten un enlace nuevo al correo corregido.
+  if (before.customer_email !== email) {
+    const { error: tokensError } = await db
+      .from('booking_access_tokens')
+      .delete()
+      .eq('booking_id', bookingId);
+    if (tokensError) {
+      console.error('[privacy] revoke tokens:', tokensError.message, bookingId);
+      return { ok: false, error: 'error-generic' };
+    }
+  }
 
   await writeAuditLog(db, {
     actorType: AuditActorType.Admin,
