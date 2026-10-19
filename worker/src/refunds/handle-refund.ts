@@ -10,6 +10,7 @@ import {
   type RefundRow,
 } from './repository.js';
 import type { OnvopayRefundClient } from './onvopay.js';
+import { OnvopayHttpError } from '../onvopay-error.js';
 
 // 3 REINTENTOS reales tras el primer intento (esperas 1/5/30): terminal recién al
 // agotar el schedule (4to intento fallido). Con `>=` el reintento de 30 min era
@@ -38,10 +39,11 @@ function backoffElapsed(refund: RefundRow): boolean {
   return Date.now() - new Date(refund.updated_at).getTime() >= wait;
 }
 
-// AbortSignal.timeout lanza DOMException con name 'TimeoutError' (Node >= 17.3);
-// 'AbortError' cubre señales abortadas por otras vías.
-function isTimeout(err: unknown): boolean {
-  return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+// Resultado desconocido del POST (auditoría 2026-10-18, PAYSEC-N3): el refund PUDO haberse creado.
+// Timeout (AbortSignal.timeout), corte de red, 5xx o un 200 ilegible: todo lo que no sea un 4xx
+// de OnvoPay, que es lo único que dice con certeza que no se creó.
+function isAmbiguousCreateFailure(err: unknown): boolean {
+  return !(err instanceof OnvopayHttpError) || err.isServerError;
 }
 
 /**
@@ -105,15 +107,15 @@ async function createRefund(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown';
-    // Timeout = respuesta desconocida: el refund PUDO haberse creado en OnvoPay.
+    // Respuesta desconocida: el refund PUDO haberse creado en OnvoPay.
     // Re-POSTear arriesga doble reembolso (spec 0028): se corta a 'failed' para
     // verificación manual contra el dashboard antes de cualquier reintento.
-    if (isTimeout(err)) {
+    if (isAmbiguousCreateFailure(err)) {
       await markFailed(db, refund, AMBIGUOUS_TIMEOUT_REASON, attempts);
       alertRefund(
         'refund-ambiguous-timeout',
         refund.id,
-        '[process-refunds] timeout ambiguo del POST: verificar en OnvoPay antes de reintentar',
+        '[process-refunds] resultado ambiguo del POST (timeout, red o 5xx): verificar en OnvoPay antes de reintentar',
       );
       return;
     }

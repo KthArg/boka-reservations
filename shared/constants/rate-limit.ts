@@ -19,8 +19,12 @@ export type RateLimitRule = {
 };
 
 export const RATE_LIMITS = {
-  /** Login por cuenta objetivo (email): frena fuerza bruta contra una cuenta. */
-  loginPerEmail: { limit: 5, windowSeconds: 15 * SECONDS_PER_MINUTE },
+  /**
+   * Login por cuenta objetivo DESDE una IP (email + IP): frena fuerza bruta contra una cuenta
+   * sin que un tercero pueda bloquearle el login al dueño desde otra IP (auditoría 2026-10-18,
+   * INFRA-02: con la clave solo por email, 5 intentos con el email del admin lo dejaban afuera).
+   */
+  loginPerEmailIp: { limit: 5, windowSeconds: 15 * SECONDS_PER_MINUTE },
   /** Login por IP: holgado para no molestar NAT/CGNAT compartido. */
   loginPerIp: { limit: 20, windowSeconds: 15 * SECONDS_PER_MINUTE },
   /** Forgot-password por email destino: evita email bombing a una víctima. */
@@ -51,7 +55,7 @@ export const RATE_LIMITS = {
  */
 export const RATE_LIMIT_KEY_PREFIX = {
   loginIp: 'login:ip',
-  loginEmail: 'login:email',
+  loginEmailIp: 'login:email-ip',
   forgotIp: 'forgot:ip',
   forgotEmail: 'forgot:email',
   checkoutIp: 'checkout:ip',

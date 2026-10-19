@@ -22,6 +22,7 @@ const repoMocks = vi.hoisted(() => ({
 vi.mock('../../../src/refunds/repository.js', () => repoMocks);
 
 import { __testing } from '../../../src/jobs/process-refunds.js';
+import { OnvopayHttpError } from '../../../src/onvopay-error.js';
 const { processOne } = __testing;
 
 const db = {} as never;
@@ -104,8 +105,14 @@ describe('process-refunds processOne', () => {
     expect(repoMocks.markFailed).toHaveBeenCalledWith(db, pending, 'payment-intent-missing', 1);
   });
 
-  it('libera el claim (releaseClaim) ante error transitorio del POST bajo el limite', async () => {
-    const c = client({ createRefund: vi.fn().mockRejectedValue(new Error('503')) });
+  // Solo un 4xx de OnvoPay prueba que el refund NO se creó; cualquier otro error es ambiguo
+  // (auditoría 2026-10-18, PAYSEC-N3) y se prueba más abajo.
+  it('libera el claim (releaseClaim) ante un 4xx transitorio del POST bajo el limite', async () => {
+    const c = client({
+      createRefund: vi
+        .fn()
+        .mockRejectedValue(new OnvopayHttpError('createRefund', 429, 'slow down')),
+    });
 
     await processOne(db, c, { ...pending, attempts: 0 });
 
@@ -114,7 +121,9 @@ describe('process-refunds processOne', () => {
   });
 
   it('el 3er reintento (espera de 30 min) es alcanzable: con attempts=2 aún libera el claim', async () => {
-    const c = client({ createRefund: vi.fn().mockRejectedValue(new Error('boom')) });
+    const c = client({
+      createRefund: vi.fn().mockRejectedValue(new OnvopayHttpError('createRefund', 429, 'boom')),
+    });
 
     // updated_at viejo: la espera de 5 min venció; el intento 3 falla pero AÚN queda
     // el reintento de 30 min (spec 0028: terminal recién al agotar 1/5/30).
@@ -125,11 +134,18 @@ describe('process-refunds processOne', () => {
   });
 
   it('marca failed cuando se agotan los intentos de creacion (4to intento)', async () => {
-    const c = client({ createRefund: vi.fn().mockRejectedValue(new Error('boom')) });
+    const c = client({
+      createRefund: vi.fn().mockRejectedValue(new OnvopayHttpError('createRefund', 429, 'boom')),
+    });
 
     await processOne(db, c, { ...pending, attempts: 3, updated_at: OLD });
 
-    expect(repoMocks.markFailed).toHaveBeenCalledWith(db, expect.anything(), 'boom', 4);
+    expect(repoMocks.markFailed).toHaveBeenCalledWith(
+      db,
+      expect.anything(),
+      'onvopay createRefund 429: boom',
+      4,
+    );
     expect(repoMocks.releaseClaim).not.toHaveBeenCalled();
   });
 
@@ -147,6 +163,23 @@ describe('process-refunds processOne', () => {
     const timeoutErr = new Error('timeout');
     timeoutErr.name = 'TimeoutError';
     const c = client({ createRefund: vi.fn().mockRejectedValue(timeoutErr) });
+
+    await processOne(db, c, pending);
+
+    expect(repoMocks.markFailed).toHaveBeenCalledWith(
+      db,
+      expect.anything(),
+      'ambiguous-timeout',
+      1,
+    );
+    expect(repoMocks.releaseClaim).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['un corte de red (fetch failed)', new TypeError('fetch failed')],
+    ['un 5xx de OnvoPay o de un proxy', new OnvopayHttpError('createRefund', 502, 'bad gateway')],
+  ])('%s en el POST es ambiguo: corta a failed, nunca re-POSTea (PAYSEC-N3)', async (_, err) => {
+    const c = client({ createRefund: vi.fn().mockRejectedValue(err) });
 
     await processOne(db, c, pending);
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getClientIp } from './client-ip';
 import { UNKNOWN_IP } from '@shared/constants/rate-limit';
 
@@ -41,5 +41,23 @@ describe('getClientIp', () => {
 
   it('devuelve UNKNOWN_IP cuando el valor está vacío o es solo espacios', () => {
     expect(getClientIp(headers({ 'x-forwarded-for': '   ' }))).toBe(UNKNOWN_IP);
+  });
+
+  describe('en Vercel (VERCEL=1)', () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it('no confía en x-forwarded-for: sin headers de la plataforma devuelve UNKNOWN_IP', () => {
+      vi.stubEnv('VERCEL', '1');
+      expect(getClientIp(headers({ 'x-forwarded-for': '6.6.6.6' }))).toBe(UNKNOWN_IP);
+    });
+
+    it('sigue usando x-vercel-forwarded-for', () => {
+      vi.stubEnv('VERCEL', '1');
+      expect(
+        getClientIp(
+          headers({ 'x-vercel-forwarded-for': '198.51.100.9', 'x-forwarded-for': '6.6.6.6' }),
+        ),
+      ).toBe('198.51.100.9');
+    });
   });
 });

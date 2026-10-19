@@ -1333,29 +1333,19 @@ export type Database = {
         Args: { p_hold_id: string; p_detached_count: number };
         Returns: boolean;
       };
-      // Dos sobrecargas: la de 4 parámetros (…042) queda para el código viejo; la de 6 (spec 0032)
-      // recibe motivo y comisión y devuelve si canceló.
-      cancel_booking:
-        | {
-            Args: {
-              p_booking_id: string;
-              p_actor_type: string;
-              p_refund_amount_cents: number;
-              p_actor_id?: string;
-            };
-            Returns: void;
-          }
-        | {
-            Args: {
-              p_booking_id: string;
-              p_actor_type: string;
-              p_refund_amount_cents: number;
-              p_reason: 'customer_request' | 'operator_decision';
-              p_fee_cents: number;
-              p_actor_id?: string;
-            };
-            Returns: 'cancelled' | 'already_cancelled' | 'under_review';
-          };
+      // La de 6 parámetros (spec 0032): recibe motivo y comisión y devuelve si canceló. La de 4
+      // (…042) se borró en …062.
+      cancel_booking: {
+        Args: {
+          p_booking_id: string;
+          p_actor_type: string;
+          p_refund_amount_cents: number;
+          p_reason: 'customer_request' | 'operator_decision';
+          p_fee_cents: number;
+          p_actor_id?: string;
+        };
+        Returns: 'cancelled' | 'already_cancelled' | 'under_review';
+      };
       flag_payment_mismatch: {
         Args: {
           p_booking_id: string;
