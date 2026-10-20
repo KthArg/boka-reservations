@@ -27,6 +27,8 @@ import {
   startChargeOutcome,
   uid,
   type Db,
+  randomCardExpiry,
+  uniqueCardBrand,
 } from './deferred-fixtures';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
@@ -47,10 +49,10 @@ function updateCard(bookingId: string, customerId: string, last4: string) {
     p_booking_id: bookingId,
     p_customer_external_id: customerId,
     p_payment_method_id: `pm_${uid()}`,
-    p_card_brand: 'visa',
+    p_card_brand: uniqueCardBrand(),
     p_card_last4: last4,
-    p_card_exp_month: 12,
-    p_card_exp_year: 2030,
+    p_card_exp_month: randomCardExpiry().month,
+    p_card_exp_year: randomCardExpiry().year,
     p_consent_version: 'test-v1',
   });
 }

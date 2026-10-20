@@ -118,6 +118,9 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
 const DEPARTURE_READS: Record<string, Record<string, unknown>> = {
   departure_seat_counts: { p_instance_id: ZERO_UUID },
   departure_charge_due: { p_instance_id: ZERO_UUID },
+  // Spec 0048: chequeo temprano del tope y alerta de acaparamiento.
+  deferred_live_seats_for_email: { p_email: 'nadie@example.com' },
+  deferred_hoarding_candidates: { p_share: 0.5, p_max_identities: 2 },
 };
 
 // Reportes: SECURITY INVOKER, los llama el panel con sesión authenticated. anon no.
@@ -191,6 +194,21 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     const fromService = await service.rpc('cancel_booking', args);
     expect(fromService.error?.code).not.toBe(PERMISSION_DENIED);
     expect(fromService.error?.message).toContain('BOOKING_NOT_FOUND');
+  });
+
+  // Spec 0048: helper interno del tope; lo llaman las funciones SECURITY DEFINER como su owner.
+  it('nadie ejecuta deferred_cap_exceeded directo, ni service_role', async () => {
+    const args = {
+      p_email: 'x@example.com',
+      p_card_last4: '4242',
+      p_card_brand: 'visa',
+      p_seats: 1,
+      p_exclude_booking: ZERO_UUID,
+    };
+    for (const client of [anon, staff, service]) {
+      const { error } = await client.rpc('deferred_cap_exceeded', args as never);
+      expect(error?.code).toBe(PERMISSION_DENIED);
+    }
   });
 
   it('la firma de 4 parámetros de cancel_booking ya no existe (…062, ACCESS-3)', async () => {
