@@ -22,6 +22,15 @@ export function alertOrphanedCustomer(customerId: string, holdId: string): void 
   );
 }
 
+/** El paso 2 rechazado por el tope no pudo liberar su hold: el cupo vuelve recién al vencer. */
+export function alertHoldNotReleasedOverCap(holdId: string): void {
+  captureAlert(
+    '[deferred-checkout] no se pudo liberar el hold de un paso 2 rechazado por el tope',
+    'deferred-checkout-cap-release-failed',
+    { holdId },
+  );
+}
+
 /** Tarjeta de otro customer en el paso 2: señal de manipulación del checkout. */
 export function alertCardCustomerMismatch(holdId: string): void {
   captureAlert(

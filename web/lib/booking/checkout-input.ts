@@ -7,7 +7,13 @@ import { parseTicketQuantities, type TicketQuantities } from '@/lib/booking/quan
 import { checkRateLimit } from '@/lib/security/rate-limit';
 import { getClientIp } from '@/lib/security/client-ip';
 import { rateLimitKey } from '@/lib/security/rate-limit-key';
-import { RATE_LIMITS, RATE_LIMIT_KEY_PREFIX } from '@shared/constants/rate-limit';
+import {
+  RATE_LIMITS,
+  RATE_LIMIT_KEY_PREFIX,
+  type RateLimitRule,
+} from '@shared/constants/rate-limit';
+
+type RateLimitPrefix = (typeof RATE_LIMIT_KEY_PREFIX)[keyof typeof RATE_LIMIT_KEY_PREFIX];
 import { CHECKOUT_ACCEPTED_VALUE, CheckoutLegalField } from '@shared/constants/legal';
 
 // Validación y protecciones compartidas por los dos checkouts (widget y diferido, spec 0029).
@@ -78,12 +84,29 @@ export function parseCheckoutInput(get: FieldGetter): CheckoutInput | null {
  * automaticen checkouts que secuestren el cupo de las salidas.
  */
 export async function isCheckoutThrottled(): Promise<boolean> {
-  const ip = getClientIp(await headers());
-  const result = await checkRateLimit(
-    rateLimitKey(RATE_LIMIT_KEY_PREFIX.checkoutIp, ip),
-    RATE_LIMITS.checkoutPerIp.limit,
-    RATE_LIMITS.checkoutPerIp.windowSeconds,
+  return isIpThrottled(RATE_LIMIT_KEY_PREFIX.checkoutIp, RATE_LIMITS.checkoutPerIp);
+}
+
+/** Paso 1 del diferido: el límite del checkout más un techo diario por IP (spec 0048). */
+export async function isDeferredStartThrottled(): Promise<boolean> {
+  // El diario cuenta solo los intentos que pasan el de 10 minutos. Si contara también los frenados,
+  // quien martille desde una IP móvil compartida (CGNAT) lo agotaría en segundos y dejaría sin
+  // checkout a todos los turistas de esa IP hasta el día siguiente.
+  if (await isCheckoutThrottled()) return true;
+  return isIpThrottled(
+    RATE_LIMIT_KEY_PREFIX.deferredStartIpDay,
+    RATE_LIMITS.deferredStartPerIpDaily,
   );
+}
+
+/** Paso 2 del diferido por IP (spec 0048): antes del GET a OnvoPay. */
+export async function isDeferredCompleteThrottled(): Promise<boolean> {
+  return isIpThrottled(RATE_LIMIT_KEY_PREFIX.deferredCompleteIp, RATE_LIMITS.deferredCompletePerIp);
+}
+
+async function isIpThrottled(prefix: RateLimitPrefix, rule: RateLimitRule): Promise<boolean> {
+  const ip = getClientIp(await headers());
+  const result = await checkRateLimit(rateLimitKey(prefix, ip), rule.limit, rule.windowSeconds);
   return !result.ok;
 }
 

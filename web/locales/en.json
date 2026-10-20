@@ -230,7 +230,8 @@
     "booking-closed": "This departure no longer accepts online bookings: sales close a few hours before it starts. Please choose another date.",
     "booking-closed-back": "See other dates",
     "tour-paused": "This tour is not available right now.",
-    "tour-paused-back": "See the tours"
+    "tour-paused-back": "See the tours",
+    "deferred-cap-exceeded": "You already have the maximum number of seats held without payment. Wait for your bookings to be charged, or cancel one, to hold more."
   },
   "legal": {
     "privacy-title": "Privacy notice",
@@ -613,6 +614,7 @@
     "card-expires-before-departure": "This card expires before the tour date. Please use another one.",
     "card-update-limit": "You reached the maximum card changes for this booking. Write to us and we will help you.",
     "card-in-use": "That card is already saved on another active booking. Please use another card.",
+    "card-cap-exceeded": "That card already has the maximum number of seats held without payment. Please use another card.",
     "card-cta": "Update your card",
     "booking-cancelled": "This booking was cancelled.",
     "authenticate-title": "Confirm the payment with your bank",

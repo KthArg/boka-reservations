@@ -9,6 +9,7 @@ import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from '@shared/constants/legal';
 import { BookingStatus, HoldStatus } from '@shared/constants/enums';
 import { DeferredCheckoutCode } from './deferred-checkout-errors';
 import { alertCardCustomerMismatch } from './deferred-checkout-alerts';
+import { releaseHoldOverCap } from './deferred-checkout-cap';
 import { DEFERRED_CURRENCY, type DeferredCheckoutParams } from './deferred-checkout';
 
 // Paso 2 del checkout diferido (spec 0029 §5.2): con el paymentMethodId que devolvió OnvoPay, el
@@ -120,6 +121,9 @@ export async function completeDeferredCheckout(
     p_card_exp_month: card.expMonth,
     p_card_exp_year: card.expYear,
   });
+  if (error?.message.includes(DeferredCheckoutCode.CapExceeded)) {
+    await releaseHoldOverCap(params.holdId, params.sessionToken);
+  }
   if (error || !bookingId) throw new Error(error?.message ?? 'create_deferred_booking sin id');
   return { bookingId };
 }
