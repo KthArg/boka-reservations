@@ -10,6 +10,7 @@ import { UserCreateSchema, UserUpdateSchema } from '@shared/schemas';
 import { createInternalUser } from './create';
 import { setUserActive, updateInternalUser } from './manage';
 import { resendInvite as resendInviteService } from './resend-invite';
+import { resetUserMfa } from './mfa';
 import { emailExists } from './repository';
 import type { FieldErrors, FormResult, UserActionResult } from './types';
 
@@ -87,4 +88,14 @@ export async function resendInvite(id: string): Promise<UserActionResult> {
   if (!admin) return { ok: false, error: UserManagementError.Unauthorized };
   const locale = await getLocale();
   return resendInviteService(id, locale);
+}
+
+/** Spec 0049: resetea el segundo factor de otro usuario del panel (y le cambia la contraseña). */
+export async function resetMfa(id: string): Promise<UserActionResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: UserManagementError.Unauthorized };
+  if (id === admin.id) return { ok: false, error: UserManagementError.SelfMfaReset };
+  const result = await resetUserMfa(id, admin.id, await getLocale());
+  if (result.ok) revalidatePath(USERS_PATH);
+  return result;
 }
