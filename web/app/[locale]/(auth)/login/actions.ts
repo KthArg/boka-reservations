@@ -68,5 +68,8 @@ export async function signIn(formData: FormData) {
     redirect(`/${locale}/login?error=invalid-credentials`);
   }
 
-  redirect(safeRedirectPath(redirectTo, `/${locale}/dashboard`));
+  // Spec 0049: el panel exige el segundo factor. Siempre por /mfa, tenga o no la cuenta un factor
+  // configurado: el login no revela cuáles lo tienen. /mfa decide entre enrolar y pedir el código.
+  const target = safeRedirectPath(redirectTo, `/${locale}/dashboard`);
+  redirect(`/${locale}/mfa?redirectTo=${encodeURIComponent(target)}`);
 }

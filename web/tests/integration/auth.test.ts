@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import type { Database } from '@/types/database';
+import { completeSecondFactor } from './mfa-fixtures';
 
 // Fallbacks = default local JWT secret (supabase start con config.toml estándar)
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
@@ -99,6 +100,7 @@ describe('RLS — con sesión autenticada', () => {
       email: 'staff@bokatrails.com',
       password: 'staff1234',
     });
+    await completeSecondFactor(client);
 
     // RLS filter policy: UPDATE afecta 0 filas sin retornar error explícito
     await client.from('tours').update({ name_es: 'Modificado por staff' }).eq('kind', 'day');
@@ -115,6 +117,7 @@ describe('RLS — con sesión autenticada', () => {
       email: 'staff@bokatrails.com',
       password: 'staff1234',
     });
+    await completeSecondFactor(client);
 
     const { data, error } = await client.from('tours').select('slug');
     expect(error).toBeNull();
@@ -132,6 +135,7 @@ describe('RLS — admin puede modificar tours', () => {
       email: 'admin@bokatrails.com',
       password: 'admin1234',
     });
+    await completeSecondFactor(client);
 
     const { data: original } = await admin
       .from('tours')
@@ -163,6 +167,7 @@ describe('RLS — actualización de perfil propio', () => {
       email: 'staff@bokatrails.com',
       password: 'staff1234',
     });
+    await completeSecondFactor(client);
     const userId = signInData.user!.id;
 
     const { data: original } = await admin

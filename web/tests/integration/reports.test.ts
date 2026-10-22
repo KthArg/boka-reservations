@@ -4,6 +4,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '@/types/database';
+import { completeSecondFactor } from './mfa-fixtures';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -66,6 +67,8 @@ async function seedPayment(
 beforeAll(async () => {
   authed = createClient<Database>(SUPABASE_URL, ANON_KEY);
   await authed.auth.signInWithPassword({ email: 'admin@bokatrails.com', password: 'admin1234' });
+  // Spec 0049: las tablas del panel piden el segundo factor (aal2).
+  await completeSecondFactor(authed);
 
   const { data: tour } = await admin
     .from('tours')

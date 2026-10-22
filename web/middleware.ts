@@ -4,33 +4,16 @@ import { routing } from './i18n/routing';
 import { createSupabaseMiddlewareClient } from './lib/db/supabase-middleware';
 import { buildCsp, cspHeaderName } from './lib/security/csp';
 import { generateNonce } from './lib/security/nonce';
+import { AAL2, decodeSessionClaims, isPanelRole } from './lib/auth/session-claims';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
 const NONCE_HEADER = 'x-nonce';
 const PROTECTED_SEGMENTS = ['/dashboard', '/bookings', '/guides', '/settings'];
 
-// Roles del panel, inlineados a strings A PROPÓSITO: el middleware se bundlea aparte y en este
-// monorepo (sin workspace de pnpm, `shared/` fuera del root del web) importar `@shared` desde el
-// middleware es frágil. Debe coincidir con shared/constants/bookings.ts → [UserRole.Admin, UserRole.Staff].
-const ADMIN_PANEL_ROLES: readonly string[] = ['admin', 'staff'];
-
 function isProtectedPath(pathname: string): boolean {
   const withoutLocale = pathname.replace(/^\/(es|en)/, '');
   return PROTECTED_SEGMENTS.some((seg) => withoutLocale.startsWith(seg));
-}
-
-// Decodifica el claim `user_role` del access token (JWT del custom_access_token_hook).
-// Usa atob + TextDecoder (sin Buffer). Falla cerrado (undefined) ante error.
-function decodeUserRole(accessToken: string): string | undefined {
-  try {
-    const b64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    const payload = JSON.parse(new TextDecoder().decode(bytes)) as { user_role?: string };
-    return payload.user_role;
-  } catch {
-    return undefined;
-  }
 }
 
 export async function middleware(request: NextRequest) {
@@ -82,20 +65,33 @@ export async function middleware(request: NextRequest) {
     if (!hasLocale) return response;
 
     const locale = firstSegment;
+    // Un redirect nuevo perdería las cookies que getUser() renovó en `response`: con el refresh
+    // token rotado y el navegador con el viejo, GoTrue terminaría revocando la sesión.
+    const redirectWithSession = (url: URL): NextResponse => {
+      const redirect = NextResponse.redirect(url);
+      for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+      redirect.headers.set(cspHeader, csp);
+      return redirect;
+    };
     const redirectToLogin = (): NextResponse => {
       const loginUrl = new URL(`/${locale}/login`, request.url);
       loginUrl.searchParams.set('redirectTo', pathname);
-      const redirect = NextResponse.redirect(loginUrl);
-      redirect.headers.set(cspHeader, csp);
-      return redirect;
+      return redirectWithSession(loginUrl);
     };
 
     if (!user) return redirectToLogin();
 
     // ACCESS-02 (spec 0023): exigir rol de panel en el middleware (defensa en profundidad;
     // el choke-point real es (admin)/layout.tsx + RLS).
-    const role = accessToken ? decodeUserRole(accessToken) : undefined;
-    if (!role || !ADMIN_PANEL_ROLES.includes(role)) return redirectToLogin();
+    const claims = accessToken ? decodeSessionClaims(accessToken) : undefined;
+    if (!claims || !isPanelRole(claims.userRole)) return redirectToLogin();
+
+    // Spec 0049: sin el segundo factor verificado en esta sesión, primero /mfa.
+    if (claims.aal !== AAL2) {
+      const mfaUrl = new URL(`/${locale}/mfa`, request.url);
+      mfaUrl.searchParams.set('redirectTo', pathname);
+      return redirectWithSession(mfaUrl);
+    }
   }
 
   return response;

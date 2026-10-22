@@ -33,6 +33,8 @@ export const RATE_LIMITS = {
   forgotPerIp: { limit: 10, windowSeconds: SECONDS_PER_HOUR },
   /** Checkout por IP: acota la frecuencia de holds para no secuestrar cupo. */
   checkoutPerIp: { limit: 10, windowSeconds: 10 * SECONDS_PER_MINUTE },
+  /** Códigos del segundo factor por usuario (spec 0049): 10 cada 15 minutos. */
+  mfaVerifyPerUser: { limit: 10, windowSeconds: 15 * SECONDS_PER_MINUTE },
   /**
    * Lecturas públicas del portal (browsing de tours) por IP. Límite muy holgado:
    * los reads son idempotentes y no tocan inventario; sólo busca frenar scraping
@@ -59,6 +61,7 @@ export const RATE_LIMIT_KEY_PREFIX = {
   forgotIp: 'forgot:ip',
   forgotEmail: 'forgot:email',
   checkoutIp: 'checkout:ip',
+  mfaVerifyUser: 'mfa:user',
   publicReadIp: 'public:ip',
   magicLinkIp: 'magic:ip',
 } as const;
