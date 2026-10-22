@@ -3,7 +3,7 @@
 - **Estado**: approved
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-10-20
-- **Última actualización**: 2026-10-22
+- **Última actualización**: 2026-10-22 (resultados de la Fase 0 en §5.2, §6 y §11)
 - **Rama**: feat/0049-captcha-y-mfa-del-panel
 - **PR**: (pendiente)
 
@@ -133,17 +133,17 @@ Toda la defensa contra "contraseña robada más factor propio" se apoya en esos 
 - Con el cliente de servicio, en este orden:
   1. `auth.admin.mfa.listFactors({ userId })` y `deleteFactor` de cada uno;
   2. `auth.admin.updateUserById(userId, { password: <32 bytes aleatorios> })`, que invalida la contraseña vieja;
-  3. cierra las sesiones del usuario (ver abajo);
+  3. el cambio de contraseña por la API de admin ya revoca todos los refresh tokens del usuario, así que sus sesiones se cierran solas (ver abajo);
   4. manda el correo de acceso con el mismo camino que el reenvío de acceso (`resend-invite.ts`, que llama a `resetPasswordForEmail` con el cliente de servicio);
   5. escribe `audit_logs` (`user.mfa_reset`).
 - Es idempotente: un segundo reseteo concurrente encuentra cero factores, vuelve a cambiar la contraseña y a mandar el correo, y no falla.
 
-**Cerrar las sesiones por usuario**: supabase-js no documenta un "cerrar todas las sesiones de un usuario" para el admin (`auth.admin.signOut` pide el JWT del usuario). Plan:
+**Cerrar las sesiones del usuario** (resuelto en la Fase 0, 2026-10-22, contra el Supabase local):
 
-- **Preferido**: función SECURITY DEFINER `revoke_user_sessions(p_user_id uuid)` que hace `DELETE FROM auth.sessions WHERE user_id = p_user_id`. Las filas de `auth.refresh_tokens` caen en cascada. Ejecutable solo por service_role.
-- **Fase 0**: confirmar que el owner de la migración tiene DELETE sobre `auth.sessions` en el Supabase alojado.
-- **Fallback**: `updateUserById(userId, { ban_duration: '1h' })` y después quitar el ban. Antes hay que confirmar que los refresh tokens viejos no vuelven a servir.
-- En los dos casos, el access token ya emitido sigue valiendo hasta que vence (`jwt_expiry`, 1 h). Es el mismo límite que ACCESS-1, y queda documentado. Igual, ese token ya no es `aal2` útil por mucho tiempo, porque la contraseña cambió y no se puede renovar.
+- `auth.admin.updateUserById(userId, { password })` revoca todos los refresh tokens del usuario: un `refreshSession` posterior devuelve `refresh_token_not_found`. Como el reseteo cambia la contraseña, no hace falta nada más.
+- Descartado `ban_duration` + desban: los refresh tokens viejos siguen sirviendo.
+- Descartada una función que borre de `auth.sessions`: anda en local, pero la tabla es de `supabase_auth_admin` y depender de ese permiso en el Supabase alojado es frágil.
+- El access token ya emitido sigue valiendo hasta que vence (`jwt_expiry`, 1 h), como en ACCESS-1. No se puede renovar.
 
 **UI**: botón "Resetear segundo factor" en `/dashboard/users`, con el diálogo de la marca (spec 0042). Solo se muestra si el usuario tiene algún factor. Para saberlo, la lista de usuarios suma `has_mfa`, con `auth.admin.mfa.listFactors` por usuario; con pocos usuarios, alcanza.
 
@@ -204,7 +204,7 @@ Toda la defensa contra "contraseña robada más factor propio" se apoya en esos 
 
 Ninguna política de esas tablas usa subconsultas a otras tablas (todas leen el JWT), así que la RESTRICTIVE no rompe lecturas cruzadas. Las políticas `TO anon` no aplican a un token `authenticated`. El portal público usa un cliente anon sin cookies, así que un staff `aal1` con la sesión abierta sigue viendo el catálogo como cualquier visitante. Lo único que tiene sin `aal2` es lo que ve un anónimo, y es aceptable.
 
-**Función**: `revoke_user_sessions(p_user_id uuid)`, SECURITY DEFINER, `search_path = ''`, solo service_role (§5.2). Si la Fase 0 la descarta, no se crea.
+**Función**: ninguna nueva (la Fase 0 descartó `revoke_user_sessions`, §5.2).
 
 **Constantes**: `AuditEntityType.User`, `AuditAction.UserMfaReset`, `AuditAction.UserMfaEnrolled` en `shared/constants/audit.ts`. `audit_logs` no tiene CHECK sobre `action` (…018).
 
@@ -230,7 +230,7 @@ No hay estados nuevos en las tablas del negocio.
 - **Reseteo mientras el usuario está enrolando**: el reseteo borra también el factor sin verificar y cierra la sesión, y el enrolamiento en curso falla al verificar. El usuario vuelve a `/login` y la contraseña vieja ya no sirve.
 - **Recuperación de contraseña**:
   - el correo usa `/auth/confirm` con `token_hash` y `/reset-password` fija la contraseña con el cliente de servicio por la cookie `invite_set` (specs 0010 y 0016);
-  - la rama de autoservicio (`updateUser` en `reset-password/actions.ts`) sigue viva por `/auth/callback`; hay que confirmar en la Fase 0 si GoTrue rechaza el cambio con `aal1` cuando hay un factor (`insufficient_aal`), y si lo rechaza, esa rama pasa a usar también el cliente de servicio;
+  - la rama de autoservicio (`updateUser` en `reset-password/actions.ts`) sigue viva por `/auth/callback`. La Fase 0 confirmó que GoTrue rechaza ese cambio con `aal1` cuando hay un factor (`insufficient_aal`). Por eso esa rama pasa a fijar la contraseña con el cliente de servicio para el usuario de la sesión de recuperación, que ya probó que controla el correo, y redirige a `/login?reset=success`;
   - en los dos casos, después el acceso al panel cae en `/mfa`.
 - **Invitación nueva**: fija la contraseña desde el correo y enrola en el primer acceso. El correo de aviso del enrolamiento le llega igual.
 - **Primer despliegue**: nadie tiene factor todavía. Hasta que cada persona enrole, quien tenga su contraseña podría enrolar primero. Mitigación:
@@ -316,14 +316,17 @@ No hay estados nuevos en las tablas del negocio.
 
 ## 11. Plan de rollout
 
-**Fase 0** (en local y en un proyecto de Supabase de prueba, o en un preview según §13):
+**Fase 0**:
 
-1. DELETE sobre `auth.sessions` desde la migración, o el fallback del ban (§5.2).
-2. Que "Limit duration of AAL1 sessions" se aplique al refresh y solo con un factor verificado.
-3. Si `updateUser` con `aal1` y un factor da `insufficient_aal`.
-4. Que la clave service_role exima del captcha en `resetPasswordForEmail`.
-5. `remoteip` del login por server action con el captcha.
-6. La CSP en report-only.
+- **Hecho el 2026-10-22, contra el Supabase local**:
+  - el JWT trae `aal1` tras la contraseña y `aal2` tras `verify`, y el hook conserva `user_role`;
+  - con `aal1` y un factor verificado, GoTrue rechaza enrolar otro factor, dar de baja el existente y cambiar la contraseña (`insufficient_aal` en los tres);
+  - el cambio de contraseña por la API de admin revoca los refresh tokens; el ban y desban, no.
+- **Pendiente, en el Supabase alojado**: que "Limit duration of AAL1 sessions" se aplique al refresh y solo con un factor verificado.
+- **Pendiente para el captcha**:
+  - que la clave service_role exima del captcha en `resetPasswordForEmail`;
+  - el `remoteip` del login por server action;
+  - la CSP en report-only.
 
 **MFA** (sale primero, sin flag, porque es una regla de seguridad):
 
