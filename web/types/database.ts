@@ -1321,6 +1321,11 @@ export type Database = {
           | 'card_data_invalid'
           | 'card_expires_before_departure';
       };
+      // Spec 0049 (…064): auditoría de tablas sin la RESTRICTIVE de aal2.
+      panel_tables_missing_aal2: {
+        Args: Record<PropertyKey, never>;
+        Returns: { schema_name: string; table_name: string }[];
+      };
       mark_payment_provider_closed: {
         Args: { p_payment_id: string; p_actor_id: string };
         Returns: boolean;
