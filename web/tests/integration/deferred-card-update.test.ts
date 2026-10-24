@@ -9,9 +9,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { Database } from '@/types/database';
 import type { PaymentMethodDetails } from '@/lib/payments/types';
 import { hashBookingToken } from '@/lib/booking/booking-token-hash';
+import { DEFERRED_MAX_LIVE_SEATS_PER_IDENTITY } from '@shared/constants/bookings';
 import { deleteToursDeep } from './cleanup';
 import {
   createDeferredBooking,
+  HOLD_SEATS,
   createDeparture,
   DAY_MS,
   EXPIRED_CARD,
@@ -24,6 +26,9 @@ import {
   startChargeOutcome,
   uid,
   type Db,
+  randomCardExpiry,
+  randomLast4,
+  uniqueCardBrand,
 } from './deferred-fixtures';
 
 const provider = vi.hoisted(() => ({ getPaymentMethod: vi.fn(), detachPaymentMethod: vi.fn() }));
@@ -66,6 +71,11 @@ async function accessTokenFor(bookingId: string): Promise<string> {
   return token;
 }
 
+/** Vencimiento propio de cada tarjeta fake: el tope por tarjeta (spec 0048) no las suma. */
+function cardExpiry(): Pick<PaymentMethodDetails, 'expMonth' | 'expYear'> {
+  const { month, year } = randomCardExpiry();
+  return { expMonth: month, expYear: year };
+}
 /** Reserva sin cobrar con un rechazo registrado: el caso del enlace del aviso. */
 async function declinedBooking() {
   const { bookingId, hold } = await createDeferredBooking(db, instanceId);
@@ -79,10 +89,9 @@ function newCard(customerId: string, overrides: Partial<PaymentMethodDetails> = 
     id: `pm_${uid()}`,
     status: 'attached',
     customerId,
-    brand: 'mastercard',
-    last4: '5454',
-    expMonth: 11,
-    expYear: 2031,
+    brand: uniqueCardBrand('mastercard'),
+    last4: randomLast4(),
+    ...cardExpiry(),
     ...overrides,
   };
   provider.getPaymentMethod.mockResolvedValue(card);
@@ -121,7 +130,7 @@ describe('updateCardAction — tarjeta aceptada', () => {
     // Assert
     expect(result).toEqual({ ok: true });
     const booking = await readBooking(db, bookingId);
-    expect(booking).toMatchObject({ payment_method_id: card.id, card_last4: '5454' });
+    expect(booking).toMatchObject({ payment_method_id: card.id, card_last4: card.last4 });
     expect(booking.charge_next_attempt_at).not.toBeNull();
     expect(provider.detachPaymentMethod).toHaveBeenCalledWith(previous);
   });
@@ -129,8 +138,8 @@ describe('updateCardAction — tarjeta aceptada', () => {
   it('keeps the saved card untouched when the tourist submits the same one', async () => {
     // Arrange
     const { bookingId, customerId, token } = await declinedBooking();
-    const { payment_method_id: current } = await readBooking(db, bookingId);
-    newCard(customerId, { id: current as string, last4: '4242' });
+    const { payment_method_id: current, card_last4: saved } = await readBooking(db, bookingId);
+    newCard(customerId, { id: current as string, last4: saved });
 
     // Act
     const result = await updateCardAction({
@@ -175,6 +184,7 @@ describe('updateCardAction — rechazos', () => {
   ])('rejects $name and keeps the saved card', async ({ expected, card, detachesNewCard }) => {
     // Arrange
     const { bookingId, customerId, token } = await declinedBooking();
+    const { card_last4: saved } = await readBooking(db, bookingId);
     const { id } = newCard(customerId, card);
 
     // Act
@@ -182,7 +192,7 @@ describe('updateCardAction — rechazos', () => {
 
     // Assert
     expect(result).toEqual({ ok: false, error: expected });
-    expect((await readBooking(db, bookingId)).card_last4).toBe('4242');
+    expect((await readBooking(db, bookingId)).card_last4).toBe(saved);
     if (detachesNewCard) expect(provider.detachPaymentMethod).toHaveBeenCalledWith(id);
     else expect(provider.detachPaymentMethod).not.toHaveBeenCalled();
   });
@@ -203,6 +213,32 @@ describe('updateCardAction — rechazos', () => {
 
     // Assert
     expect(result).toEqual({ ok: false, error: 'card-in-use' });
+  });
+
+  it('rejects a card that already holds the maximum seats without payment (spec 0048)', async () => {
+    // Arrange: la tarjeta nueva ya respalda el tope en reservas de otros emails.
+    const { bookingId, customerId, token } = await declinedBooking();
+    const { card_last4: saved } = await readBooking(db, bookingId);
+    const card = newCard(customerId);
+    const bookingsToFillCap = DEFERRED_MAX_LIVE_SEATS_PER_IDENTITY / HOLD_SEATS;
+    for (let i = 0; i < bookingsToFillCap; i += 1) {
+      await createDeferredBooking(db, instanceId, {
+        p_card_brand: card.brand,
+        p_card_last4: card.last4 as string,
+      });
+    }
+
+    // Act
+    const result = await updateCardAction({
+      token,
+      paymentMethodId: card.id,
+      mandateAccepted: true,
+    });
+
+    // Assert
+    expect(result).toEqual({ ok: false, error: 'card-cap-exceeded' });
+    expect((await readBooking(db, bookingId)).card_last4).toBe(saved);
+    expect(provider.detachPaymentMethod).toHaveBeenCalledWith(card.id);
   });
 
   it('stops accepting cards after the limit of changes', async () => {

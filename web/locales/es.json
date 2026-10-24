@@ -246,7 +246,8 @@
     "booking-closed": "Esta salida ya no acepta reservas en línea: la venta cierra unas horas antes de que empiece. Elegí otra fecha.",
     "booking-closed-back": "Ver otras fechas",
     "tour-paused": "Este tour no está disponible por ahora.",
-    "tour-paused-back": "Ver los tours"
+    "tour-paused-back": "Ver los tours",
+    "deferred-cap-exceeded": "Ya tenés el máximo de cupos apartados sin cobrar. Esperá el cobro de tus reservas o cancelá alguna para apartar más."
   },
   "legal": {
     "privacy-title": "Aviso de privacidad",
@@ -634,6 +635,7 @@
     "card-expires-before-departure": "Esta tarjeta vence antes de la fecha del tour. Usá otra.",
     "card-update-limit": "Alcanzaste el máximo de cambios de tarjeta para esta reserva. Escribinos y te ayudamos.",
     "card-in-use": "Esa tarjeta ya está guardada en otra reserva activa. Usá otra tarjeta.",
+    "card-cap-exceeded": "Esa tarjeta ya tiene el máximo de cupos apartados sin cobrar. Usá otra tarjeta.",
     "card-cta": "Actualizar la tarjeta",
     "booking-cancelled": "Esta reserva fue cancelada.",
     "authenticate-title": "Confirmá el pago con tu banco",

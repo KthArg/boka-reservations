@@ -6,13 +6,15 @@ import {
   checkoutLocale,
   holdSessionCookieOptions,
   hasLegalAcceptance,
-  isCheckoutThrottled,
+  isDeferredCompleteThrottled,
+  isDeferredStartThrottled,
   parseCheckoutInput,
   type CheckoutInput,
 } from '@/lib/booking/checkout-input';
 import { isInstanceSellable, isSalesEnabled, isTourOnSale } from '@/lib/booking/sales-gate';
-import { startDeferredCheckout } from '@/lib/booking/deferred-checkout';
+import { seatsOf, startDeferredCheckout } from '@/lib/booking/deferred-checkout';
 import { completeDeferredCheckout } from '@/lib/booking/deferred-checkout-complete';
+import { emailOverDeferredCap } from '@/lib/booking/deferred-checkout-cap';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { PAYMENT_METHOD_ID_PATTERN } from '@/lib/payments/payment-method-id';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
@@ -105,7 +107,11 @@ export async function startDeferredCheckoutAction(
     return { error: CheckoutErrorKey.TourPaused };
   }
   // Antes de crear hold y customer: el throttle no revela nada ni crea inventario.
-  if (await isCheckoutThrottled()) return GENERIC;
+  if (await isDeferredStartThrottled()) return GENERIC;
+  // Spec 0048: con el email ya en el tope no se aparta ni se crea el customer en vano.
+  if (await emailOverDeferredCap(input.customerEmail, seatsOf(input))) {
+    return { error: CheckoutErrorKey.DeferredCapExceeded };
+  }
 
   try {
     const sessionToken = crypto.randomUUID();
@@ -141,6 +147,8 @@ export async function completeDeferredCheckoutAction(
   // La cookie HttpOnly del paso 1 prueba que este navegador es el dueño del hold.
   const sessionToken = (await cookies()).get(HOLD_SESSION_COOKIE)?.value;
   if (!sessionToken) return { error: CheckoutErrorKey.HoldExpired };
+  // Spec 0048: cada intento hace un GET a OnvoPay.
+  if (await isDeferredCompleteThrottled()) return GENERIC;
 
   try {
     return await completeDeferredCheckout({

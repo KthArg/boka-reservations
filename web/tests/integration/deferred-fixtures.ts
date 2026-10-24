@@ -22,6 +22,37 @@ export const PAST_CLOSURE_WINDOW_MS = 8 * DAY_MS;
 export const uid = () => crypto.randomUUID().slice(0, 8);
 export const isoFromNow = (ms: number) => new Date(Date.now() + ms).toISOString();
 
+const LAST4_SPACE = 10_000;
+const LAST4_DIGITS = 4;
+
+/**
+ * Marca única por tarjeta de prueba. Desde el spec 0048 hay un tope de cupos vivos por tarjeta
+ * (últimos 4 + marca): con una marca fija, dos tarjetas "distintas" de tests distintos pueden
+ * coincidir en los últimos 4 y sumarse contra el tope (con 10 000 valores pasaba en ~5 % de las
+ * corridas). Con la marca única no pueden chocar; los tests que buscan la misma tarjeta reusan la
+ * marca a propósito.
+ */
+export function uniqueCardBrand(base = 'visa'): string {
+  return `${base}-${uid()}`;
+}
+
+/** Últimos 4 al azar: variedad en los datos de prueba (la unicidad la da la marca). */
+export function randomLast4(): string {
+  return String(Math.floor(Math.random() * LAST4_SPACE)).padStart(LAST4_DIGITS, '0');
+}
+
+const CARD_EXP_YEAR_MIN = 2040;
+const CARD_EXP_YEARS = 60;
+const MONTHS = 12;
+
+/** Vencimiento al azar: variedad en los datos de prueba (el tope no lo mira). */
+export function randomCardExpiry(): { month: number; year: number } {
+  return {
+    month: 1 + Math.floor(Math.random() * MONTHS),
+    year: CARD_EXP_YEAR_MIN + Math.floor(Math.random() * CARD_EXP_YEARS),
+  };
+}
+
 // Tipado sobre la respuesta entera: es una unión (éxito | error) y la inferencia de `data: T`
 // sobre ella colapsa a never.
 export function must<R extends { data: unknown; error: { message: string } | null }>(
@@ -142,12 +173,16 @@ export function deferredArgs(
     p_terms_version: 'test-v1',
     p_payment_method_id: `pm_${uid()}`,
     p_customer_external_id: hold.customerId,
-    p_card_brand: 'visa',
-    p_card_last4: '4242',
-    p_card_exp_month: 12,
-    p_card_exp_year: 2030,
+    p_card_brand: uniqueCardBrand(),
+    p_card_last4: randomLast4(),
+    ...cardExpiryArgs(),
     ...overrides,
   };
+}
+
+function cardExpiryArgs(): Pick<DeferredArgs, 'p_card_exp_month' | 'p_card_exp_year'> {
+  const { month, year } = randomCardExpiry();
+  return { p_card_exp_month: month, p_card_exp_year: year };
 }
 
 export async function createDeferredBooking(
