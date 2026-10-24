@@ -21,6 +21,9 @@ import {
   readHoldStatus,
   uid,
   type Db,
+  randomCardExpiry,
+  randomLast4,
+  uniqueCardBrand,
 } from './deferred-fixtures';
 
 const state = vi.hoisted(() => ({ flag: 'true', cookies: new Map<string, string>() }));
@@ -101,16 +104,20 @@ async function startCheckout(): Promise<Started> {
   return started;
 }
 
+/** Vencimiento al azar de cada tarjeta fake (variedad en los datos; el tope no lo mira). */
+function cardExpiry(): Pick<PaymentMethodDetails, 'expMonth' | 'expYear'> {
+  const { month, year } = randomCardExpiry();
+  return { expMonth: month, expYear: year };
+}
 /** Tarjeta que devolvería el GET de OnvoPay; el payload usa su id salvo que se indique otro. */
 function cardOf(customerId: string, overrides: Partial<PaymentMethodDetails> = {}) {
   const card: PaymentMethodDetails = {
     id: `pm_${uid()}`,
     status: 'attached',
     customerId,
-    brand: 'visa',
-    last4: '4242',
-    expMonth: 12,
-    expYear: 2030,
+    brand: uniqueCardBrand(),
+    last4: randomLast4(),
+    ...cardExpiry(),
     ...overrides,
   };
   provider.getPaymentMethod.mockResolvedValue(card);
@@ -241,7 +248,7 @@ describe('completeDeferredCheckoutAction — reserva creada', () => {
       total_amount_cents: EXPECTED_CENTS,
       payment_method_id: card.id,
       customer_external_id: started.customerId,
-      card_last4: '4242',
+      card_last4: card.last4,
       // Spec 0031: el paso 2 estampa las dos versiones vigentes sin volver a pedir las casillas.
       consent_version: PRIVACY_NOTICE_VERSION,
       terms_version: TERMS_VERSION,

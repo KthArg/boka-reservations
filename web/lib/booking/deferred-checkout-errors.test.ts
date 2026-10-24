@@ -48,10 +48,21 @@ describe('checkoutErrorKey', () => {
 
 describe('RESTART_CHECKOUT_ERRORS', () => {
   it('offers starting again only when the hold or the authorized amount is gone', () => {
-    // Assert
+    // Assert: el tope del paso 2 (spec 0048) también libera el hold.
     expect([...RESTART_CHECKOUT_ERRORS].sort()).toEqual([
       CheckoutErrorKey.AmountChanged,
+      CheckoutErrorKey.DeferredCapExceeded,
       CheckoutErrorKey.HoldExpired,
     ]);
+  });
+});
+
+describe('checkoutErrorKey — tope de cupos (spec 0048)', () => {
+  it('maps the SQL cap error to its own message, ahead of the other codes', () => {
+    // Arrange: el RAISE de …063 llega dentro del mensaje de PostgREST.
+    const err = new Error('DEFERRED_CAP_EXCEEDED (HOLD_NOT_ACTIVE)');
+
+    // Act + Assert
+    expect(checkoutErrorKey(err)).toBe(CheckoutErrorKey.DeferredCapExceeded);
   });
 });

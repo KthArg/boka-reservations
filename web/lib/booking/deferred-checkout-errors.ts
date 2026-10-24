@@ -8,6 +8,8 @@ export const DeferredCheckoutCode = {
   CardCustomerMismatch: 'DEFERRED_CARD_CUSTOMER_MISMATCH',
   /** El monto recalculado no es el que el turista autorizó en el mandato. */
   AmountChanged: 'DEFERRED_AMOUNT_CHANGED',
+  /** Tope de cupos vivos por identidad (spec 0048); también es el RAISE de …063. */
+  CapExceeded: 'DEFERRED_CAP_EXCEEDED',
 } as const;
 
 /** El total que vio el turista no es el que se cobraría (checkout inmediato, spec 0040). */
@@ -30,6 +32,8 @@ export const CheckoutErrorKey = {
   TourPaused: 'tour-paused',
   CardInvalid: 'card-invalid',
   CardExpiresBeforeDeparture: 'card-expires-before-departure',
+  /** La persona ya tiene el máximo de cupos apartados sin cobrar (spec 0048). */
+  DeferredCapExceeded: 'deferred-cap-exceeded',
 } as const;
 
 export type CheckoutErrorKeyValue = (typeof CheckoutErrorKey)[keyof typeof CheckoutErrorKey];
@@ -38,10 +42,13 @@ export type CheckoutErrorKeyValue = (typeof CheckoutErrorKey)[keyof typeof Check
 export const RESTART_CHECKOUT_ERRORS: ReadonlySet<CheckoutErrorKeyValue> = new Set([
   CheckoutErrorKey.HoldExpired,
   CheckoutErrorKey.AmountChanged,
+  // Spec 0048: el paso 2 ya liberó el hold; otra tarjeta necesita un apartado nuevo.
+  CheckoutErrorKey.DeferredCapExceeded,
 ]);
 
 // Orden relevante: el primer código contenido en el mensaje gana.
 const CODE_TO_KEY: readonly (readonly [string, CheckoutErrorKeyValue])[] = [
+  [DeferredCheckoutCode.CapExceeded, CheckoutErrorKey.DeferredCapExceeded],
   ['HOLD_NO_CAPACITY', CheckoutErrorKey.NoAvailability],
   ['INSTANCE_UNAVAILABLE', CheckoutErrorKey.NoAvailability],
   ['INSTANCE_PAST', CheckoutErrorKey.InstancePast],

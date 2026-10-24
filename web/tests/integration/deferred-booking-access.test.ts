@@ -22,6 +22,7 @@ import {
   ok,
   startCharge,
   type Db,
+  readBooking,
 } from './deferred-fixtures';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
@@ -64,13 +65,15 @@ describe('loadCardUpdateTarget', () => {
     const { bookingId, hold } = await createDeferredBooking(db, instanceId);
     await failCharge(db, bookingId, await startCharge(db, bookingId));
 
+    const { card_last4: cardLast4 } = await readBooking(db, bookingId);
+
     // Act
     const access = await loadCardUpdateTarget(db, bookingId);
 
     // Assert
     expect(access).toMatchObject({
       ok: true,
-      target: { customerId: hold.customerId, cardLast4: '4242', totalAmountCents: MANDATE_CENTS },
+      target: { customerId: hold.customerId, cardLast4, totalAmountCents: MANDATE_CENTS },
     });
   });
 

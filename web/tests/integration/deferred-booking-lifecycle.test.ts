@@ -32,6 +32,9 @@ import {
   startChargeOutcome,
   type Db,
   type DeferredArgs,
+  randomCardExpiry,
+  randomLast4,
+  uniqueCardBrand,
 } from './deferred-fixtures';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
@@ -82,8 +85,10 @@ describe('create_deferred_booking', () => {
     // Arrange
     const hold = await createActiveHold(db, roomyInstanceId);
 
+    const args = deferredArgs(hold);
+
     // Act
-    const bookingId = must(await db.rpc('create_deferred_booking', deferredArgs(hold)), 'rpc');
+    const bookingId = must(await db.rpc('create_deferred_booking', args), 'rpc');
 
     // Assert
     const booking = await readBooking(db, bookingId);
@@ -92,7 +97,7 @@ describe('create_deferred_booking', () => {
       hold_id: hold.holdId,
       total_amount_cents: MANDATE_CENTS,
       customer_external_id: hold.customerId,
-      card_last4: '4242',
+      card_last4: args.p_card_last4,
       charge_attempts: 0,
     });
     expect(booking.consent_at).not.toBeNull();
@@ -513,14 +518,15 @@ describe('update_booking_payment_method', () => {
       p_card_exp_year?: number;
     } = {},
   ) {
+    const expiry = randomCardExpiry();
     return {
       p_booking_id: bookingId,
       p_customer_external_id: customerId,
       p_payment_method_id: `pm_${crypto.randomUUID()}`,
-      p_card_brand: 'mastercard',
-      p_card_last4: '5454',
-      p_card_exp_month: 11,
-      p_card_exp_year: 2031,
+      p_card_brand: uniqueCardBrand('mastercard'),
+      p_card_last4: randomLast4(),
+      p_card_exp_month: expiry.month,
+      p_card_exp_year: expiry.year,
       p_consent_version: 'test-v1',
       ...overrides,
     };
@@ -553,7 +559,7 @@ describe('update_booking_payment_method', () => {
     const booking = await readBooking(db, bookingId);
     expect(booking).toMatchObject({
       payment_method_id: args.p_payment_method_id,
-      card_last4: '5454',
+      card_last4: args.p_card_last4,
     });
     expect(Math.abs(msFromNow(booking.charge_next_attempt_at))).toBeLessThan(TOLERANCE_MS);
   });
@@ -577,6 +583,7 @@ describe('update_booking_payment_method', () => {
     // Arrange
     const { bookingId, hold } = await createDeferredBooking(db, roomyInstanceId);
     await startCharge(db, bookingId);
+    const { card_last4: saved } = await readBooking(db, bookingId);
 
     // Act
     const outcome = must(
@@ -586,7 +593,7 @@ describe('update_booking_payment_method', () => {
 
     // Assert
     expect(outcome).toBe('not_updatable');
-    expect((await readBooking(db, bookingId)).card_last4).toBe('4242');
+    expect((await readBooking(db, bookingId)).card_last4).toBe(saved);
   });
 
   it.each([
@@ -603,6 +610,7 @@ describe('update_booking_payment_method', () => {
       // Arrange
       const { bookingId, hold } = await createDeferredBooking(db, roomyInstanceId);
       const customerId = foreignCustomer ?? hold.customerId;
+      const { card_last4: saved } = await readBooking(db, bookingId);
 
       // Act
       const outcome = must(
@@ -612,7 +620,7 @@ describe('update_booking_payment_method', () => {
 
       // Assert
       expect(outcome).toBe(expected);
-      expect((await readBooking(db, bookingId)).card_last4).toBe('4242');
+      expect((await readBooking(db, bookingId)).card_last4).toBe(saved);
     },
   );
 
