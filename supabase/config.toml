@@ -266,6 +266,14 @@ content_path = "./supabase/templates/invite.html"
 subject = "Fijá tu contraseña de Boka Verde / Set your Boka Verde password"
 content_path = "./supabase/templates/recovery.html"
 
+# Spec 0049: aviso de seguridad cuando se configura un segundo factor en una cuenta del panel. En
+# producción se activa en el dashboard (Security notifications) con la misma plantilla.
+[auth.email.notification.mfa_factor_enrolled]
+enabled = true
+subject = "Nuevo segundo factor en tu cuenta de Boka Verde / New second factor on your Boka Verde account"
+# Relativo a supabase/ (a diferencia de [auth.email.template.*], que va desde la raíz).
+content_path = "./templates/mfa_factor_enrolled.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true
@@ -311,15 +319,17 @@ message_service_sid = ""
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
-# Multi-factor-authentication is available to Supabase Pro plan.
+# TOTP no tiene costo en Supabase (el MFA por teléfono sí).
 [auth.mfa]
 # Control how many MFA factors can be enrolled at once per user.
 max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+# Spec 0049: segundo factor obligatorio para admin y staff. En producción se habilita en el
+# dashboard (no se corre `supabase config push`).
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]

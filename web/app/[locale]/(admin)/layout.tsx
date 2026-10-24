@@ -1,4 +1,4 @@
-import { getCurrentUser, requireAnyRole } from '@/lib/auth/server';
+import { AuthError, MFA_REQUIRED, getCurrentUser, requireAnyRole } from '@/lib/auth/server';
 import { signOut } from '@/lib/auth/actions';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
@@ -13,10 +13,12 @@ type Props = { children: React.ReactNode };
 export default async function AdminLayout({ children }: Props) {
   // Guard de rol: único choke-point de autorización del panel (F-2, spec 0019).
   // Solo admin/staff entran; las páginas admin-only (users, settings) suman su requireRole(Admin).
-  const authorized = await requireAnyRole(ADMIN_PANEL_ROLES).catch(() => null);
-  if (!authorized) {
+  const authorized = await requireAnyRole(ADMIN_PANEL_ROLES).catch((err: unknown) => err);
+  if (!authorized || authorized instanceof Error) {
     const locale = await getLocale();
-    redirect(`/${locale}/login`);
+    // Spec 0049: sin el segundo factor de esta sesión, a /mfa; cualquier otro error, al login.
+    const mfaRequired = authorized instanceof AuthError && authorized.code === MFA_REQUIRED;
+    redirect(`/${locale}/${mfaRequired ? 'mfa' : 'login'}`);
   }
 
   const [tAuth, tTours, tBookings, tGuides, tUsers, tReports, tCommon, tSettings, tPrivacy] =

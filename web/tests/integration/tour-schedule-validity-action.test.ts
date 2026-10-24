@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { updateTour } from '@/lib/tours/actions';
 import type { Database } from '@/types/database';
 import { deleteToursDeep } from './cleanup';
+import { completeSecondFactor } from './mfa-fixtures';
 
 const requireRoleMock = vi.hoisted(() => vi.fn());
 const redirectMock = vi.hoisted(() => vi.fn());
@@ -92,6 +93,8 @@ beforeAll(async () => {
     password: 'admin1234',
   });
   if (error) throw new Error(`signIn admin: ${error.message}`);
+  // Spec 0049: las tablas del panel piden el segundo factor (aal2).
+  await completeSecondFactor(adminSession);
   session.client = adminSession;
   requireRoleMock.mockResolvedValue({ id: data.user.id });
 });

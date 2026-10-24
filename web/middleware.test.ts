@@ -6,16 +6,23 @@ const h = vi.hoisted(() => ({
   intlRequests: [] as Request[],
   user: null as unknown,
   session: null as unknown,
+  refreshedCookie: '' as string,
 }));
 
 // next-intl: capturamos el request que recibe (para verificar que lleva el nonce en su
 // header CSP, que es como Next firma sus <script>) y devolvemos una respuesta mínima.
-vi.mock('next-intl/middleware', () => ({
-  default: () => (req: Request) => {
-    h.intlRequests.push(req);
-    return new Response(null, { headers: new Headers() });
-  },
-}));
+vi.mock('next-intl/middleware', async () => {
+  // NextResponse, como el real: el middleware copia sus cookies a los redirects.
+  const { NextResponse } = await import('next/server');
+  return {
+    default: () => (req: Request) => {
+      h.intlRequests.push(req);
+      const res = new NextResponse(null, { headers: new Headers() });
+      if (h.refreshedCookie) res.cookies.set('sb-test-auth-token', h.refreshedCookie);
+      return res;
+    },
+  };
+});
 
 // Supabase: usuario/sesión controlables, sin tocar red ni DB.
 vi.mock('./lib/db/supabase-middleware', () => ({
@@ -101,5 +108,50 @@ describe('middleware — guard sin loop de redirects (spec 0028, B3)', () => {
   it('locale inválido (/fr/dashboard): sin guard propio, resuelve next-intl (sin loop)', async () => {
     const res = await middleware(new NextRequest('http://localhost/fr/dashboard'));
     expect(res.headers.get('location')).toBeNull();
+  });
+});
+
+describe('middleware — segundo factor del panel (spec 0049)', () => {
+  function sessionWith(claims: Record<string, unknown>) {
+    const body = Buffer.from(JSON.stringify(claims)).toString('base64url');
+    return { access_token: `header.${body}.signature` };
+  }
+
+  beforeEach(() => {
+    h.intlRequests = [];
+    h.user = { id: 'u1' };
+  });
+
+  it.each([
+    ['aal1', { user_role: 'staff', aal: 'aal1' }],
+    ['a token without aal', { user_role: 'admin' }],
+  ])('sends a panel session with %s to /mfa, keeping the requested page', async (_, claims) => {
+    h.session = sessionWith(claims);
+    const res = await middleware(new NextRequest('http://localhost/es/dashboard/bookings'));
+    expect(res.status).toBe(REDIRECT_STATUS);
+    const location = new URL(res.headers.get('location')!);
+    expect(location.pathname).toBe('/es/mfa');
+    expect(location.searchParams.get('redirectTo')).toBe('/es/dashboard/bookings');
+    expect(nonceOf(res.headers.get('content-security-policy'))).toBeTruthy();
+  });
+
+  it('lets a panel session with the second factor through', async () => {
+    h.session = sessionWith({ user_role: 'staff', aal: 'aal2' });
+    const res = await middleware(new NextRequest('http://localhost/es/dashboard'));
+    expect(res.headers.get('location')).toBeNull();
+  });
+
+  it('keeps the refreshed session cookie on the redirect to /mfa', async () => {
+    h.session = sessionWith({ user_role: 'staff', aal: 'aal1' });
+    h.refreshedCookie = 'renovada';
+    const res = await middleware(new NextRequest('http://localhost/es/dashboard'));
+    h.refreshedCookie = '';
+    expect(res.cookies.get('sb-test-auth-token')?.value).toBe('renovada');
+  });
+
+  it('still sends a non-panel role to the login, not to /mfa', async () => {
+    h.session = sessionWith({ user_role: 'guide', aal: 'aal1' });
+    const res = await middleware(new NextRequest('http://localhost/es/dashboard'));
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/es/login');
   });
 });

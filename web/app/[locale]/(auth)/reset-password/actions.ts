@@ -1,7 +1,6 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { createSupabaseServerClient } from '@/lib/db/supabase-server';
 import { createSupabaseServiceClient } from '@/lib/db/supabase-service';
 import { verifyInviteSet } from '@/lib/auth/invite-set-token';
 import { PasswordSchema } from '@/lib/auth/password-policy';
@@ -54,16 +53,8 @@ export async function updatePassword(formData: FormData) {
     redirect(`/${locale}/login?reset=success`);
   }
 
-  // Flujo forgot-password (self-service: el usuario reseteó su propia sesión).
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.updateUser({
-    password: result.data.password,
-  });
-
-  if (error) {
-    console.error('[reset-password] no se pudo cambiar la contraseña:', error.message);
-    redirect(`/${locale}/reset-password?error=${failureParam(error)}`);
-  }
-
-  redirect(`/${locale}/dashboard`);
+  // Sin la cookie firmada de /auth/confirm o /auth/callback no se cambia ninguna contraseña: una
+  // sesión cualquiera no alcanza (spec 0049; con la contraseña robada se saltearía el segundo
+  // factor, que es lo que GoTrue impide con `insufficient_aal`).
+  redirect(`/${locale}/forgot-password?error=link-expired`);
 }
