@@ -4,6 +4,8 @@
 // detach deja el método `detached` y DELETE del customer devuelve 200.
 // Verificado en sandbox (2026-09-23): con captureMethod 'manual', confirmar deja la intención en
 // requires_capture; capture la cobra; cancel la suelta sin dejar transacción de balance.
+import { onvopayHttpError } from '../onvopay-error.js';
+
 const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
 // Timeout defensivo, igual que refunds y reconciliación: una conexión colgada no apila ciclos.
 const HTTP_TIMEOUT_MS = 15_000;
@@ -49,7 +51,7 @@ export function createOnvopayChargeClient(secretKey: string, baseUrl = ONVOPAY_A
   }
 
   async function fail(operation: string, res: Response): Promise<never> {
-    throw new Error(`onvopay ${operation} ${res.status}: ${await res.text()}`);
+    throw await onvopayHttpError(operation, res);
   }
 
   return {

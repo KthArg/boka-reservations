@@ -13,6 +13,7 @@ import { chargeDepartures } from './jobs/charge-departures.js';
 import { closePaymentIntents } from './jobs/close-payment-intents.js';
 import { resolveMinimum } from './jobs/resolve-minimum.js';
 import { cleanupTourImages } from './jobs/cleanup-tour-images.js';
+import { watchDeferredHoarding } from './jobs/watch-deferred-hoarding.js';
 
 if (env.SENTRY_DSN) {
   Sentry.init({
@@ -27,6 +28,7 @@ const ONE_DAY_MS = 86_400_000;
 const ONE_MINUTE_MS = 60_000;
 const FIVE_MINUTES_MS = 300_000;
 const ONE_HOUR_MS = 3_600_000;
+const SIX_HOURS_MS = 6 * ONE_HOUR_MS;
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 
 // Graceful shutdown (spec 0028): Railway manda SIGTERM en cada deploy. Sin esperar el
@@ -111,3 +113,5 @@ schedule('close-payment-intents', closePaymentIntents, FIVE_MINUTES_MS);
 schedule('resolve-minimum', resolveMinimum, FIVE_MINUTES_MS);
 // Spec 0038: fotos de tours que ningún tour usa. Una vez por día, con frenos ante cualquier duda.
 schedule('cleanup-tour-images', () => cleanupTourImages(), ONE_DAY_MS);
+// Spec 0048: alerta de salidas con los cupos concentrados en pocas personas sin cobrar.
+schedule('watch-deferred-hoarding', () => watchDeferredHoarding(), SIX_HOURS_MS);

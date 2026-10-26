@@ -43,7 +43,23 @@
     "link-expired": "El enlace expiró o ya fue usado. Solicitá uno nuevo.",
     "password-set": "Contraseña fijada. Iniciá sesión con tu nueva contraseña.",
     "admin-panel-title": "Panel de administración",
-    "panel-under-construction": "Las funciones del panel estarán disponibles en las próximas etapas."
+    "panel-under-construction": "Las funciones del panel estarán disponibles en las próximas etapas.",
+    "mfa-enroll-title": "Configurá tu segundo factor",
+    "mfa-enroll-description": "Escaneá el código con tu app autenticadora (Google Authenticator, Microsoft Authenticator o 1Password) y escribí el código de 6 dígitos que te muestra.",
+    "mfa-challenge-title": "Código de verificación",
+    "mfa-challenge-description": "Escribí el código de 6 dígitos que muestra tu app autenticadora.",
+    "mfa-loading": "Preparando el código…",
+    "mfa-qr-alt": "Código QR para la app autenticadora",
+    "mfa-secret-label": "Si no podés escanearlo, cargá esta clave a mano:",
+    "mfa-code": "Código de 6 dígitos",
+    "mfa-submit": "Verificar",
+    "mfa-errors": {
+      "invalid-code": "El código no es válido. Probá con el que muestra ahora la app; si sigue fallando, revisá la hora del teléfono.",
+      "too-many-attempts": "Demasiados intentos. Esperá unos minutos.",
+      "session-expired": "Tu sesión venció. Volvé a iniciar sesión.",
+      "has-factor": "Ya configuraste el segundo factor. Escribí el código de la app.",
+      "generic": "No pudimos completar la verificación. Probá de nuevo."
+    }
   },
   "tours": {
     "status-active": "En venta",
@@ -230,7 +246,8 @@
     "booking-closed": "Esta salida ya no acepta reservas en línea: la venta cierra unas horas antes de que empiece. Elegí otra fecha.",
     "booking-closed-back": "Ver otras fechas",
     "tour-paused": "Este tour no está disponible por ahora.",
-    "tour-paused-back": "Ver los tours"
+    "tour-paused-back": "Ver los tours",
+    "deferred-cap-exceeded": "Ya tenés el máximo de cupos apartados sin cobrar. Esperá el cobro de tus reservas o cancelá alguna para apartar más."
   },
   "legal": {
     "privacy-title": "Aviso de privacidad",
@@ -567,8 +584,13 @@
       "user_mgmt_self_deactivation": "No podés desactivarte a vos mismo.",
       "user_mgmt_last_admin": "No se puede desactivar al último administrador activo.",
       "user_mgmt_invite_rate_limited": "Supabase frenó el envío por la cantidad de correos. Esperá unos minutos y volvé a intentar.",
-      "user_mgmt_account_missing": "La cuenta de acceso de esta persona ya no existe. Invitala de nuevo como usuario nuevo."
-    }
+      "user_mgmt_account_missing": "La cuenta de acceso de esta persona ya no existe. Invitala de nuevo como usuario nuevo.",
+      "user_mgmt_self_mfa_reset": "No podés resetear tu propio segundo factor: pedíselo a otro admin.",
+      "user_mgmt_mfa_reset_email_failed": "Se reseteó el segundo factor y la contraseña, pero el correo de acceso no salió. Usá \"Reenviar acceso\" en unos minutos."
+    },
+    "mfa-reset": "Resetear segundo factor",
+    "mfa-reset-confirm": "Se borra su segundo factor, se cambia su contraseña y se cierran sus sesiones. Le llega un correo para elegir una contraseña nueva y, al entrar, configura un factor nuevo. ¿Seguir?",
+    "mfa-reset-done": "Listo: le mandamos el correo para recuperar el acceso."
   },
   "cancellation": {
     "title": "Tu reserva",
@@ -613,6 +635,7 @@
     "card-expires-before-departure": "Esta tarjeta vence antes de la fecha del tour. Usá otra.",
     "card-update-limit": "Alcanzaste el máximo de cambios de tarjeta para esta reserva. Escribinos y te ayudamos.",
     "card-in-use": "Esa tarjeta ya está guardada en otra reserva activa. Usá otra tarjeta.",
+    "card-cap-exceeded": "Esa tarjeta ya tiene el máximo de cupos apartados sin cobrar. Usá otra tarjeta.",
     "card-cta": "Actualizar la tarjeta",
     "booking-cancelled": "Esta reserva fue cancelada.",
     "authenticate-title": "Confirmá el pago con tu banco",

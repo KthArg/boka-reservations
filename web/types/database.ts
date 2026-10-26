@@ -1319,7 +1319,26 @@ export type Database = {
           | 'update_limit_reached'
           | 'recovery_expired'
           | 'card_data_invalid'
-          | 'card_expires_before_departure';
+          | 'card_expires_before_departure'
+          | 'cap_exceeded';
+      };
+      // Spec 0048 (…063): chequeo temprano del tope en el paso 1 del diferido.
+      deferred_live_seats_for_email: {
+        Args: { p_email: string };
+        Returns: number;
+      };
+      // Spec 0048 (…063): salidas con los cupos concentrados en pocas personas sin cobrar.
+      deferred_hoarding_candidates: {
+        Args: { p_share: number; p_max_identities: number };
+        Returns: {
+          instance_id: string;
+          starts_at: string;
+          tour_name: string;
+          capacity: number;
+          held_seats: number;
+          distinct_emails: number;
+          distinct_cards: number;
+        }[];
       };
       mark_payment_provider_closed: {
         Args: { p_payment_id: string; p_actor_id: string };
@@ -1333,29 +1352,19 @@ export type Database = {
         Args: { p_hold_id: string; p_detached_count: number };
         Returns: boolean;
       };
-      // Dos sobrecargas: la de 4 parámetros (…042) queda para el código viejo; la de 6 (spec 0032)
-      // recibe motivo y comisión y devuelve si canceló.
-      cancel_booking:
-        | {
-            Args: {
-              p_booking_id: string;
-              p_actor_type: string;
-              p_refund_amount_cents: number;
-              p_actor_id?: string;
-            };
-            Returns: void;
-          }
-        | {
-            Args: {
-              p_booking_id: string;
-              p_actor_type: string;
-              p_refund_amount_cents: number;
-              p_reason: 'customer_request' | 'operator_decision';
-              p_fee_cents: number;
-              p_actor_id?: string;
-            };
-            Returns: 'cancelled' | 'already_cancelled' | 'under_review';
-          };
+      // La de 6 parámetros (spec 0032): recibe motivo y comisión y devuelve si canceló. La de 4
+      // (…042) se borró en …062.
+      cancel_booking: {
+        Args: {
+          p_booking_id: string;
+          p_actor_type: string;
+          p_refund_amount_cents: number;
+          p_reason: 'customer_request' | 'operator_decision';
+          p_fee_cents: number;
+          p_actor_id?: string;
+        };
+        Returns: 'cancelled' | 'already_cancelled' | 'under_review';
+      };
       flag_payment_mismatch: {
         Args: {
           p_booking_id: string;

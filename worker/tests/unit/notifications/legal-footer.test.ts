@@ -48,6 +48,13 @@ describe('withLegalFooter', () => {
     expect(out.text).toContain('Consultas y reclamos: hola@bokaverde.cr');
   });
 
+  it('un `$` en los datos del operador no se interpreta como patrón de reemplazo (APPSEC-3)', () => {
+    const out = footer({ operator: { ...OPERATOR, legalName: "Boka $& $` $' S.A." } });
+
+    expect(out.html).toContain('Boka $&amp; $` $&#39; S.A.');
+    expect(out.html.match(/<p>Cuerpo<\/p>/g)).toHaveLength(1);
+  });
+
   it('le recuerda al turista por qué recibe el correo', () => {
     expect(footer().text).toContain(
       'Recibiste este correo porque hiciste una reserva con Boka Verde',

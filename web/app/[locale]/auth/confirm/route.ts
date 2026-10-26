@@ -3,6 +3,7 @@ import { signInviteSet } from '@/lib/auth/invite-set-token';
 import { INVITE_SET_COOKIE, INVITE_SET_TTL_MS } from '@shared/constants/users';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
+import { resolveRouteLocale } from '@/lib/i18n/route-locale';
 
 type Params = { params: Promise<{ locale: string }> };
 
@@ -35,7 +36,7 @@ function requestOrigin(request: NextRequest): string {
  * sin depender de que la sesión del navegador sobreviva la navegación + POST.
  */
 export async function GET(request: NextRequest, { params }: Params) {
-  const { locale } = await params;
+  const locale = resolveRouteLocale((await params).locale);
   const origin = requestOrigin(request);
   const { searchParams } = request.nextUrl;
   const tokenHash = searchParams.get('token_hash');

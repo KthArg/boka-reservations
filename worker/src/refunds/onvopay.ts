@@ -4,6 +4,8 @@
 // pollear. Status del Refund: pending -> succeeded | failed.
 // Default de producción; el job pasa env.ONVOPAY_API_BASE_URL (spec 0028, A6) para poder
 // apuntar al sandbox sin editar código. El cliente queda libre de imports de env (testeable).
+import { onvopayHttpError } from '../onvopay-error.js';
+
 const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
 const DEFAULT_REASON = 'requested_by_customer';
 // Timeout defensivo: sin esto una conexión colgada de OnvoPay bloquea el ciclo
@@ -66,7 +68,7 @@ export function createOnvopayRefundClient(secretKey: string, baseUrl = ONVOPAY_A
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });
-      if (!res.ok) throw new Error(`onvopay createRefund ${res.status}: ${await res.text()}`);
+      if (!res.ok) throw await onvopayHttpError('createRefund', res);
       return toResult((await res.json()) as OnvopayRefundBody);
     },
 
@@ -75,7 +77,7 @@ export function createOnvopayRefundClient(secretKey: string, baseUrl = ONVOPAY_A
         headers,
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });
-      if (!res.ok) throw new Error(`onvopay getRefund ${res.status}: ${await res.text()}`);
+      if (!res.ok) throw await onvopayHttpError('getRefund', res);
       return toResult((await res.json()) as OnvopayRefundBody);
     },
   };

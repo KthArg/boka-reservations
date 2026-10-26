@@ -35,4 +35,8 @@ export enum UserManagementError {
   InviteRateLimited = 'user_mgmt_invite_rate_limited',
   /** La cuenta de acceso ya no existe: se borró fuera del panel (spec 0038). */
   AccountMissing = 'user_mgmt_account_missing',
+  /** Un admin no resetea su propio segundo factor: se lo resetea otro admin (spec 0049). */
+  SelfMfaReset = 'user_mgmt_self_mfa_reset',
+  /** El factor y la contraseña se resetearon, pero el correo de acceso no salió (spec 0049). */
+  MfaResetEmailFailed = 'user_mgmt_mfa_reset_email_failed',
 }

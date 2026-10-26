@@ -7,6 +7,8 @@ export const CardUpdateError = {
   CardExpiresBeforeDeparture: 'card-expires-before-departure',
   LimitReached: 'card-update-limit',
   CardInUse: 'card-in-use',
+  /** La tarjeta nueva ya tiene el máximo de cupos apartados sin cobrar (spec 0048). */
+  CapExceeded: 'card-cap-exceeded',
   Generic: 'error-generic',
 } as const;
 
@@ -21,4 +23,5 @@ export const CARD_UPDATE_OUTCOME_ERRORS: Partial<Record<string, CardUpdateErrorV
   card_data_invalid: CardUpdateError.CardInvalid,
   card_expires_before_departure: CardUpdateError.CardExpiresBeforeDeparture,
   update_limit_reached: CardUpdateError.LimitReached,
+  cap_exceeded: CardUpdateError.CapExceeded,
 };

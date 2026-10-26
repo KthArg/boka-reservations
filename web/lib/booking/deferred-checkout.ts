@@ -31,7 +31,7 @@ export type DeferredCheckoutStart = {
   currency: string;
 };
 
-function seatsOf(input: CheckoutInput): number {
+export function seatsOf(input: CheckoutInput): number {
   return input.quantities.adult + input.quantities.child + input.quantities.student;
 }
 

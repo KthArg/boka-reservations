@@ -40,6 +40,13 @@ export const CENTS_PER_UNIT = 100;
 /** Ruta del listado y detalle de reservas del panel, que revalidan las acciones. */
 export const BOOKINGS_ADMIN_PATH = '/dashboard/bookings';
 
+/**
+ * Cupos vivos sin cobrar que una persona (mismo email o misma tarjeta) puede tener en reservas
+ * diferidas, sumando todas las salidas futuras (spec 0048). Espejo de c_max_seats en
+ * deferred_cap_exceeded (…063), que es la regla autoritativa.
+ */
+export const DEFERRED_MAX_LIVE_SEATS_PER_IDENTITY = 10;
+
 /** Minutos que dura un hold: espejo del DEFAULT de tour_holds.expires_at (…011). */
 export const HOLD_TTL_MINUTES = 15;
 

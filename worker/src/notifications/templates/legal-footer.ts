@@ -75,8 +75,9 @@ export function withLegalFooter(email: RenderedEmail, input: FooterInput): Rende
   return {
     subject: email.subject,
     html: email.html
-      .replace(LEGAL_FOOTER_MARKER, html)
-      .replace(BRAND_TEXT_HEADER, brandLogo(input.appUrl)),
+      // Función como reemplazo: un `$` en los datos del operador no se interpreta como patrón.
+      .replace(LEGAL_FOOTER_MARKER, () => html)
+      .replace(BRAND_TEXT_HEADER, () => brandLogo(input.appUrl)),
     text: `${email.text}\n\n--\n${text}`,
   };
 }

@@ -6,6 +6,8 @@
 // succeeded, canceled.
 // Default de producción; el job pasa env.ONVOPAY_API_BASE_URL (spec 0028, A6) para poder
 // apuntar al sandbox sin editar código. El cliente queda libre de imports de env (testeable).
+import { onvopayHttpError } from '../onvopay-error.js';
+
 const ONVOPAY_API_BASE_DEFAULT = 'https://api.onvopay.com/v1';
 // Timeout defensivo: sin esto una conexión colgada de OnvoPay bloquea el ciclo
 // del job y el setInterval del worker apila ciclos solapados.
@@ -65,7 +67,7 @@ export function createOnvopayPaymentIntentClient(
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       });
       if (!res.ok) {
-        throw new Error(`onvopay getPaymentIntent ${res.status}: ${await res.text()}`);
+        throw await onvopayHttpError('getPaymentIntent', res);
       }
       const body = (await res.json()) as OnvopayIntentBody;
       return {

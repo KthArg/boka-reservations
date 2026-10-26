@@ -148,7 +148,7 @@ describe('deactivate_internal_user — anti-TOCTOU del último admin (…042)', 
   });
 });
 
-describe('cancel_booking — refund capado al pago (…042)', () => {
+describe('cancel_booking — monto del refund (…042 → …049)', () => {
   async function seedConfirmed(): Promise<{ bookingId: string }> {
     const { data: booking } = await admin
       .from('bookings')
@@ -172,22 +172,22 @@ describe('cancel_booking — refund capado al pago (…042)', () => {
     return { bookingId: booking!.id };
   }
 
-  it('encola min(política, pago): un p_refund mayor al pago queda capado', async () => {
+  // La de 4 parámetros (…042) capaba un p_refund mayor al pago; se borró en …062. La de 6 (…049)
+  // no capa: rechaza el monto fuera de la política y no deja nada encolado.
+  it('rechaza un p_refund mayor al total y no encola nada', async () => {
     const { bookingId } = await seedConfirmed();
 
     const { error } = await admin.rpc('cancel_booking', {
       p_booking_id: bookingId,
       p_actor_type: 'tourist',
       p_refund_amount_cents: PAYMENT_CENTS + 4999,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
     });
-    expect(error).toBeNull();
+    expect(error?.message).toBe('INVALID_REFUND_AMOUNT');
 
-    const { data: refunds } = await admin
-      .from('refunds')
-      .select('amount_cents')
-      .eq('booking_id', bookingId);
-    expect(refunds).toHaveLength(1);
-    expect(refunds![0].amount_cents).toBe(PAYMENT_CENTS);
+    const { data: refunds } = await admin.from('refunds').select('id').eq('booking_id', bookingId);
+    expect(refunds).toHaveLength(0);
   });
 
   it('política sin refund (0): no encola nada', async () => {
@@ -197,6 +197,8 @@ describe('cancel_booking — refund capado al pago (…042)', () => {
       p_booking_id: bookingId,
       p_actor_type: 'tourist',
       p_refund_amount_cents: 0,
+      p_reason: 'customer_request',
+      p_fee_cents: 0,
     });
     expect(error).toBeNull();
 

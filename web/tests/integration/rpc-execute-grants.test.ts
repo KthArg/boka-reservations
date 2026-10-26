@@ -43,7 +43,13 @@ const DEFERRED_BOOKING_ARGS = {
 const STATE_MUTATING: Record<string, Record<string, unknown>> = {
   create_hold_atomic: { p_instance_id: ZERO_UUID, p_seats: 1, p_session: 'x' },
   confirm_booking: { p_booking_id: ZERO_UUID, p_external_payment_id: 'x', p_total_seats: 1 },
-  cancel_booking: { p_booking_id: ZERO_UUID, p_actor_type: 'tourist', p_refund_amount_cents: 1 },
+  cancel_booking: {
+    p_booking_id: ZERO_UUID,
+    p_actor_type: 'tourist',
+    p_refund_amount_cents: 1,
+    p_reason: 'customer_request',
+    p_fee_cents: 0,
+  },
   settle_refund: { p_refund_id: ZERO_UUID },
   flag_payment_mismatch: {
     p_booking_id: ZERO_UUID,
@@ -112,6 +118,9 @@ const STATE_MUTATING: Record<string, Record<string, unknown>> = {
 const DEPARTURE_READS: Record<string, Record<string, unknown>> = {
   departure_seat_counts: { p_instance_id: ZERO_UUID },
   departure_charge_due: { p_instance_id: ZERO_UUID },
+  // Spec 0048: chequeo temprano del tope y alerta de acaparamiento.
+  deferred_live_seats_for_email: { p_email: 'nadie@example.com' },
+  deferred_hoarding_candidates: { p_share: 0.5, p_max_identities: 2 },
 };
 
 // Reportes: SECURITY INVOKER, los llama el panel con sesión authenticated. anon no.
@@ -171,9 +180,7 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     },
   );
 
-  // Spec 0032: STATE_MUTATING se indexa por nombre y no admite las dos sobrecargas de
-  // cancel_booking. Sin p_reason la llamada resolvería a la de 4 parámetros y el test no
-  // probaría la nueva.
+  // Spec 0032: la de 6 parámetros es la única que queda (…062 borró la de 4).
   it('la sobrecarga de 6 parámetros de cancel_booking solo la ejecuta service_role', async () => {
     const args = {
       p_booking_id: ZERO_UUID,
@@ -187,6 +194,30 @@ describe('EXECUTE de funciones privilegiadas (hotfix seguridad)', () => {
     const fromService = await service.rpc('cancel_booking', args);
     expect(fromService.error?.code).not.toBe(PERMISSION_DENIED);
     expect(fromService.error?.message).toContain('BOOKING_NOT_FOUND');
+  });
+
+  // Spec 0048: helper interno del tope; lo llaman las funciones SECURITY DEFINER como su owner.
+  it('nadie ejecuta deferred_cap_exceeded directo, ni service_role', async () => {
+    const args = {
+      p_email: 'x@example.com',
+      p_card_last4: '4242',
+      p_card_brand: 'visa',
+      p_seats: 1,
+      p_exclude_booking: ZERO_UUID,
+    };
+    for (const client of [anon, staff, service]) {
+      const { error } = await client.rpc('deferred_cap_exceeded', args as never);
+      expect(error?.code).toBe(PERMISSION_DENIED);
+    }
+  });
+
+  it('la firma de 4 parámetros de cancel_booking ya no existe (…062, ACCESS-3)', async () => {
+    const { error } = await service.rpc('cancel_booking', {
+      p_booking_id: ZERO_UUID,
+      p_actor_type: 'tourist',
+      p_refund_amount_cents: 1,
+    } as never);
+    expect(error?.code).toBe('PGRST202');
   });
 
   it('la firma de 17 parámetros de create_deferred_booking ya no existe (spec 0031)', async () => {

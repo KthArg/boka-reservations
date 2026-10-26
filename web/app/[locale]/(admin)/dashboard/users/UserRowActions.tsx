@@ -3,15 +3,15 @@
 import { useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useDialogs } from '@/components/dialogs/DialogProvider';
-import { resendInvite, setActive } from '@/lib/users/actions';
+import { resendInvite, resetMfa, setActive } from '@/lib/users/actions';
 import { UserRole } from '@shared/constants/enums';
 import type { UserActionResult } from '@/lib/users/types';
 import { Icon } from '@/components/admin/icons';
 import styles from './users.module.css';
 
-type Props = { id: string; role: UserRole; active: boolean; isSelf: boolean };
+type Props = { id: string; role: UserRole; active: boolean; isSelf: boolean; hasMfa: boolean };
 
-export function UserRowActions({ id, role, active, isSelf }: Props) {
+export function UserRowActions({ id, role, active, isSelf, hasMfa }: Props) {
   const t = useTranslations('users');
   const { confirm, alert } = useDialogs();
   const [pending, startTransition] = useTransition();
@@ -39,6 +39,15 @@ export function UserRowActions({ id, role, active, isSelf }: Props) {
     });
   }
 
+  async function onResetMfa() {
+    if (!(await confirm(t('mfa-reset-confirm'), { tone: 'danger' }))) return;
+    startTransition(async () => {
+      const result = await resetMfa(id);
+      if (!result.ok) return alert(errorText(result));
+      alert(t('mfa-reset-done'), { tone: 'success' });
+    });
+  }
+
   return (
     <div className={styles.rowActions}>
       <button
@@ -54,6 +63,17 @@ export function UserRowActions({ id, role, active, isSelf }: Props) {
         <button type="button" className={styles.resendBtn} onClick={onResend} disabled={pending}>
           <Icon name="resend" size={15} />
           {t('resend-invite')}
+        </button>
+      )}
+      {hasMfa && active && !isSelf && (
+        <button
+          type="button"
+          className={styles.deactivateBtn}
+          onClick={onResetMfa}
+          disabled={pending}
+        >
+          <Icon name="deactivate" size={15} />
+          {t('mfa-reset')}
         </button>
       )}
     </div>

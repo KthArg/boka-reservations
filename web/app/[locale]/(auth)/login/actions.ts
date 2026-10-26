@@ -18,7 +18,8 @@ const SignInSchema = z.object({
 });
 
 /**
- * Rate limit del login (spec 0017): por IP y por cuenta objetivo (email). Cuenta TODOS
+ * Rate limit del login (spec 0017): por IP y por cuenta objetivo desde esa IP (email + IP; la
+ * clave solo por email permitía bloquearle el login al admin desde afuera). Cuenta TODOS
  * los intentos antes de verificar la contraseña (más simple y seguro que contar sólo los
  * fallidos). Devuelve true si CUALQUIERA de los dos límites se excedió; el caller redirige
  * con el MISMO error genérico de credenciales para no distinguir throttle de cuenta
@@ -33,9 +34,9 @@ async function isLoginThrottled(email: string): Promise<boolean> {
       RATE_LIMITS.loginPerIp.windowSeconds,
     ),
     checkRateLimit(
-      rateLimitKey(RATE_LIMIT_KEY_PREFIX.loginEmail, email),
-      RATE_LIMITS.loginPerEmail.limit,
-      RATE_LIMITS.loginPerEmail.windowSeconds,
+      rateLimitKey(RATE_LIMIT_KEY_PREFIX.loginEmailIp, `${email.toLowerCase()}|${ip}`),
+      RATE_LIMITS.loginPerEmailIp.limit,
+      RATE_LIMITS.loginPerEmailIp.windowSeconds,
     ),
   ]);
   return !byIp.ok || !byEmail.ok;
@@ -67,5 +68,8 @@ export async function signIn(formData: FormData) {
     redirect(`/${locale}/login?error=invalid-credentials`);
   }
 
-  redirect(safeRedirectPath(redirectTo, `/${locale}/dashboard`));
+  // Spec 0049: el panel exige el segundo factor. Siempre por /mfa, tenga o no la cuenta un factor
+  // configurado: el login no revela cuáles lo tienen. /mfa decide entre enrolar y pedir el código.
+  const target = safeRedirectPath(redirectTo, `/${locale}/dashboard`);
+  redirect(`/${locale}/mfa?redirectTo=${encodeURIComponent(target)}`);
 }
