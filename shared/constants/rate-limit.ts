@@ -12,6 +12,8 @@
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
 const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * MINUTES_PER_HOUR;
+const HOURS_PER_DAY = 24;
+const SECONDS_PER_DAY = SECONDS_PER_HOUR * HOURS_PER_DAY;
 
 export type RateLimitRule = {
   readonly limit: number;
@@ -35,6 +37,13 @@ export const RATE_LIMITS = {
   checkoutPerIp: { limit: 10, windowSeconds: 10 * SECONDS_PER_MINUTE },
   /** Códigos del segundo factor por usuario (spec 0049): 10 cada 15 minutos. */
   mfaVerifyPerUser: { limit: 10, windowSeconds: 15 * SECONDS_PER_MINUTE },
+  /**
+   * Paso 1 del diferido por IP y por día (spec 0048): techo sobre checkoutPerIp, que sola deja
+   * ~1400 apartados diarios. Holgado porque en CR las redes móviles comparten IP (CGNAT).
+   */
+  deferredStartPerIpDaily: { limit: 60, windowSeconds: SECONDS_PER_DAY },
+  /** Paso 2 del diferido por IP (spec 0048): cada intento hace un GET a OnvoPay. */
+  deferredCompletePerIp: { limit: 20, windowSeconds: 10 * SECONDS_PER_MINUTE },
   /**
    * Lecturas públicas del portal (browsing de tours) por IP. Límite muy holgado:
    * los reads son idempotentes y no tocan inventario; sólo busca frenar scraping
@@ -61,6 +70,8 @@ export const RATE_LIMIT_KEY_PREFIX = {
   forgotIp: 'forgot:ip',
   forgotEmail: 'forgot:email',
   checkoutIp: 'checkout:ip',
+  deferredStartIpDay: 'deferred-start:ip-day',
+  deferredCompleteIp: 'deferred-complete:ip',
   mfaVerifyUser: 'mfa:user',
   publicReadIp: 'public:ip',
   magicLinkIp: 'magic:ip',

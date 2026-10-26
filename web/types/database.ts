@@ -1319,7 +1319,26 @@ export type Database = {
           | 'update_limit_reached'
           | 'recovery_expired'
           | 'card_data_invalid'
-          | 'card_expires_before_departure';
+          | 'card_expires_before_departure'
+          | 'cap_exceeded';
+      };
+      // Spec 0048 (…063): chequeo temprano del tope en el paso 1 del diferido.
+      deferred_live_seats_for_email: {
+        Args: { p_email: string };
+        Returns: number;
+      };
+      // Spec 0048 (…063): salidas con los cupos concentrados en pocas personas sin cobrar.
+      deferred_hoarding_candidates: {
+        Args: { p_share: number; p_max_identities: number };
+        Returns: {
+          instance_id: string;
+          starts_at: string;
+          tour_name: string;
+          capacity: number;
+          held_seats: number;
+          distinct_emails: number;
+          distinct_cards: number;
+        }[];
       };
       // Spec 0049 (…064): auditoría de tablas sin la RESTRICTIVE de aal2.
       panel_tables_missing_aal2: {
