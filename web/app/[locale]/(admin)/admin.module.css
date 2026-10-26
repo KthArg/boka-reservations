@@ -198,6 +198,18 @@
     opacity: 0;
   }
 
+  /* El botón centra su contenido: el texto invisible seguía ocupando ancho y empujaba el ícono
+     fuera de la píldora. Colapsada, la etiqueta no ocupa lugar y el botón queda redondo. */
+  .sidebar[data-collapsed='true'] .logoutLabel {
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .sidebar[data-collapsed='true'] .logoutBtn {
+    gap: 0;
+  }
+
   .sidebar[data-collapsed='true'] .userEmail {
     display: none;
   }
