@@ -43,7 +43,23 @@
     "link-expired": "The link has expired or was already used. Request a new one.",
     "password-set": "Password set. Sign in with your new password.",
     "admin-panel-title": "Admin panel",
-    "panel-under-construction": "Panel features will be available in upcoming stages."
+    "panel-under-construction": "Panel features will be available in upcoming stages.",
+    "mfa-enroll-title": "Set up your second factor",
+    "mfa-enroll-description": "Scan the code with your authenticator app (Google Authenticator, Microsoft Authenticator or 1Password) and enter the 6-digit code it shows.",
+    "mfa-challenge-title": "Verification code",
+    "mfa-challenge-description": "Enter the 6-digit code shown by your authenticator app.",
+    "mfa-loading": "Preparing the code…",
+    "mfa-qr-alt": "QR code for the authenticator app",
+    "mfa-secret-label": "If you cannot scan it, enter this key manually:",
+    "mfa-code": "6-digit code",
+    "mfa-submit": "Verify",
+    "mfa-errors": {
+      "invalid-code": "The code is not valid. Try the one the app shows now; if it keeps failing, check your phone’s time.",
+      "too-many-attempts": "Too many attempts. Please wait a few minutes.",
+      "session-expired": "Your session expired. Please sign in again.",
+      "has-factor": "You already set up the second factor. Enter the code from the app.",
+      "generic": "We could not complete the verification. Please try again."
+    }
   },
   "tours": {
     "status-active": "On sale",
@@ -568,8 +584,13 @@
       "user_mgmt_self_deactivation": "You can’t deactivate yourself.",
       "user_mgmt_last_admin": "You can’t deactivate the last active administrator.",
       "user_mgmt_invite_rate_limited": "Supabase held the email back because of the sending limit. Wait a few minutes and try again.",
-      "user_mgmt_account_missing": "This person’s login account no longer exists. Invite them again as a new user."
-    }
+      "user_mgmt_account_missing": "This person’s login account no longer exists. Invite them again as a new user.",
+      "user_mgmt_self_mfa_reset": "You cannot reset your own second factor: ask another admin.",
+      "user_mgmt_mfa_reset_email_failed": "The second factor and the password were reset, but the access email did not go out. Use \"Resend access\" in a few minutes."
+    },
+    "mfa-reset": "Reset second factor",
+    "mfa-reset-confirm": "This deletes their second factor, changes their password and signs them out. They get an email to choose a new password and set up a new factor when they sign in. Continue?",
+    "mfa-reset-done": "Done: we sent them the email to recover access."
   },
   "cancellation": {
     "title": "Your booking",

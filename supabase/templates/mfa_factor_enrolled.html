@@ -1,0 +1,36 @@
+<!--
+  Aviso de seguridad: se configuró un segundo factor en la cuenta del panel (spec 0049). Lo manda
+  Supabase Auth (notificación "MFA factor enrolled"). Es la misma plantilla que hay que pegar en el
+  dashboard de Supabase de producción (Authentication → Emails → Security notifications): si se
+  cambia acá, hay que pegarla también allá. Sin enlace de acción: si no fue la persona, avisa a un
+  administrador, que resetea el factor (y con eso la contraseña). Sin locale en la cuenta, español.
+  Diseño Boka Verde (spec 0042).
+-->
+<!doctype html>
+<html lang="{{ if and .Data.locale (eq .Data.locale "en") }}en{{ else }}es{{ end }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boka Verde</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f1de;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ if and .Data.locale (eq .Data.locale "en") }}A second factor was set up on your Boka Verde account.{{ else }}Se configuró un segundo factor en tu cuenta de Boka Verde.{{ end }}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f1de;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffdf6;border:1px solid #e3dec3;border-radius:20px;overflow:hidden;font-family:Montserrat,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0d1f17;">
+<tr><td style="background:#0d1f17;padding:24px 32px;">
+<img src="{{ .SiteURL }}/brand/logo-hueso.png" width="132" height="47" alt="Boka Verde" style="display:block;width:132px;height:auto;border:0;outline:none;text-decoration:none;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#f4f1de;">
+</td></tr>
+<tr><td style="padding:36px 32px 32px;">
+<h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.15;font-weight:400;letter-spacing:-0.01em;color:#0d1f17;">{{ if and .Data.locale (eq .Data.locale "en") }}New second factor{{ else }}Nuevo segundo factor{{ end }}</h1>
+<p style="margin:0 0 20px;font-size:15px;line-height:1.6;">{{ if and .Data.locale (eq .Data.locale "en") }}A second factor (authenticator app) was just set up on your Boka Verde panel account ({{ .Email }}).{{ else }}Se acaba de configurar un segundo factor (app autenticadora) en tu cuenta del panel de Boka Verde ({{ .Email }}).{{ end }}</p>
+<p style="margin:0;font-size:15px;line-height:1.6;">{{ if and .Data.locale (eq .Data.locale "en") }}If it was you, there is nothing to do. If it wasn't, tell an administrator right away: they reset the factor and your password.{{ else }}Si fuiste vos, no tenés que hacer nada. Si no fuiste vos, avisale enseguida a un administrador: resetea el factor y tu contraseña.{{ end }}</p>
+</td></tr>
+<tr><td style="padding:20px 32px;border-top:1px solid #e3dec3;background:#f4f1de;">
+<p style="margin:0;font-size:12px;line-height:1.6;color:#43564b;">Boka Verde · <a href="https://reservas.bokaverdecr.com" style="color:#43564b;">reservas.bokaverdecr.com</a> · <a href="mailto:help@bokaverdecr.com" style="color:#43564b;">help@bokaverdecr.com</a></p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

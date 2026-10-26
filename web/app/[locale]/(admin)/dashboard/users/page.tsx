@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { getCurrentUser, requireRole } from '@/lib/auth/server';
 import { listUsers } from '@/lib/users/repository';
+import { usersWithMfa } from '@/lib/users/mfa';
 import { UserRole } from '@shared/constants/enums';
 import { UserFilters } from './UserFilters';
 import { UserRowActions } from './UserRowActions';
@@ -34,6 +35,8 @@ export default async function UsersPage({ params, searchParams }: Props) {
   const [t, sp] = await Promise.all([getTranslations('users'), searchParams]);
   const filters = parseFilters(sp);
   const [users, current] = await Promise.all([listUsers(filters), getCurrentUser()]);
+  // Spec 0049: el reseteo del segundo factor solo se ofrece a quien tiene uno.
+  const withMfa = await usersWithMfa(users.map((u) => u.id));
 
   return (
     <div className={styles.page}>
@@ -82,6 +85,7 @@ export default async function UsersPage({ params, searchParams }: Props) {
                     role={u.role as UserRole}
                     active={u.active}
                     isSelf={current?.id === u.id}
+                    hasMfa={withMfa.has(u.id)}
                   />
                 </td>
               </tr>

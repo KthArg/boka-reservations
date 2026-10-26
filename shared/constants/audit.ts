@@ -49,6 +49,10 @@ export enum AuditAction {
   TourArchived = 'tour.archived',
   TourPaused = 'tour.paused',
   TourResumed = 'tour.resumed',
+  /** Un admin reseteó el segundo factor de otro usuario del panel (spec 0049). */
+  UserMfaReset = 'user.mfa_reset',
+  /** El usuario configuró su segundo factor (spec 0049). */
+  UserMfaEnrolled = 'user.mfa_enrolled',
 }
 
 /** Tipo de entidad referida por un registro de auditoría. */
@@ -58,6 +62,8 @@ export enum AuditEntityType {
   TourHold = 'tour_hold',
   BusinessSettings = 'business_settings',
   Tour = 'tour',
+  /** Usuario del panel (`users.id`): eventos de su cuenta (spec 0049). */
+  User = 'user',
 }
 
 /**

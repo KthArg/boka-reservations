@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { BUSINESS_SETTINGS_ID } from '@shared/constants/settings';
 import { getUpcomingInstances, isClosedForOnlineBooking } from '@/lib/public/tours';
 import type { Database } from '@/types/database';
+import { completeSecondFactor } from './mfa-fixtures';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -179,6 +180,8 @@ describe('booking_cutoff_hours: permisos y rango (spec 0041)', () => {
       });
       const { error } = await client.auth.signInWithPassword({ email, password });
       if (error) throw new Error(`signIn ${email}: ${error.message}`);
+      // Spec 0049: las tablas del panel piden el segundo factor (aal2).
+      await completeSecondFactor(client);
       return client;
     };
     [adminSession, staffSession] = await Promise.all([

@@ -35,6 +35,8 @@ export const RATE_LIMITS = {
   forgotPerIp: { limit: 10, windowSeconds: SECONDS_PER_HOUR },
   /** Checkout por IP: acota la frecuencia de holds para no secuestrar cupo. */
   checkoutPerIp: { limit: 10, windowSeconds: 10 * SECONDS_PER_MINUTE },
+  /** Códigos del segundo factor por usuario (spec 0049): 10 cada 15 minutos. */
+  mfaVerifyPerUser: { limit: 10, windowSeconds: 15 * SECONDS_PER_MINUTE },
   /**
    * Paso 1 del diferido por IP y por día (spec 0048): techo sobre checkoutPerIp, que sola deja
    * ~1400 apartados diarios. Holgado porque en CR las redes móviles comparten IP (CGNAT).
@@ -70,6 +72,7 @@ export const RATE_LIMIT_KEY_PREFIX = {
   checkoutIp: 'checkout:ip',
   deferredStartIpDay: 'deferred-start:ip-day',
   deferredCompleteIp: 'deferred-complete:ip',
+  mfaVerifyUser: 'mfa:user',
   publicReadIp: 'public:ip',
   magicLinkIp: 'magic:ip',
 } as const;

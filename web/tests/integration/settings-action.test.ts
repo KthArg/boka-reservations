@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { BUSINESS_SETTINGS_ID, SettingsActionError } from '@shared/constants/settings';
 import { updateBusinessSettings } from '@/lib/settings/actions';
 import type { Database } from '@/types/database';
+import { completeSecondFactor } from './mfa-fixtures';
 
 const requireRoleMock = vi.hoisted(() => vi.fn());
 const session = vi.hoisted(() => ({ client: null as unknown }));
@@ -47,6 +48,8 @@ async function signIn(email: string, password: string): Promise<SupabaseClient<D
   });
   const { error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw new Error(`signIn ${email}: ${error.message}`);
+  // Spec 0049: las tablas del panel piden el segundo factor (aal2).
+  await completeSecondFactor(client);
   return client;
 }
 
