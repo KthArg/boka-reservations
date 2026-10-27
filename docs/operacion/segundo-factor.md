@@ -18,9 +18,9 @@ Cuando se configura el factor, la persona recibe un correo de aviso. Si alguien 
    - la persona recibe un correo para elegir una contraseña nueva.
 3. La persona abre el correo, elige la contraseña nueva, entra y configura el factor en su teléfono nuevo.
 
-Un admin no puede resetearse su propio factor desde el panel: se lo resetea otro admin. Por eso siempre tiene que haber al menos dos admins activos.
+Un admin no puede resetearse su propio factor desde el panel. Hay un solo admin (decisión del operador, 2026-10-26): si pierde el teléfono, sigue la sección siguiente.
 
-## Todos los admins perdieron el teléfono
+## El admin perdió el teléfono
 
 Se resetea desde el dashboard de Supabase de producción:
 

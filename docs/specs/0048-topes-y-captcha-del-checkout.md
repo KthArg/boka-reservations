@@ -214,7 +214,7 @@ No hay estados nuevos. El tope rechaza la creación en `pending_minimum` y el ca
 - **Worker**: un job nuevo, `watch-deferred-hoarding`, cada 6 horas.
 - **Reportes y pagos**: sin impacto en montos ni estados.
 - **i18n**: textos nuevos en ES y EN para el tope y el captcha.
-- **Legal**: el aviso de privacidad tiene que decir que el formulario de reserva usa Cloudflare Turnstile. La IP, la huella TLS, el User-Agent y la página van a Cloudflare, Inc. (EE.UU.). Hay un borrador del texto para la abogada. **La Fase B no se enciende sin el aviso publicado.**
+- **Legal**: el aviso de privacidad tiene que decir que el formulario de reserva usa Cloudflare Turnstile. La IP, la huella TLS, el User-Agent y la página van a Cloudflare, Inc. (EE.UU.). Lo dice el aviso versión 2026-10-27 (§2, §3, §4 y §5), redactado por el operador. **La Fase B no se enciende sin ese aviso publicado.**
 - **PCI (SAQ A-EP)**: `api.js` de Turnstile carga en la misma página que, después del paso 1, muestra el componente de tarjeta de OnvoPay. Entra al inventario de scripts cuando se retome el PCI. No admite SRI.
 - **Operación**: un grupo que pase el tope tiene que reservar en partes con personas distintas o pedirlo por WhatsApp para que lo cargue el staff. Con el flag encendido no hay cobro inmediato.
 - **Variables de entorno nuevas**:
@@ -265,7 +265,7 @@ No hay estados nuevos. El tope rechaza la creación en `pending_minimum` y el ca
   - No hay migración de datos. Las reservas existentes cuentan para el tope desde el despliegue, pero no se tocan.
   - Reversible: re-aplicar las versiones de …045 (`create_deferred_booking`) y …044 (`update_booking_payment_method`).
 - **Fase B** (captcha), detrás de `CAPTCHA_ENABLED`:
-  1. Publicar el aviso de privacidad actualizado, revisado por la abogada.
+  1. Publicar el aviso de privacidad versión 2026-10-27 (redactado por el operador).
   2. Crear el widget de Turnstile en la cuenta de Cloudflare del operador y cargar las variables en Vercel.
   3. Probar la CSP en report-only en un preview.
   4. Encender `CAPTCHA_ENABLED=true` en Vercel.
@@ -285,5 +285,9 @@ No hay estados nuevos. El tope rechaza la creación en `pending_minimum` y el ca
 
 Resueltas el 2026-10-20 con el operador: tope de 10 cupos, captcha fail-closed y alerta con ≥ 50 % de la capacidad en ≤ 2 identidades.
 
-- [ ] **Pregunta**: ¿Confirmar con Cloudflare la cláusula §2.2.1(h) de sus términos (tarjetas en sitios con servicios Free)? El sitio no recibe el número de tarjeta, pero la redacción es literal. **Dueño**: Kenneth **Antes de**: Fase B
-- [ ] **Pregunta**: Texto del aviso de privacidad sobre Turnstile y su base legal bajo la Ley 8968 (consentimiento o necesidad). **Dueño**: abogada **Antes de**: Fase B
+- [x] **Cláusula §2.2.1(h) de Cloudflare** (no procesar ni recoger datos de tarjetas en una propiedad web con servicios Free). Resuelta por el operador el 2026-10-27, sin consultar a Cloudflare. Términos leídos en cloudflare.com/terms, versión del 12 de septiembre de 2025. Razones:
+  - `reservas.bokaverdecr.com` ya recibe hoy un servicio Free de Cloudflare: el DNS de la zona `bokaverdecr.com` (registro sin proxy hacia Vercel). Turnstile no cambia la situación frente a la cláusula.
+  - El sitio no recoge ni procesa el número de tarjeta. Lo captura el componente de OnvoPay en su propio iframe y va directo a OnvoPay. Nosotros guardamos marca, últimos 4 y vencimiento. Cloudflare no ve ningún dato de tarjeta: Turnstile solo recibe IP, huella TLS, User-Agent y página.
+  - El riesgo que queda es contractual: Cloudflare podría suspender el servicio Free. Si suspende Turnstile, el paso 1 falla cerrado y no se vende. Se revierte con `CAPTCHA_ENABLED=false` en Vercel y un redeploy.
+- [x] **Texto del aviso sobre Turnstile**: lo redactó el operador (aviso 2026-10-27). Dice también que Cloudflare usa los datos por su cuenta para mejorar la detección (su aviso de Turnstile lo declara responsable de ese uso) y que la verificación es una decisión automática.
+- [ ] **Pregunta**: ¿El widget se carga recién cuando el turista marca la casilla del aviso de privacidad? El aviso se apoya en el consentimiento (§5), y si el widget carga con el formulario, los datos salen hacia Cloudflare antes de la casilla. **Dueño**: Kenneth **Antes de**: Fase B
