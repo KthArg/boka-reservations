@@ -247,7 +247,9 @@
     "booking-closed-back": "Ver otras fechas",
     "tour-paused": "Este tour no está disponible por ahora.",
     "tour-paused-back": "Ver los tours",
-    "deferred-cap-exceeded": "Ya tenés el máximo de cupos apartados sin cobrar. Esperá el cobro de tus reservas o cancelá alguna para apartar más."
+    "deferred-cap-exceeded": "Ya tenés el máximo de cupos apartados sin cobrar. Esperá el cobro de tus reservas o cancelá alguna para apartar más.",
+    "captcha-verifying": "Verificando…",
+    "captcha-failed": "No pudimos verificar que sos una persona. Probá de nuevo. Si usás un bloqueador de contenido, desactivalo para este sitio."
   },
   "legal": {
     "privacy-title": "Aviso de privacidad",

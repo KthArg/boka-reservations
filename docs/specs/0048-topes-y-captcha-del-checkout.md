@@ -3,7 +3,7 @@
 - **Estado**: approved
 - **Autor**: Kenneth (con Claude Code)
 - **Creado**: 2026-10-19
-- **Última actualización**: 2026-10-20
+- **Última actualización**: 2026-10-27
 - **Rama**: feat/0048-topes-y-captcha
 - **PR**: (pendiente)
 
@@ -150,12 +150,17 @@ Alternativas consideradas:
   - El bloque de decisión va a `.claude/memory/decisions.md` al aprobar este spec.
 - **Dónde va**: solo en el paso 1, que es el que aparta cupo. El paso 2 ya exige la cookie HttpOnly del paso 1 y su propio límite por IP. Ponerlo ahí además lo dejaría junto al componente de tarjeta (PCI).
 - **Cliente**: componente `TurnstileWidget` al final de `CheckoutDetailsFields`.
-  - Carga `https://challenges.cloudflare.com/turnstile/v0/api.js` con el nonce de la CSP.
+  - Se monta recién cuando el turista marca la casilla del aviso de privacidad (decisión del operador, 2026-10-27): el aviso se apoya en ese consentimiento, y antes de la casilla no sale nada hacia Cloudflare. Desmarcarla no lo desmonta.
+  - Carga `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit` desde el bundle, que tiene el nonce: con `'strict-dynamic'` alcanza.
+  - Se renderiza al montarse, con `appearance: 'interaction-only'`: invisible salvo que Cloudflare pida interacción. Así el token suele estar listo cuando el turista envía.
   - Deja el token en el input oculto `cf-turnstile-response`.
-  - Pide el token al enviar (`execution: 'execute'`) y uno nuevo en cada reintento.
+  - Pide uno nuevo (`reset`) con cada respuesta de la action, porque el token es de un solo uso.
+  - Mientras no hay token, el botón dice "Verificando…" y no envía. Si el script no carga (bloqueador) o el desafío falla, muestra el mensaje de captcha antes de enviar.
 - **Servidor**: helper `verifyCaptcha(token, action)` en `web/lib/security/captcha.ts`.
-  - Hace POST a `https://challenges.cloudflare.com/turnstile/v0/siteverify` con `TURNSTILE_SECRET_KEY`, `remoteip` (`getClientIp`), `idempotency_key` y un timeout de 5 s.
+  - Hace POST a `https://challenges.cloudflare.com/turnstile/v0/siteverify` con `TURNSTILE_SECRET_KEY`, `remoteip` (`getClientIp`) y un timeout de 5 s. Sin `idempotency_key`: solo sirve para reintentar, y no se reintenta.
+  - Alerta en Sentry si Cloudflare no responde (`captcha-siteverify-unavailable`) y si la configuración rechaza a todos: secreto inválido o hostname fuera de la lista (`captcha-misconfigured`).
   - Exige `success`, `hostname` dentro de `TURNSTILE_ALLOWED_HOSTNAMES` y `action` igual al esperado (`deferred_start` o `checkout`).
+  - Las llaves de prueba de Cloudflare responden con hostname `example.com`, sin acción y con `metadata.result_with_testing_key` (verificado el 2026-10-27). Esa respuesta se acepta solo si el secreto configurado es de prueba, y `env.ts` no arranca con un secreto de prueba en el deploy de producción de Vercel.
   - Va **después** del throttle por IP y antes del apartado. Así una IP que ya superó el límite no gasta llamadas a `siteverify`.
 - **Si Cloudflare no responde**: se rechaza (fail-closed) y se alerta en Sentry (decisión del operador, 2026-10-20). Es distinto del fail-open del rate limit (spec 0017) a propósito: un captcha que se apaga solo deja de proteger justo cuando alguien lo tira.
 - **Flag**: con `CAPTCHA_ENABLED=false`, `verifyCaptcha` no se llama y el widget no se renderiza.
@@ -290,4 +295,4 @@ Resueltas el 2026-10-20 con el operador: tope de 10 cupos, captcha fail-closed y
   - El sitio no recoge ni procesa el número de tarjeta. Lo captura el componente de OnvoPay en su propio iframe y va directo a OnvoPay. Nosotros guardamos marca, últimos 4 y vencimiento. Cloudflare no ve ningún dato de tarjeta: Turnstile solo recibe IP, huella TLS, User-Agent y página.
   - El riesgo que queda es contractual: Cloudflare podría suspender el servicio Free. Si suspende Turnstile, el paso 1 falla cerrado y no se vende. Se revierte con `CAPTCHA_ENABLED=false` en Vercel y un redeploy.
 - [x] **Texto del aviso sobre Turnstile**: lo redactó el operador (aviso 2026-10-27). Dice también que Cloudflare usa los datos por su cuenta para mejorar la detección (su aviso de Turnstile lo declara responsable de ese uso) y que la verificación es una decisión automática.
-- [ ] **Pregunta**: ¿El widget se carga recién cuando el turista marca la casilla del aviso de privacidad? El aviso se apoya en el consentimiento (§5), y si el widget carga con el formulario, los datos salen hacia Cloudflare antes de la casilla. **Dueño**: Kenneth **Antes de**: Fase B
+- [x] **El widget se carga al marcar la casilla del aviso de privacidad** (operador, 2026-10-27). El aviso se apoya en el consentimiento (§5): si el widget cargara con el formulario, los datos saldrían hacia Cloudflare antes de la casilla (§5.4).

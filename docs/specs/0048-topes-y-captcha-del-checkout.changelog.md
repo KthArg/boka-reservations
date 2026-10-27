@@ -61,4 +61,30 @@ Decisiones del operador: el aviso lo redacta el operador, sin esperar a la aboga
 
 **Pendiente**:
 
-- Fase B (captcha): decidir si el widget se carga al marcar la casilla de privacidad (§13).
+- Fase B (captcha): decidir si el widget se carga al marcar la casilla de privacidad (§13). Resuelto en la entrada siguiente.
+
+## 2026-10-27 — Fase B: captcha con Cloudflare Turnstile en el paso 1
+
+Decisión del operador: el widget se carga recién al marcar la casilla del aviso de privacidad.
+
+**Hecho**:
+
+- `verifyCaptcha` (`web/lib/security/captcha.ts`): POST a `siteverify` con `remoteip`, `idempotency_key` y timeout de 5 s. Exige `success`, hostname permitido y la acción del paso. Falla cerrado; si Cloudflare no responde, da error o informa `internal-error`, alerta en Sentry (`captcha-siteverify-unavailable`).
+- Paso 1 del diferido y checkout inmediato: el captcha va después del throttle por IP y antes del chequeo del tope, que revela si un email tiene cupos apartados. Error nuevo `captcha-failed`, que sugiere desactivar el bloqueador.
+- `TurnstileWidget`: se monta con la casilla del aviso marcada, modo `interaction-only`, `reset` con cada respuesta de la action.
+- CSP: `frame-src https://challenges.cloudflare.com` solo en `/{locale}/tours/{kind}/checkout`.
+- Variables nuevas en `env.ts` y `.env.example`: `CAPTCHA_ENABLED` (por defecto `false`), `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` y `TURNSTILE_ALLOWED_HOSTNAMES`. Con el captcha encendido son obligatorias, y en el deploy de producción de Vercel no se acepta un secreto de prueba.
+- Tests: `captcha.test.ts` (13 casos), CSP, `isTurnstileTestSecret`, el corte en `checkoutAction`, y en integración que sin captcha válido el paso 1 no aparta cupo ni crea el customer.
+
+**Por qué / decisiones**:
+
+- En vez de `execution: 'execute'` al enviar, el widget se resuelve al montarse: con la casilla del aviso como disparador, el token suele estar listo antes de enviar, y no hay una espera extra en el botón.
+- Las llaves de prueba de Cloudflare responden con hostname `example.com` y sin acción (probado con curl). Sin la excepción, local y CI no podrían probar el flujo.
+
+**Verificado a mano (local, llaves de prueba)**: sin la casilla del aviso no se pide nada a Cloudflare. Con ella aparece el token, y con el secreto que pasa siempre el paso 1 llega al formulario de tarjeta. Con el que falla siempre, se ve el error, el form conserva los datos y se pide un token nuevo.
+
+**Pendiente** (rollout, §11):
+
+1. Crear el widget en la cuenta de Cloudflare del operador (hostname `reservas.bokaverdecr.com`, modo Managed).
+2. Cargar las cuatro variables en Vercel con `CAPTCHA_ENABLED=false`, desplegar junto con el aviso 2026-10-27 y probar.
+3. Encender `CAPTCHA_ENABLED=true` y hacer redeploy.

@@ -7,6 +7,7 @@ import { checkoutAction } from '@/lib/booking/checkout-action';
 import { calculateTotalCents, initialQuantities } from '@/lib/booking/pricing-math';
 import { formatAmountCents } from '@/lib/format/money';
 import { HOLD_TTL_MINUTES } from '@shared/constants/bookings';
+import { CaptchaAction } from '@shared/constants/captcha';
 import { CheckoutDetailsFields, type TicketCounts } from './CheckoutDetailsFields';
 import type { PurchaseSummaryInfo } from './PurchaseSummary';
 import { OnvoPaymentWidget } from './OnvoPaymentWidget';
@@ -16,14 +17,17 @@ type Props = {
   instanceId: string;
   pricing: PublicPricing[];
   summary: PurchaseSummaryInfo;
+  /** Sitekey de Turnstile, o null con el captcha apagado (spec 0048, Fase B). */
+  captchaSiteKey: string | null;
 };
 
 /** Checkout con el widget de OnvoPay: cobra al reservar (flujo sin cobro diferido). */
-export function CheckoutForm({ instanceId, pricing, summary }: Props) {
+export function CheckoutForm({ instanceId, pricing, summary, captchaSiteKey }: Props) {
   const t = useTranslations('checkout');
   const locale = useLocale();
   const [state, action, pending] = useActionState(checkoutAction, null);
   const [quantities, setQuantities] = useState<TicketCounts>(() => initialQuantities(pricing));
+  const [captchaPending, setCaptchaPending] = useState(false);
 
   const totalCents = calculateTotalCents(
     quantities,
@@ -51,6 +55,16 @@ export function CheckoutForm({ instanceId, pricing, summary }: Props) {
         quantities={quantities}
         onQuantitiesChange={setQuantities}
         totalCents={totalCents}
+        captcha={
+          captchaSiteKey
+            ? {
+                siteKey: captchaSiteKey,
+                action: CaptchaAction.Checkout,
+                resetKey: state,
+                onPendingChange: setCaptchaPending,
+              }
+            : null
+        }
       />
 
       {state && 'error' in state && (
@@ -61,8 +75,16 @@ export function CheckoutForm({ instanceId, pricing, summary }: Props) {
 
       <p className={styles.fieldNote}>{t('hold-notice', { minutes: HOLD_TTL_MINUTES })}</p>
 
-      <button type="submit" disabled={pending || totalCents === 0} className={styles.submit}>
-        {pending ? t('submitting') : t('submit', { amount: formatAmountCents(totalCents, locale) })}
+      <button
+        type="submit"
+        disabled={pending || captchaPending || totalCents === 0}
+        className={styles.submit}
+      >
+        {pending
+          ? t('submitting')
+          : captchaPending
+            ? t('captcha-verifying')
+            : t('submit', { amount: formatAmountCents(totalCents, locale) })}
       </button>
     </form>
   );

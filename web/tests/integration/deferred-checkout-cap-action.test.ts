@@ -28,6 +28,7 @@ import {
 
 const state = vi.hoisted(() => ({
   rateLimit: 'false',
+  captcha: 'false',
   ip: '203.0.113.1',
   cookies: new Map<string, string>(),
 }));
@@ -44,6 +45,9 @@ vi.mock('@/lib/env', async (importOriginal) => {
       get: (target, key) => {
         if (key === 'DEFERRED_CHARGE_ENABLED') return 'true';
         if (key === 'RATE_LIMIT_ENABLED') return state.rateLimit;
+        if (key === 'CAPTCHA_ENABLED') return state.captcha;
+        if (key === 'TURNSTILE_SECRET_KEY') return 'turnstile-secret';
+        if (key === 'TURNSTILE_ALLOWED_HOSTNAMES') return 'reservas.bokaverdecr.com';
         return Reflect.get(target, key) as unknown;
       },
     }),
@@ -174,6 +178,7 @@ beforeEach(() => {
   state.rateLimit = 'false';
   state.ip = randomIp();
   state.cookies.clear();
+  state.captcha = 'false';
   provider.createCustomer.mockImplementation(() => Promise.resolve({ customerId: `cus_${uid()}` }));
   provider.deleteCustomer.mockResolvedValue(undefined);
 });
@@ -204,6 +209,43 @@ describe('paso 1 — chequeo temprano del tope por email', () => {
       .select('id', { count: 'exact', head: true })
       .eq('tour_instance_id', instanceId);
     expect(holdsAfter).toBe(holdsBefore);
+  });
+});
+
+// Spec 0048, Fase B: el captcha va antes del chequeo del tope, que revela si un email tiene cupos
+// apartados. Sin captcha válido la respuesta no puede depender del email.
+describe('paso 1 — captcha antes del tope', () => {
+  it('answers captcha-failed, not deferred-cap-exceeded, for an email at the cap', async () => {
+    // Arrange
+    const email = newEmail();
+    for (let i = 0; i < BOOKINGS_TO_FILL_CAP; i += 1) {
+      await createDeferredBooking(db, instanceId, {
+        p_customer_email: email,
+        p_card_last4: randomLast4(),
+      });
+    }
+    state.captcha = 'true';
+    const realFetch = globalThis.fetch;
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes('/turnstile/v0/siteverify')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ success: false, 'error-codes': ['invalid-input-response'] }),
+          ),
+        );
+      }
+      return realFetch(input, init);
+    });
+
+    // Act
+    const form = checkoutForm(email);
+    form.set('cf-turnstile-response', 'token');
+    const result = await startDeferredCheckoutAction(null, form);
+    spy.mockRestore();
+
+    // Assert
+    expect(result).toEqual({ error: 'captcha-failed' });
   });
 });
 

@@ -8,13 +8,14 @@ import styles from './CheckoutForm.module.css';
 type CheckboxProps = {
   name: string;
   children: ReactNode;
+  onAcceptedChange?: (accepted: boolean) => void;
 };
 
 /**
  * Casilla obligatoria. `defaultChecked` ligado al estado: React 19 resetea el form tras la
  * action y, ante un error, el turista perdería la tilde.
  */
-function RequiredCheckbox({ name, children }: CheckboxProps) {
+function RequiredCheckbox({ name, children, onAcceptedChange }: CheckboxProps) {
   const [accepted, setAccepted] = useState(false);
 
   return (
@@ -25,7 +26,10 @@ function RequiredCheckbox({ name, children }: CheckboxProps) {
         value={CHECKOUT_ACCEPTED_VALUE}
         required
         defaultChecked={accepted}
-        onChange={(e) => setAccepted(e.target.checked)}
+        onChange={(e) => {
+          setAccepted(e.target.checked);
+          onAcceptedChange?.(e.target.checked);
+        }}
         className={styles.consentCheckbox}
       />
       <span className={styles.consentText}>{children}</span>
@@ -37,8 +41,15 @@ function RequiredCheckbox({ name, children }: CheckboxProps) {
  * Aceptaciones legales del checkout (specs 0021 y 0031). Términos y tratamiento de datos van
  * en casillas separadas: el consentimiento sobre los datos dentro de un contrato debe ser una
  * cláusula específica e independiente (reglamento de la Ley 8968, art. 2.f).
+ * `onPrivacyConsentChange` avisa cuando cambia la de datos: el captcha espera a esa casilla.
  */
-export function ConsentField({ brand }: { brand: string }) {
+export function ConsentField({
+  brand,
+  onPrivacyConsentChange,
+}: {
+  brand: string;
+  onPrivacyConsentChange?: (accepted: boolean) => void;
+}) {
   const t = useTranslations('checkout');
   const locale = useLocale();
 
@@ -61,7 +72,10 @@ export function ConsentField({ brand }: { brand: string }) {
       <RequiredCheckbox name={CheckoutLegalField.Terms}>
         {t.rich('terms-label', { terms: link('terms') })}
       </RequiredCheckbox>
-      <RequiredCheckbox name={CheckoutLegalField.PrivacyConsent}>
+      <RequiredCheckbox
+        name={CheckoutLegalField.PrivacyConsent}
+        onAcceptedChange={onPrivacyConsentChange}
+      >
         {t.rich('privacy-consent-label', { brand, privacy: link('privacy') })}
       </RequiredCheckbox>
     </section>

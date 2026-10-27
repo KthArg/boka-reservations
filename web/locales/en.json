@@ -247,7 +247,9 @@
     "booking-closed-back": "See other dates",
     "tour-paused": "This tour is not available right now.",
     "tour-paused-back": "See the tours",
-    "deferred-cap-exceeded": "You already have the maximum number of seats held without payment. Wait for your bookings to be charged, or cancel one, to hold more."
+    "deferred-cap-exceeded": "You already have the maximum number of seats held without payment. Wait for your bookings to be charged, or cancel one, to hold more.",
+    "captcha-verifying": "Verifying…",
+    "captcha-failed": "We could not verify that you are a person. Please try again. If you use a content blocker, turn it off for this site."
   },
   "legal": {
     "privacy-title": "Privacy notice",
