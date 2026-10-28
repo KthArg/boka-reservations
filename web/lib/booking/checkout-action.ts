@@ -12,7 +12,9 @@ import {
 import { isInstanceSellable, isSalesEnabled, isTourOnSale } from '@/lib/booking/sales-gate';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { checkoutErrorKey, CheckoutErrorKey } from '@/lib/booking/deferred-checkout-errors';
+import { verifyCaptcha } from '@/lib/security/captcha';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
+import { CAPTCHA_RESPONSE_FIELD, CaptchaAction } from '@shared/constants/captcha';
 
 /** El total que vio el turista (spec 0040); una página vieja sin el campo no se compara. */
 function expectedAmount(get: (key: string) => FormDataEntryValue | null): number | undefined {
@@ -54,6 +56,13 @@ export async function checkoutAction(
   // Antes de crear hold/booking/payment: si se excedió el límite por IP, error genérico
   // sin tocar nada (no revela el throttle ni crea inventario reservado).
   if (await isCheckoutThrottled()) return { error: CheckoutErrorKey.Generic };
+  // Spec 0048, Fase B: el mismo formulario exige el captcha en los dos checkouts.
+  const captcha = formData.get(CAPTCHA_RESPONSE_FIELD);
+  if (
+    !(await verifyCaptcha(typeof captcha === 'string' ? captcha : null, CaptchaAction.Checkout))
+  ) {
+    return { error: CheckoutErrorKey.CaptchaFailed };
+  }
 
   try {
     const sessionToken = crypto.randomUUID();

@@ -7,19 +7,80 @@
   font-size: var(--text-sm);
 }
 
-.cardGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+/* Tarjeta: número y titular a todo el ancho, vencimiento y CVV juntos debajo, como en una tarjeta. */
+.cardPanel {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+}
+
+.cardRow {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-md);
+}
+
+.expiryInputs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.expirySeparator {
+  color: var(--color-text-muted);
+}
+
+.digits {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.secureNote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .mandate {
   display: flex;
   align-items: flex-start;
   gap: var(--space-sm);
-  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
   font-size: var(--text-sm);
+  line-height: 1.45;
   color: var(--color-text);
+  cursor: pointer;
+}
+
+.mandate input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+  .cardPanel {
+    padding: var(--space-md);
+  }
+
+  .cardRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 .restart {

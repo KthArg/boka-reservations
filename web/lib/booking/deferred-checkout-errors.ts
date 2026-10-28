@@ -34,6 +34,8 @@ export const CheckoutErrorKey = {
   CardExpiresBeforeDeparture: 'card-expires-before-departure',
   /** La persona ya tiene el máximo de cupos apartados sin cobrar (spec 0048). */
   DeferredCapExceeded: 'deferred-cap-exceeded',
+  /** Cloudflare no confirmó el captcha del paso 1, o no respondió (spec 0048, Fase B). */
+  CaptchaFailed: 'captcha-failed',
 } as const;
 
 export type CheckoutErrorKeyValue = (typeof CheckoutErrorKey)[keyof typeof CheckoutErrorKey];

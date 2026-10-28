@@ -8,6 +8,8 @@ import { privacyEs } from './privacy/2026-09-27.es';
 import { privacyEn } from './privacy/2026-09-27.en';
 import { privacyEs as privacyEs20261005 } from './privacy/2026-10-05.es';
 import { privacyEn as privacyEn20261005 } from './privacy/2026-10-05.en';
+import { privacyEs as privacyEs20261027 } from './privacy/2026-10-27.es';
+import { privacyEn as privacyEn20261027 } from './privacy/2026-10-27.en';
 
 // Versiones publicadas de los textos legales (spec 0034). Una versión, una vez publicada, no se
 // edita: cada reserva guarda la versión que aceptó y el correo de confirmación la enlaza. Para
@@ -33,6 +35,7 @@ const REGISTRY: Readonly<Record<LegalTextValue, Versions>> = {
   [LegalText.Privacy]: {
     '2026-09-27': { es: privacyEs, en: privacyEn },
     '2026-10-05': { es: privacyEs20261005, en: privacyEn20261005 },
+    '2026-10-27': { es: privacyEs20261027, en: privacyEn20261027 },
   },
 };
 

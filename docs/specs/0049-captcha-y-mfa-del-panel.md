@@ -353,7 +353,7 @@ No hay estados nuevos en las tablas del negocio.
 - que cada persona necesita una app autenticadora (Google Authenticator, Microsoft Authenticator o 1Password);
 - el día del enrolamiento;
 - cómo se resetea un factor perdido (y que eso cambia la contraseña);
-- que siempre tiene que haber al menos dos admins activos.
+- que si el admin pierde su factor, se resetea desde el dashboard de Supabase (no hay un segundo admin).
 
 ## 12. Métricas de éxito
 
@@ -363,6 +363,6 @@ No hay estados nuevos en las tablas del negocio.
 
 ## 13. Preguntas abiertas
 
-- [ ] **Pregunta**: ¿A qué proyecto de Supabase apuntan las previews de Vercel? Si es el de producción, el captcha del widget de producción no valida en sus hostnames, y la Fase 0 no se puede hacer en un preview. Opciones: agregar el hostname de preview al widget, un proyecto de staging, o hacer la Fase 0 solo en local con las claves de prueba de Turnstile. **Dueño**: Kenneth **Antes de**: 2026-10-27
-- [ ] **Pregunta**: ¿La abogada actualiza el "Sin doble factor" del aviso, junto con la mención de Turnstile? **Dueño**: abogada **Antes de**: el despliegue del captcha
-- [ ] **Pregunta**: ¿Quién es el segundo admin y cuándo se crea? Sin él, la recuperación de un admin pasa por el dashboard de Supabase. **Dueño**: Kenneth **Antes de**: el despliegue del MFA
+- [x] **Previews de Vercel**: no hay espacio para un proyecto de staging en la cuenta gratuita (operador, 2026-10-26). La Fase 0 del captcha se hace en local, con las claves de prueba de Turnstile.
+- [x] **Aviso de privacidad**: lo actualizó el operador (versión 2026-10-27): el segundo factor del personal en §8 y Turnstile en §2 a §5.
+- [x] **Segundo admin**: no hace falta (operador, 2026-10-26). Si el admin pierde su factor, se resetea desde el dashboard de Supabase (`docs/operacion/segundo-factor.md`).

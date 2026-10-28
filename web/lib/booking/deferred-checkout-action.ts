@@ -17,6 +17,8 @@ import { completeDeferredCheckout } from '@/lib/booking/deferred-checkout-comple
 import { emailOverDeferredCap } from '@/lib/booking/deferred-checkout-cap';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
 import { PAYMENT_METHOD_ID_PATTERN } from '@/lib/payments/payment-method-id';
+import { verifyCaptcha } from '@/lib/security/captcha';
+import { CAPTCHA_RESPONSE_FIELD, CaptchaAction } from '@shared/constants/captcha';
 import { HOLD_SESSION_COOKIE } from '@shared/constants/bookings';
 import { CHECKOUT_ACCEPTED_VALUE, CheckoutLegalField } from '@shared/constants/legal';
 import {
@@ -60,7 +62,14 @@ export type DeferredCheckoutStarted = {
 
 export type DeferredStartState = CheckoutError | DeferredCheckoutStarted | null;
 
+// Un solo objeto, devuelto solo antes del captcha. Después de verificarlo, cada respuesta tiene que
+// ser un objeto nuevo: el widget pide otro token cuando cambia la respuesta (spec 0048, Fase B).
 const GENERIC: CheckoutError = { error: CheckoutErrorKey.Generic };
+
+function captchaToken(formData: FormData): string | null {
+  const value = formData.get(CAPTCHA_RESPONSE_FIELD);
+  return typeof value === 'string' ? value : null;
+}
 
 function toFields(input: CheckoutInput): DeferredCheckoutFields {
   return {
@@ -108,6 +117,11 @@ export async function startDeferredCheckoutAction(
   }
   // Antes de crear hold y customer: el throttle no revela nada ni crea inventario.
   if (await isDeferredStartThrottled()) return GENERIC;
+  // Spec 0048, Fase B: después del throttle (una IP frenada no gasta llamadas a Cloudflare) y antes
+  // del chequeo del tope, que revela si un email tiene cupos apartados.
+  if (!(await verifyCaptcha(captchaToken(formData), CaptchaAction.DeferredStart))) {
+    return { error: CheckoutErrorKey.CaptchaFailed };
+  }
   // Spec 0048: con el email ya en el tope no se aparta ni se crea el customer en vano.
   if (await emailOverDeferredCap(input.customerEmail, seatsOf(input))) {
     return { error: CheckoutErrorKey.DeferredCapExceeded };

@@ -11,6 +11,7 @@ import { Link } from '@/i18n/navigation';
 import { crClockTime, crDate } from '@/lib/dates/cr-date';
 import { isTourBookable } from '@/lib/public/tour-bookable';
 import { isDeferredChargeEnabled } from '@/lib/booking/deferred-flag';
+import { captchaSiteKey } from '@/lib/security/captcha';
 import {
   getBookingCutoffHours,
   getNoShowToleranceMinutes,
@@ -138,9 +139,19 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
       </header>
       {/* Spec 0029: con el flag, reserva sin cargo y cobro al confirmarse la salida. */}
       {isDeferredChargeEnabled() ? (
-        <DeferredCheckoutForm instanceId={instanceId} pricing={pricing} summary={summary} />
+        <DeferredCheckoutForm
+          instanceId={instanceId}
+          pricing={pricing}
+          summary={summary}
+          captchaSiteKey={captchaSiteKey()}
+        />
       ) : (
-        <CheckoutForm instanceId={instanceId} pricing={pricing} summary={summary} />
+        <CheckoutForm
+          instanceId={instanceId}
+          pricing={pricing}
+          summary={summary}
+          captchaSiteKey={captchaSiteKey()}
+        />
       )}
     </div>
   );

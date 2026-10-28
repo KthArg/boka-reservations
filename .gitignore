@@ -54,3 +54,6 @@ Thumbs.db
 .claude/memory/
 
 .vercel
+
+# Respaldos de producción (pg_dump con datos personales): nunca al repo.
+backups/

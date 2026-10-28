@@ -26,7 +26,11 @@ import {
   uniqueCardBrand,
 } from './deferred-fixtures';
 
-const state = vi.hoisted(() => ({ flag: 'true', cookies: new Map<string, string>() }));
+const state = vi.hoisted(() => ({
+  flag: 'true',
+  captcha: 'false',
+  cookies: new Map<string, string>(),
+}));
 const provider = vi.hoisted(() => ({
   createCustomer: vi.fn(),
   deleteCustomer: vi.fn(),
@@ -41,6 +45,10 @@ vi.mock('@/lib/env', async (importOriginal) => {
         if (key === 'DEFERRED_CHARGE_ENABLED') return state.flag;
         // Sin throttle: el rate limit del checkout tiene su propia suite (spec 0017).
         if (key === 'RATE_LIMIT_ENABLED') return 'false';
+        // Captcha (spec 0048, Fase B): apagado salvo en su describe, con siteverify simulado.
+        if (key === 'CAPTCHA_ENABLED') return state.captcha;
+        if (key === 'TURNSTILE_SECRET_KEY') return 'turnstile-secret';
+        if (key === 'TURNSTILE_ALLOWED_HOSTNAMES') return 'reservas.bokaverdecr.com';
         return Reflect.get(target, key) as unknown;
       },
     }),
@@ -161,9 +169,73 @@ afterAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   state.flag = 'true';
+  state.captcha = 'false';
   state.cookies.clear();
   provider.createCustomer.mockImplementation(() => Promise.resolve({ customerId: `cus_${uid()}` }));
   provider.deleteCustomer.mockResolvedValue(undefined);
+});
+
+async function holdsOfInstance(): Promise<number> {
+  const { count } = await db
+    .from('tour_holds')
+    .select('id', { count: 'exact', head: true })
+    .eq('tour_instance_id', instanceId);
+  return count ?? 0;
+}
+
+/** Responde siteverify con `body` y deja pasar el resto de los fetch (la base local). */
+function siteverifySays(body: Record<string, unknown>) {
+  const realFetch = globalThis.fetch;
+  return vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.includes('/turnstile/v0/siteverify')) {
+      return Promise.resolve(new Response(JSON.stringify(body)));
+    }
+    return realFetch(input, init);
+  });
+}
+
+describe('startDeferredCheckoutAction — captcha (spec 0048, Fase B)', () => {
+  it('without a valid captcha holds no seats and creates no OnvoPay customer', async () => {
+    // Arrange
+    state.captcha = 'true';
+    const spy = siteverifySays({ success: false, 'error-codes': ['invalid-input-response'] });
+    const before = await holdsOfInstance();
+
+    // Act
+    const result = await startDeferredCheckoutAction(
+      null,
+      checkoutForm({ 'cf-turnstile-response': 'token' }),
+    );
+    spy.mockRestore();
+
+    // Assert
+    expect(result).toEqual({ error: 'captcha-failed' });
+    expect(provider.createCustomer).not.toHaveBeenCalled();
+    expect(await holdsOfInstance()).toBe(before);
+    expect(state.cookies.has(HOLD_SESSION_COOKIE)).toBe(false);
+  });
+
+  it('with a captcha Cloudflare confirms for the site and the step, holds the seats', async () => {
+    // Arrange
+    state.captcha = 'true';
+    const spy = siteverifySays({
+      success: true,
+      hostname: 'reservas.bokaverdecr.com',
+      action: 'deferred_start',
+    });
+
+    // Act
+    const result = await startDeferredCheckoutAction(
+      null,
+      checkoutForm({ 'cf-turnstile-response': 'token' }),
+    );
+    spy.mockRestore();
+
+    // Assert
+    expect(result).toMatchObject({ totalAmountCents: EXPECTED_CENTS });
+    expect(provider.createCustomer).toHaveBeenCalledOnce();
+  });
 });
 
 describe('startDeferredCheckoutAction', () => {

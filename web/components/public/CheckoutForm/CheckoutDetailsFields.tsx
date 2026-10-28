@@ -6,11 +6,23 @@ import type { PublicPricing } from '@/lib/public/tours';
 import { MAX_TICKETS_PER_BOOKING } from '@/lib/booking/quantities';
 import { NumberField } from '@/components/forms/NumberField';
 import { CENTS_PER_UNIT } from '@shared/constants/bookings';
+import type { CaptchaActionValue } from '@shared/constants/captcha';
 import { ConsentField } from './ConsentField';
+import { TurnstileWidget } from './TurnstileWidget';
 import { PurchaseSummary, type PurchaseSummaryInfo } from './PurchaseSummary';
 import styles from './CheckoutForm.module.css';
 
 export type TicketCounts = { adult: number; child: number; student: number };
+
+/** Captcha del paso 1 (spec 0048, Fase B); null con el captcha apagado. */
+export type CheckoutCaptcha = {
+  siteKey: string;
+  action: CaptchaActionValue;
+  /** La respuesta de la action: cada una pide un token nuevo. */
+  resetKey: unknown;
+  /** Avisa si falta el token, para que el form no se envíe antes. */
+  onPendingChange: (pending: boolean) => void;
+} | null;
 
 type Props = {
   summary: PurchaseSummaryInfo;
@@ -18,6 +30,7 @@ type Props = {
   quantities: TicketCounts;
   onQuantitiesChange: (quantities: TicketCounts) => void;
   totalCents: number;
+  captcha: CheckoutCaptcha;
 };
 
 const TICKET_TYPES = ['adult', 'child', 'student'] as const;
@@ -27,6 +40,9 @@ const TICKET_TYPES = ['adult', 'child', 'student'] as const;
  * (widget y diferido, spec 0029). Solo presenta; el precio autoritativo lo calcula el servidor.
  * Nombre y email con `defaultValue` ligado al estado, para que el reset del form que hace React 19
  * tras la action no borre lo escrito cuando la action devuelve un error.
+ * El captcha se monta recién con la casilla del aviso de privacidad marcada: ese aviso declara los
+ * datos que van a Cloudflare. Desmarcarla no lo desmonta (los datos ya salieron) y el form tampoco
+ * se envía sin ella.
  */
 export function CheckoutDetailsFields({
   summary,
@@ -34,10 +50,12 @@ export function CheckoutDetailsFields({
   quantities,
   onQuantitiesChange,
   totalCents,
+  captcha,
 }: Props) {
   const t = useTranslations('checkout');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const priceMap = new Map(pricing.map((p) => [p.ticket_type, p.price_usd]));
   const totalDisplay = (totalCents / CENTS_PER_UNIT).toFixed(2);
 
@@ -104,7 +122,20 @@ export function CheckoutDetailsFields({
 
       <PurchaseSummary info={summary} quantities={quantities} totalCents={totalCents} />
 
-      <ConsentField brand={summary.brand} />
+      <ConsentField
+        brand={summary.brand}
+        onPrivacyConsentChange={(accepted) => {
+          if (accepted) setPrivacyAccepted(true);
+        }}
+      />
+      {captcha && privacyAccepted && (
+        <TurnstileWidget
+          siteKey={captcha.siteKey}
+          action={captcha.action}
+          resetKey={captcha.resetKey}
+          onPendingChange={captcha.onPendingChange}
+        />
+      )}
     </>
   );
 }
