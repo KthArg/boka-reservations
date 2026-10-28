@@ -39,3 +39,26 @@ Rama: feat/0048-topes-y-captcha
 
 - Fase B (captcha): primero el aviso de privacidad (abogada) y la confirmación de la cláusula §2.2.1(h) de Cloudflare.
 - Aplicar …063 en producción (`supabase db push`) al promover.
+
+## 2026-10-27 — Aviso de privacidad 2026-10-27 y cláusula de tarjetas de Cloudflare
+
+Decisiones del operador: el aviso lo redacta el operador, sin esperar a la abogada, y la cláusula
+§2.2.1(h) de Cloudflare se resuelve sin consultarla (razones en §13 del spec).
+
+**Hecho**:
+
+- Aviso nuevo (`web/content/legal/privacy/2026-10-27.{es,en}.ts`, `PRIVACY_NOTICE_VERSION`,
+  registro y espejo del worker). Cambios frente a la 2026-10-05:
+  - **§2, párrafo nuevo "Verificación contra programas automáticos"**: Turnstile antes de apartar
+    cupos; qué datos van a Cloudflare, que recibimos solo el resultado y que Cloudflare los usa
+    también por su cuenta para mejorar la detección.
+  - **§2, datos técnicos**: Turnstile se suma como excepción a "no hacemos seguimiento".
+  - **§3**: finalidad nueva (proteger el sitio de programas automáticos). La frase "no los
+    cedemos a terceros para sus propios fines" pasa a tener la excepción de Cloudflare, y la de
+    "no tomamos decisiones automatizadas" se reemplaza: la verificación es automática.
+  - **§4 y §5**: párrafo de Cloudflare y su red fuera de Estados Unidos.
+  - **§8**: segundo factor obligatorio para el personal del panel (spec 0049).
+
+**Pendiente**:
+
+- Fase B (captcha): decidir si el widget se carga al marcar la casilla de privacidad (§13).
