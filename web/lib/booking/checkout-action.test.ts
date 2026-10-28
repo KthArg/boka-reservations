@@ -10,7 +10,8 @@ vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({ set: vi.fn() })),
 }));
 vi.mock('next-intl/server', () => ({ getLocale: vi.fn(async () => 'es') }));
-vi.mock('@/lib/security/rate-limit', () => ({ checkRateLimit: vi.fn(async () => ({ ok: true })) }));
+const limit = vi.hoisted(() => ({ ok: true }));
+vi.mock('@/lib/security/rate-limit', () => ({ checkRateLimit: vi.fn(async () => limit) }));
 vi.mock('@/lib/security/client-ip', () => ({ getClientIp: vi.fn(() => '1.2.3.4') }));
 // Flag del cobro diferido (spec 0029): lee la env tipada, que no existe en este runtime.
 const flag = vi.hoisted(() => ({ enabled: false }));
@@ -23,6 +24,10 @@ vi.mock('@/lib/booking/sales-gate', () => ({
   isInstanceSellable: vi.fn(async () => gate.instance),
   isTourOnSale: vi.fn(async () => gate.onSale),
 }));
+
+// Captcha (spec 0048, Fase B): su verificación tiene su propia suite; acá solo el corte.
+const captcha = vi.hoisted(() => ({ verify: vi.fn(async () => true) }));
+vi.mock('@/lib/security/captcha', () => ({ verifyCaptcha: captcha.verify }));
 
 const { initCheckout } = await import('@/lib/booking/create');
 const { checkoutAction } = await import('@/lib/booking/checkout-action');
@@ -120,5 +125,43 @@ describe('checkoutAction — compuertas de venta (spec 0034)', () => {
     gate.onSale = true;
     expect(result).toEqual({ error: 'tour-paused' });
     expect(initCheckout).not.toHaveBeenCalled();
+  });
+});
+
+describe('checkoutAction — captcha (spec 0048, Fase B)', () => {
+  it('sin captcha válido no aparta cupo', async () => {
+    vi.mocked(initCheckout).mockClear();
+    captcha.verify.mockResolvedValueOnce(false);
+
+    const result = await checkoutAction(
+      null,
+      buildForm({ ...ACCEPTED, 'cf-turnstile-response': 'token' }),
+    );
+
+    expect(result).toEqual({ error: 'captcha-failed' });
+    expect(captcha.verify).toHaveBeenLastCalledWith('token', 'checkout');
+    expect(initCheckout).not.toHaveBeenCalled();
+  });
+
+  it('una IP frenada no llega a gastar una verificación en Cloudflare', async () => {
+    captcha.verify.mockClear();
+    limit.ok = false;
+
+    const result = await checkoutAction(
+      null,
+      buildForm({ ...ACCEPTED, 'cf-turnstile-response': 'token' }),
+    );
+
+    limit.ok = true;
+    expect(result).toEqual({ error: 'error-generic' });
+    expect(captcha.verify).not.toHaveBeenCalled();
+  });
+
+  it('manda null a verificar cuando el form no trae token', async () => {
+    captcha.verify.mockResolvedValueOnce(false);
+
+    await checkoutAction(null, buildForm(ACCEPTED));
+
+    expect(captcha.verify).toHaveBeenLastCalledWith(null, 'checkout');
   });
 });

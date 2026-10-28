@@ -38,7 +38,24 @@ const envSchema = z.object({
   // Base pública del API para tokenizar la tarjeta desde el navegador (spec 0029 §5.2). Default
   // en el cliente: https://api.onvopay.com/v1, que también sirve el modo de prueba.
   NEXT_PUBLIC_ONVOPAY_API_BASE_URL: z.string().url().optional(),
+  // Captcha del paso 1 del checkout con Cloudflare Turnstile (spec 0048, Fase B). Se enciende recién
+  // con el aviso de privacidad que lo declara (versión 2026-10-27). Apagarlo es el rollback.
+  CAPTCHA_ENABLED: z.enum(['true', 'false']).default('false'),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+  // Hostnames que `siteverify` puede devolver, separados por coma (`reservas.bokaverdecr.com`).
+  TURNSTILE_ALLOWED_HOSTNAMES: z.string().min(1).optional(),
 });
+
+/** Llaves públicas de prueba de Turnstile: aceptan solo el token falso y no sirven en producción. */
+export function isTurnstileTestSecret(secret: string): boolean {
+  return /^[123]x0{31}AA$/.test(secret);
+}
+
+/** Sitekeys públicas de prueba: con un secreto real, todos los pasos 1 fallarían. */
+export function isTurnstileTestSiteKey(siteKey: string): boolean {
+  return /^[123]x0{20}(AA|AB|BB|FF)$/.test(siteKey);
+}
 
 /** Modo de una llave de OnvoPay por su prefijo (`onvo_test_…` / `onvo_live_…`); null si no lo dice. */
 export function onvopayKeyMode(key: string): 'test' | 'live' | null {
@@ -61,7 +78,33 @@ const envSchemaWithRules = envSchema
       return secret === null || publishable === null || secret === publishable;
     },
     { path: ['NEXT_PUBLIC_ONVOPAY_PUBLIC_KEY'] },
+  )
+  // Con el captcha encendido sin llaves, todos los pasos 1 fallarían cerrados.
+  .refine(
+    (e) =>
+      e.CAPTCHA_ENABLED === 'false' ||
+      (e.NEXT_PUBLIC_TURNSTILE_SITE_KEY !== undefined &&
+        e.TURNSTILE_SECRET_KEY !== undefined &&
+        e.TURNSTILE_ALLOWED_HOSTNAMES !== undefined),
+    { path: ['TURNSTILE_SECRET_KEY'] },
+  )
+  // En el deploy de producción de Vercel, un secreto de prueba dejaría pasar a cualquier bot, y una
+  // sitekey de prueba rechazaría a todos los turistas.
+  .refine((e) => !isTestKeyInProduction(e), { path: ['TURNSTILE_SECRET_KEY'] });
+
+/** Captcha encendido con alguna llave de prueba en el deploy de producción de Vercel. */
+export function isTestKeyInProduction(e: {
+  CAPTCHA_ENABLED: 'true' | 'false';
+  TURNSTILE_SECRET_KEY?: string;
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
+}): boolean {
+  if (e.CAPTCHA_ENABLED === 'false' || process.env.VERCEL_ENV !== 'production') return false;
+  return (
+    (e.TURNSTILE_SECRET_KEY !== undefined && isTurnstileTestSecret(e.TURNSTILE_SECRET_KEY)) ||
+    (e.NEXT_PUBLIC_TURNSTILE_SITE_KEY !== undefined &&
+      isTurnstileTestSiteKey(e.NEXT_PUBLIC_TURNSTILE_SITE_KEY))
   );
+}
 
 function parseEnv() {
   const result = envSchemaWithRules.safeParse(process.env);

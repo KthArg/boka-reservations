@@ -117,3 +117,23 @@ describe('buildCsp — prevención de fraude de OnvoPay en la página del 3DS', 
     },
   );
 });
+
+// Spec 0048, Fase B: el frame de Turnstile solo en la página del checkout, que es la única con el
+// captcha. El aviso de privacidad 2026-10-27 lo declara así.
+describe('buildCsp — captcha de Turnstile en el checkout', () => {
+  const TURNSTILE = 'https://challenges.cloudflare.com';
+
+  it.each(['/es/tours/day/checkout', '/en/tours/night/checkout/'])(
+    'permite el frame de Cloudflare en %j',
+    (pathname) => {
+      expect(directive(buildCsp(NONCE, pathname), 'frame-src')).toContain(TURNSTILE);
+    },
+  );
+
+  it.each(['', '/es', '/es/tours/day', '/es/checkout/success', '/es/booking/abc123/authenticate'])(
+    'no lo permite en %j',
+    (pathname) => {
+      expect(buildCsp(NONCE, pathname)).not.toContain(TURNSTILE);
+    },
+  );
+});

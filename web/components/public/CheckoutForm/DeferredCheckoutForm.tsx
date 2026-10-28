@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { PublicPricing } from '@/lib/public/tours';
 import { startDeferredCheckoutAction } from '@/lib/booking/deferred-checkout-action';
 import { calculateTotalCents, initialQuantities } from '@/lib/booking/pricing-math';
+import { CaptchaAction } from '@shared/constants/captcha';
 import { CheckoutDetailsFields, type TicketCounts } from './CheckoutDetailsFields';
 import type { PurchaseSummaryInfo } from './PurchaseSummary';
 import { CardDetailsForm } from './CardDetailsForm';
@@ -15,6 +16,8 @@ type Props = {
   instanceId: string;
   pricing: PublicPricing[];
   summary: PurchaseSummaryInfo;
+  /** Sitekey de Turnstile, o null con el captcha apagado (spec 0048, Fase B). */
+  captchaSiteKey: string | null;
 };
 
 /**
@@ -37,11 +40,13 @@ function DeferredCheckoutSteps({
   instanceId,
   pricing,
   summary,
+  captchaSiteKey,
   onRestart,
 }: Props & { onRestart: () => void }) {
   const t = useTranslations('checkout');
   const [state, action, pending] = useActionState(startDeferredCheckoutAction, null);
   const [quantities, setQuantities] = useState<TicketCounts>(() => initialQuantities(pricing));
+  const [captchaPending, setCaptchaPending] = useState(false);
 
   const totalCents = calculateTotalCents(
     quantities,
@@ -59,6 +64,16 @@ function DeferredCheckoutSteps({
         quantities={quantities}
         onQuantitiesChange={setQuantities}
         totalCents={totalCents}
+        captcha={
+          captchaSiteKey
+            ? {
+                siteKey: captchaSiteKey,
+                action: CaptchaAction.DeferredStart,
+                resetKey: state,
+                onPendingChange: setCaptchaPending,
+              }
+            : null
+        }
       />
 
       <p className={deferredStyles.note}>{t('deferred-no-charge-note')}</p>
@@ -69,8 +84,16 @@ function DeferredCheckoutSteps({
         </p>
       )}
 
-      <button type="submit" disabled={pending || totalCents === 0} className={styles.submit}>
-        {pending ? t('deferred-submitting') : t('deferred-submit')}
+      <button
+        type="submit"
+        disabled={pending || captchaPending || totalCents === 0}
+        className={styles.submit}
+      >
+        {pending
+          ? t('deferred-submitting')
+          : captchaPending
+            ? t('captcha-verifying')
+            : t('deferred-submit')}
       </button>
     </form>
   );
