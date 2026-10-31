@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getDb } from '../db.js';
 import { env } from '../env.js';
 import { createOnvopayChargeClient, type OnvopayChargeClient } from '../charges/onvopay.js';
 import { CycleAction, decideCycle } from '../charges/departure-cycle.js';
@@ -56,7 +57,7 @@ async function alertStrandedBookings(db: SupabaseClient): Promise<void> {
 }
 
 async function runCycle(): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const db = getDb();
   if (!env.DEFERRED_CHARGE_ENABLED && !env.RELEASE_AUTHORIZATIONS_ONLY) {
     await alertStrandedBookings(db);
     return;

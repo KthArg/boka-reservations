@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from '../env.js';
+import { getDb } from '../db.js';
 import { buildInstanceDates } from './tour-instance-dates.js';
 
 const LOOKAHEAD_DAYS = 90;
@@ -36,7 +35,7 @@ type TourRow = {
 };
 
 export async function generateTourInstances(): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const db = getDb();
 
   const [{ data: schedules, error: schErr }, { data: tours, error: tourErr }] = await Promise.all([
     db

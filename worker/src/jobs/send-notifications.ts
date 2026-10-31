@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getDb } from '../db.js';
 import * as Sentry from '@sentry/node';
 import { env } from '../env.js';
 import { getEmailAdapter } from '../notifications/adapters/index.js';
@@ -43,9 +44,7 @@ export async function sendNotifications(): Promise<void> {
 }
 
 async function runCycle(): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+  const db = getDb();
 
   const pending = await fetchPending(db);
   if (pending.length === 0) return;
