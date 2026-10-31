@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getDb } from '../db.js';
 import * as Sentry from '@sentry/node';
 import { env } from '../env.js';
 import {
@@ -52,9 +53,7 @@ export async function reconcilePendingPayments(): Promise<void> {
 }
 
 async function runCycle(): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+  const db = getDb();
 
   const olderThanIso = new Date(Date.now() - STALE_PENDING_PAYMENT_AFTER_MS).toISOString();
   const bookings = await fetchStalePendingBookings(db, olderThanIso, BATCH_SIZE);
