@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { getDb } from '../db.js';
 import { env } from '../env.js';
 import { computeRetentionCutoffs } from './retention-windows.js';
 
@@ -12,7 +12,7 @@ export async function applyRetention(): Promise<void> {
     return;
   }
 
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const db = getDb();
   const cutoffs = computeRetentionCutoffs();
 
   const steps: Array<{ fn: string; args: Record<string, unknown> }> = [

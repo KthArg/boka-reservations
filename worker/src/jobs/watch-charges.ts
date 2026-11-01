@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getDb } from '../db.js';
 import * as Sentry from '@sentry/node';
 import { env } from '../env.js';
 import { createOnvopayChargeClient, type OnvopayChargeClient } from '../charges/onvopay.js';
@@ -48,9 +49,7 @@ export async function watchCharges(): Promise<void> {
 }
 
 async function runCycle(): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+  const db = getDb();
   const client = env.ONVOPAY_SECRET_KEY
     ? createOnvopayChargeClient(env.ONVOPAY_SECRET_KEY, env.ONVOPAY_API_BASE_URL)
     : null;

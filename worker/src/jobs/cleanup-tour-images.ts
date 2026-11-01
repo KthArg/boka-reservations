@@ -1,5 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { env } from '../env.js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getDb } from '../db.js';
 import { planTourImageCleanup, type StoredObject } from './tour-image-cleanup-plan.js';
 
 // Borra del bucket las fotos de tours que ningún tour usa (spec 0038): las reemplazadas, las que
@@ -44,7 +44,7 @@ export async function coverImageUrls(db: SupabaseClient): Promise<string[]> {
 }
 
 export async function cleanupTourImages(now: Date = new Date()): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const db = getDb();
 
   // Primero el bucket y después los tours: una foto que se guarda entre las dos lecturas queda
   // referenciada y no se borra.

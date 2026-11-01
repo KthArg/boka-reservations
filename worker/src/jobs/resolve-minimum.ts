@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { env } from '../env.js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getDb } from '../db.js';
 import { BelowMinimumPolicy, loadBelowMinimumPolicy } from '../charges/minimum-policy.js';
 
 // Cierre por mínimo del cobro inmediato (spec 0035) y de las salidas vacías (spec 0045). Los
@@ -43,7 +43,7 @@ const alerted = new Set<string>();
 type RpcOutcome = { data: string | null; error: { message: string } | null };
 
 export async function resolveMinimum(): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const db = getDb();
   await runResolveMinimum(db, new Date());
 }
 

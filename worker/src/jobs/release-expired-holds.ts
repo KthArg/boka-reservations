@@ -1,8 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from '../env.js';
+import { getDb } from '../db.js';
 
 export async function releaseExpiredHolds(): Promise<void> {
-  const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const db = getDb();
 
   const now = new Date().toISOString();
 
